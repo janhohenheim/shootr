@@ -1,0 +1,6 @@
+[package]
+name = "shootr"
+version = "0.1.0"
+authors = ["Jan Nils Ferner"]
+
+[dependencies]
