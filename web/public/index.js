@@ -29,6 +29,16 @@ loader
 
 app.ticker.add(gameLoop)
 
+document.addEventListener("keydown", (event) => {
+    send('keydown:' + event.key)
+})
+document.addEventListener("keyup", (event) => {
+    send('keyup:' + event.key)
+})
+document.addEventListener("mousemove", (event) => {
+    send('mousemove:' + event.clientX + ' ' + event.clientY)
+})
+
 function loadProgressHandler(loader, resource) {
     console.log('loading: ' + resource.name + ' (' + resource.url + ')')
     console.log('progress: ' + loader.progress + '%')
@@ -106,81 +116,7 @@ function move(obj, delta) {
     obj.rotation += obj.vrotation * delta
 }
 
-
-const left = keyboard('ArrowLeft', 'a'),
-    up = keyboard('ArrowUp', 'd'),
-    right = keyboard('ArrowRight', 'h'),
-    down = keyboard('ArrowDown', 's')
-
-left.press = () => {
-    explorer.vx = -5
-}
-
-left.release = () => {
-    if (!right.isDown)
-        explorer.vx = 0
-}
-
-up.press = () => {
-    explorer.vy = -5
-}
-up.release = () => {
-    if (!down.isDown)
-        explorer.vy = 0
-}
-
-right.press = () => {
-    explorer.vx = 5
-}
-right.release = () => {
-    if (!left.isDown)
-        explorer.vx = 0
-}
-
-down.press = () => {
-    explorer.vy = 5
-}
-down.release = () => {
-    if (!up.isDown)
-        explorer.vy = 0
-}
-
-
-function keyboard() {
-    const keyHandler = {}
-    keyHandler.key = arguments
-    keyHandler.isDown = false
-    keyHandler.isUp = true
-    keyHandler.press = undefined
-    keyHandler.release = undefined
-
-    keyHandler.downHandler = event => {
-        for (let key of keyHandler.key)
-            if (event.key === key) {
-                if (keyHandler.isUp && keyHandler.press)
-                    keyHandler.press()
-                keyHandler.isDown = true
-                keyHandler.isUp = false
-                event.preventDefault()
-            }
-    }
-
-    keyHandler.upHandler = event => {
-        for (let key of keyHandler.key)
-            if (event.key === key) {
-                if (keyHandler.isDown && keyHandler.release)
-                    keyHandler.release()
-                keyHandler.isDown = false
-                keyHandler.isUp = true
-                event.preventDefault()
-            }
-    }
-
-    window.addEventListener(
-        'keydown', keyHandler.downHandler.bind(keyHandler),
-    )
-    window.addEventListener(
-        'keyup', keyHandler.upHandler.bind(keyHandler),
-    )
-    return keyHandler
+function send(data) {
+    console.log('sending data: ', data)
+    io.send(data)
 }
