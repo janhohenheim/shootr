@@ -10,6 +10,7 @@ use websocket::async::Server;
 
 use tokio_core::reactor::{Handle, Core};
 use futures::{Future, Sink, Stream};
+use futures::future::{self, Loop};
 
 fn main() {
     let mut core = Core::new().unwrap();
@@ -38,29 +39,48 @@ fn main() {
                 .use_protocol("rust-websocket")
                 .accept()
                 // send a greeting!
-                .and_then(|(s, _)| s.send(Message::text("Hello World!").into()))
+                .and_then(|(server, _)| server.send(Message::text("Hello World!").into()))
                 // simple echo server impl
-                .and_then(|s| {
-                    let (sink, stream) = s.split();
-                    stream
-                        .take_while(|m| Ok(!m.is_close()))
-                        .filter_map(|m| {
-                            println!("Message from Client: {:?}", m);
-                            match m {
-                                OwnedMessage::Ping(p) => Some(OwnedMessage::Pong(p)),
-                                OwnedMessage::Pong(_) => None,
-                                _ => Some(m),
-                            }
-                        })
-                        .forward(sink)
-                        .and_then(|(_, sink)| {
-                            sink.send(OwnedMessage::Close(None))
-                        })
+                .and_then(move |server| {
+                    future::loop_fn(server, |stream| {
+                        stream.into_future()
+                            .or_else(|(err, stream)| {
+                                println!("Could not send message: {:?}", err);
+                                stream.send(OwnedMessage::Close(None)).map(|s| (None, s))
+                            })
+                            .and_then(|(msg, stream)| match msg {
+                                Some(OwnedMessage::Text(txt)) => {
+                                    stream.send(OwnedMessage::Text(txt))
+                                        .map(|s| Loop::Continue(s))
+                                        .boxed()
+                                }
+                                Some(OwnedMessage::Binary(bin)) => {
+                                    stream.send(OwnedMessage::Binary(bin))
+                                        .map(|s| Loop::Continue(s))
+                                        .boxed()
+                                }
+                                Some(OwnedMessage::Ping(data)) => {
+                                    stream.send(OwnedMessage::Pong(data))
+                                        .map(|s| Loop::Continue(s))
+                                        .boxed()
+                                }
+                                Some(OwnedMessage::Close(_)) => {
+                                    stream.send(OwnedMessage::Close(None))
+                                        .map(|_| Loop::Break(()))
+                                        .boxed()
+                                }
+                                Some(OwnedMessage::Pong(_)) => {
+                                    future::ok(Loop::Continue(stream)).boxed()
+                                }
+                                None => future::ok(Loop::Break(())).boxed(),
+                            })
+                    })
                 });
 
             spawn_future(f, "Client Status", &handle);
             Ok(())
         });
+
 
     core.run(f).unwrap();
 }
@@ -72,3 +92,5 @@ fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
     handle.spawn(f.map_err(move |e| println!("{}: '{:?}'", desc, e))
         .map(move |_| println!("{}: Finished.", desc)));
 }
+
+
