@@ -6,7 +6,9 @@ use std::fmt::Debug;
 
 use websocket::message::{Message, OwnedMessage};
 use websocket::server::InvalidConnection;
+use websocket::client::async::Framed;
 use websocket::async::Server;
+use websocket::async::futures::stream::Map;
 
 use tokio_core::reactor::{Handle, Core};
 use futures::{Future, Sink, Stream};
@@ -41,42 +43,27 @@ fn main() {
                 // send a greeting!
                 .and_then(|(server, _)| server.send(Message::text("Hello World!").into()))
                 // simple echo server impl
-                .and_then(move |server| {
+                .and_then(|server| {
                     future::loop_fn(server, |stream| {
                         stream.into_future()
                             .or_else(|(err, stream)| {
                                 println!("Could not send message: {:?}", err);
                                 stream.send(OwnedMessage::Close(None)).map(|s| (None, s))
                             })
-                            .and_then(|(msg, stream)| match msg {
-                                Some(OwnedMessage::Text(txt)) => {
-                                    stream.send(OwnedMessage::Text(txt))
-                                        .map(|s| Loop::Continue(s))
-                                        .boxed()
-                                }
-                                Some(OwnedMessage::Binary(bin)) => {
-                                    stream.send(OwnedMessage::Binary(bin))
-                                        .map(|s| Loop::Continue(s))
-                                        .boxed()
-                                }
-                                Some(OwnedMessage::Ping(data)) => {
-                                    stream.send(OwnedMessage::Pong(data))
-                                        .map(|s| Loop::Continue(s))
-                                        .boxed()
-                                }
-                                Some(OwnedMessage::Close(_)) => {
-                                    stream.send(OwnedMessage::Close(None))
-                                        .map(|_| Loop::Break(()))
-                                        .boxed()
-                                }
-                                Some(OwnedMessage::Pong(_)) => {
-                                    future::ok(Loop::Continue(stream)).boxed()
-                                }
-                                None => future::ok(Loop::Break(())).boxed(),
+                            .and_then(|(msg, stream)|{
+                                handle_incomming(&msg);
+                                stream.send(OwnedMessage::Text(state()))
+                                    .map(|s| {
+                                        if shutdown() {
+                                            Loop::Continue(s)
+                                        } else {
+                                            Loop::Break(())
+                                        }
+                                    })
+                                    .boxed()
                             })
                     })
                 });
-
             spawn_future(f, "Client Status", &handle);
             Ok(())
         });
@@ -93,4 +80,57 @@ fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
         .map(move |_| println!("{}: Finished.", desc)));
 }
 
+fn handle_incomming(msg: &Option<OwnedMessage>) {
+    /*match msg {
+        Some(OwnedMessage::Text(txt)) => {
+            stream.send(OwnedMessage::Text(txt))
+                .map(|s| Loop::Continue(s))
+                .boxed()
+        }
+        Some(OwnedMessage::Binary(bin)) => {
+            stream.send(OwnedMessage::Binary(bin))
+                .map(|s| Loop::Continue(s))
+                .boxed()
+        }
+        Some(OwnedMessage::Ping(data)) => {
+            stream.send(OwnedMessage::Pong(data))
+                .map(|s| Loop::Continue(s))
+                .boxed()
+        }
+        Some(OwnedMessage::Close(_)) => {
+            stream.send(OwnedMessage::Close(None))
+                .map(|_| Loop::Break(()))
+                .boxed()
+        }
+        Some(OwnedMessage::Pong(_)) => {
+            future::ok(Loop::Continue(stream)).boxed()
+        }
+        None => {
+            future::ok(Loop::Break(())).boxed()
+        },
+    }*/
+}
 
+fn send() {
+    /*
+    stream
+        .send(OwnedMessage::Text(state()))
+        .map(|s| {
+            if shutdown() {
+                Loop::Continue(s)
+            } else {
+                Loop::Break(())
+            }
+        })
+        .boxed()
+    */
+}
+
+fn shutdown() -> bool {
+    false
+}
+
+
+fn state() -> String {
+    "ayyyy".to_string()
+}
