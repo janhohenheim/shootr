@@ -8,18 +8,16 @@ extern crate serde_derive;
 
 use std::fmt::Debug;
 
-use websocket::message::{Message, OwnedMessage};
+use websocket::message::OwnedMessage;
 use websocket::server::InvalidConnection;
 use websocket::client::async::Framed;
 use websocket::async::{Server, MessageCodec};
-use websocket::WebSocketError;
 
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::{Handle, Core};
 
 use futures::{Future, Sink, Stream};
 use futures::future::{self, Loop};
-use std::sync::{Mutex, Arc};
 
 fn main() {
     let mut core = Core::new().unwrap();
@@ -54,7 +52,7 @@ fn main() {
                                 Ok((msg, stream))
                             }).map(|(msg, stream)| {
                                 match msg {
-                                    Some(m) => Loop::Continue(stream),
+                                    Some(_) => Loop::Continue(stream),
                                     None => Loop::Break(()),
                                 }
                             })
@@ -82,6 +80,7 @@ fn handle_incoming(state: &mut State, msg: &Option<OwnedMessage>) {
     match msg {
         &Some(OwnedMessage::Text(ref txt)) => {
             println!("Received message: {}", txt);
+            state.msg = txt.clone();
         }
         _ => {}
     }
@@ -89,25 +88,12 @@ fn handle_incoming(state: &mut State, msg: &Option<OwnedMessage>) {
 
 type FramedStream = Framed<TcpStream, MessageCodec<OwnedMessage>>;
 
-fn send(state: &State, stream: FramedStream) -> Box<Future<Item=Loop<(), FramedStream>,Error=WebSocketError>> {
+fn send(state: &State, stream: FramedStream) -> futures::sink::Send<FramedStream> {
     let msg = serde_json::to_string(&state).unwrap();
     println!("Sending message: {}", msg);
-    stream
-        .send(OwnedMessage::Text(msg))
-        .map(|s| {
-            if shutdown() {
-                Loop::Break(())
-            } else {
-                Loop::Continue(s)
-            }
-        })
-        .boxed()
-
+    stream.send(OwnedMessage::Text(msg))
 }
 
-fn shutdown() -> bool {
-    false
-}
 
 #[derive(Serialize)]
 struct State {
