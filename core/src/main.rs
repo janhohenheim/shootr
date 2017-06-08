@@ -57,7 +57,7 @@ fn main() {
                                 }
                             })
                             .boxed()
-                    })
+                })
             });
             spawn_future(f, "Client Status", &handle);
             Ok(())
@@ -72,7 +72,7 @@ fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
           E: Debug
 {
     handle.spawn(f.map_err(move |e| println!("{}: '{:?}'", desc, e))
-        .map(move |_| println!("{}: Finished.", desc)));
+                     .map(move |_| println!("{}: Finished.", desc)));
 }
 
 
@@ -102,9 +102,6 @@ struct State {
 
 impl State {
     fn new() -> State {
-        State {
-            msg: "git gud".to_string()
-        }
+        State { msg: "git gud".to_string() }
     }
 }
-
