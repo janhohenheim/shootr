@@ -1,0 +1,16 @@
+* text=auto
+
+# Text
+*.txt text
+*.md text
+*.rs text
+*.toml text
+*.lock text
+*.js text
+*.html text
+*.css text
+
+# Binary
+*.jpg binary
+*.data binary
+*.png binary
