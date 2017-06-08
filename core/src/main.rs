@@ -36,13 +36,14 @@ fn main() {
                 return Ok(());
             }
 
-            let f = upgrade
+            let client = upgrade
                 .use_protocol("rust-websocket")
-                .accept()
-                .and_then(|(server, _)| server.send(Message::text("Hello World!").into()))
-                .and_then(|server| {
-                    future::loop_fn(server, |stream| {
-                        stream.into_future()
+                .accept();
+            let f = client
+                .and_then(|(stream, _)| {
+                 future::loop_fn(stream, |stream| {
+                        stream
+                            .into_future()
                             .or_else(|(err, stream)| {
                                 println!("Could not send message: {:?}", err);
                                 stream.send(OwnedMessage::Close(None)).map(|s| (None, s))
@@ -50,10 +51,17 @@ fn main() {
                             .and_then(|(msg, stream)|{
                                 let mut state = State::new();
                                 handle_incomming(&mut state, msg);
-                                send(&state, stream)
+                                Ok(stream)
+                            }).map(|stream| {
+                                if shutdown() {
+                                    Loop::Break(())
+                                } else {
+                                    Loop::Continue(stream)
+                                }
                             })
+                            .boxed()
                     })
-                });
+            });
             spawn_future(f, "Client Status", &handle);
             Ok(())
         });
@@ -72,41 +80,21 @@ fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
 
 
 fn handle_incomming(state: &mut State, msg: Option<OwnedMessage>) {
-    /*match msg {
+    match msg {
         Some(OwnedMessage::Text(txt)) => {
-            stream.send(OwnedMessage::Text(txt))
-                .map(|s| Loop::Continue(s))
-                .boxed()
+            println!("Received message: {}", txt);
         }
-        Some(OwnedMessage::Binary(bin)) => {
-            stream.send(OwnedMessage::Binary(bin))
-                .map(|s| Loop::Continue(s))
-                .boxed()
-        }
-        Some(OwnedMessage::Ping(data)) => {
-            stream.send(OwnedMessage::Pong(data))
-                .map(|s| Loop::Continue(s))
-                .boxed()
-        }
-        Some(OwnedMessage::Close(_)) => {
-            stream.send(OwnedMessage::Close(None))
-                .map(|_| Loop::Break(()))
-                .boxed()
-        }
-        Some(OwnedMessage::Pong(_)) => {
-            future::ok(Loop::Continue(stream)).boxed()
-        }
-        None => {
-            future::ok(Loop::Break(())).boxed()
-        },
-    }*/
+        _ => {}
+    }
 }
 
 type FramedStream = Framed<TcpStream, MessageCodec<OwnedMessage>>;
 
 fn send(state: &State, stream: FramedStream) -> Box<Future<Item=Loop<(), FramedStream>,Error=WebSocketError>> {
+    let msg = serde_json::to_string(&state).unwrap();
+    println!("Sending message: {}", msg);
     stream
-        .send(OwnedMessage::Text(serde_json::to_string(&state).unwrap()))
+        .send(OwnedMessage::Text(msg))
         .map(|s| {
             if shutdown() {
                 Loop::Break(())
