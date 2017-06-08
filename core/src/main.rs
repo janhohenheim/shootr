@@ -39,7 +39,7 @@ fn main() {
                 .accept();
             let f = client
                 .and_then(|(stream, _)| {
-                 future::loop_fn(stream, |stream| {
+                    future::loop_fn(stream, |stream| {
                         stream
                             .into_future()
                             .or_else(|(err, stream)| {
@@ -57,8 +57,8 @@ fn main() {
                                 }
                             })
                             .boxed()
-                })
-            });
+                    })
+                });
             spawn_future(f, "Client Status", &handle);
             Ok(())
         });
