@@ -50,13 +50,12 @@ fn main() {
                             })
                             .and_then(|(msg, stream)|{
                                 let mut state = State::new();
-                                handle_incomming(&mut state, msg);
-                                Ok(stream)
-                            }).map(|stream| {
-                                if shutdown() {
-                                    Loop::Break(())
-                                } else {
-                                    Loop::Continue(stream)
+                                handle_incoming(&mut state, &msg);
+                                Ok((msg, stream))
+                            }).map(|(msg, stream)| {
+                                match msg {
+                                    Some(m) => Loop::Continue(stream),
+                                    None => Loop::Break(()),
                                 }
                             })
                             .boxed()
@@ -79,9 +78,9 @@ fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
 }
 
 
-fn handle_incomming(state: &mut State, msg: Option<OwnedMessage>) {
+fn handle_incoming(state: &mut State, msg: &Option<OwnedMessage>) {
     match msg {
-        Some(OwnedMessage::Text(txt)) => {
+        &Some(OwnedMessage::Text(ref txt)) => {
             println!("Received message: {}", txt);
         }
         _ => {}
