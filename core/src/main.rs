@@ -38,14 +38,11 @@ fn main() {
                 .use_protocol("rust-websocket")
                 .accept();
             let f = client
-                .and_then(|(stream, _)| {
-                    future::loop_fn(stream, |stream| {
+                .and_then(|(framed, _)| {
+                    let (sink, stream) = framed.split();
+                    let input = future::loop_fn(stream, |stream| {
                         stream
                             .into_future()
-                            .or_else(|(err, stream)| {
-                                println!("Could not send message: {:?}", err);
-                                stream.send(OwnedMessage::Close(None)).map(|s| (None, s))
-                            })
                             .and_then(|(msg, stream)|{
                                 let mut state = State::new();
                                 handle_incoming(&mut state, &msg);
@@ -57,7 +54,21 @@ fn main() {
                                 }
                             })
                             .boxed()
-                    })
+                    });
+                    let output = future::loop_fn(sink, |sink| {
+                        sink
+                            .send({
+                                OwnedMessage::Text("hi!".to_owned())
+                            })
+                            .map(|sink| {
+                                match 1 {
+                                    1 => Loop::Continue(sink),
+                                    _ => Loop::Break(())
+                                }
+                            })
+                            .boxed()
+                    });
+                    Ok(input.select2(output))
                 });
             spawn_future(f, "Client Status", &handle);
             Ok(())
