@@ -40,35 +40,20 @@ fn main() {
             let f = client
                 .and_then(|(framed, _)| {
                     let (sink, stream) = framed.split();
-                    let input = future::loop_fn(stream, |stream| {
-                        stream
-                            .into_future()
-                            .and_then(|(msg, stream)|{
+                   
+                    let input = stream
+                            .for_each(|msg|{
+                                println!("0");
                                 let mut state = State::new();
                                 handle_incoming(&mut state, &msg);
-                                Ok((msg, stream))
-                            }).map(|(msg, stream)| {
-                                match msg {
-                                    Some(_) => Loop::Continue(stream),
-                                    None => Loop::Break(()),
-                                }
-                            })
-                            .boxed()
-                    });
-                    let output = future::loop_fn(sink, |sink| {
-                        sink
+                                Ok(())
+                            });
+                    let output = sink
                             .send({
+                                println!("1");
                                 OwnedMessage::Text("hi!".to_owned())
-                            })
-                            .map(|sink| {
-                                match 1 {
-                                    1 => Loop::Continue(sink),
-                                    _ => Loop::Break(())
-                                }
-                            })
-                            .boxed()
-                    });
-                    Ok(input.select2(output))
+                            });
+                    Ok(input.map(|_| ()).map_err(|_| ()).join(output.map(|_| ()).map_err(|_| ())))
                 });
             spawn_future(f, "Client Status", &handle);
             Ok(())
@@ -82,14 +67,15 @@ fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
     where F: Future<Item = I, Error = E> + 'static,
           E: Debug
 {
-    handle.spawn(f.map_err(move |e| println!("{}: '{:?}'", desc, e))
+    handle.spawn(f.map_err(move |e| println!("Error in {}: '{:?}'", desc, e))
                      .map(move |_| println!("{}: Finished.", desc)));
 }
 
 
-fn handle_incoming(state: &mut State, msg: &Option<OwnedMessage>) {
+fn handle_incoming(state: &mut State, msg: &OwnedMessage) {
+    println!("handle_incoming");
     match msg {
-        &Some(OwnedMessage::Text(ref txt)) => {
+        &OwnedMessage::Text(ref txt) => {
             println!("Received message: {}", txt);
             state.msg = txt.clone();
         }
@@ -116,3 +102,5 @@ impl State {
         State { msg: "git gud".to_string() }
     }
 }
+
+
