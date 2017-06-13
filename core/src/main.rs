@@ -12,6 +12,7 @@ use websocket::message::OwnedMessage;
 use websocket::server::InvalidConnection;
 use websocket::client::async::Framed;
 use websocket::async::{Server, MessageCodec};
+use websocket::WebSocketError;
 
 use tokio_core::net::TcpStream;
 use tokio_core::reactor::{Handle, Core};
@@ -47,13 +48,16 @@ fn main() {
                                 let mut state = State::new();
                                 handle_incoming(&mut state, &msg);
                                 Ok(())
-                            });
+                            })
+                            .map_err(|e| WebSocketError::NoDataAvailable);
+
                     let output = sink
                             .send({
                                 println!("1");
                                 OwnedMessage::Text("hi!".to_owned())
-                            });
-                    Ok(input.map(|_| ()).map_err(|_| ()).join(output.map(|_| ()).map_err(|_| ())))
+                            })
+                            .map_err(|e| WebSocketError::NoDataAvailable);
+                    input.join(output)
                 });
             spawn_future(f, "Client Status", &handle);
             Ok(())
