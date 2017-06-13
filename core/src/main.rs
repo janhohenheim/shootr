@@ -1,5 +1,6 @@
 extern crate websocket;
 extern crate futures;
+extern crate futures_cpupool;
 extern crate tokio_core;
 extern crate serde;
 extern crate serde_json;
@@ -10,21 +11,25 @@ use std::fmt::Debug;
 
 use websocket::message::OwnedMessage;
 use websocket::server::InvalidConnection;
-use websocket::client::async::Framed;
-use websocket::async::{Server, MessageCodec};
-use websocket::WebSocketError;
+use websocket::async::Server;
 
-use tokio_core::net::TcpStream;
 use tokio_core::reactor::{Handle, Core};
 
 use futures::{Future, Sink, Stream};
 use futures::future::{self, Loop};
+use futures_cpupool::CpuPool;
+
+use std::sync::{RwLock, Arc};
+use std::time::Duration;
+use std::thread;
+use std::rc::Rc;
 
 fn main() {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
     let server = Server::bind("localhost:8081", &handle).unwrap();
-
+    let pool = Rc::new(CpuPool::new_num_cpus());
+    let state = Arc::new(RwLock::new(State::new()));
     let f = server.incoming()
         // we don't wanna save the stream if it drops
         .map_err(|InvalidConnection { error, .. }| error)
@@ -38,31 +43,35 @@ fn main() {
             let client = upgrade
                 .use_protocol("rust-websocket")
                 .accept();
+            let state_inner = state.clone();
+            let pool_inner = pool.clone();
             let f = client
-                .and_then(|(framed, _)| {
+                .and_then(move |(framed, _)| {
                     let (sink, stream) = framed.split();
-                   
-                    let input = stream
-                            .for_each(|msg|{
-                                println!("0");
-                                let mut state = State::new();
-                                handle_incoming(&mut state, &msg);
-                                Ok(())
-                            })
-                            .map_err(|e| WebSocketError::NoDataAvailable);
+                    let state = state_inner.clone();
 
-                    let output = sink
-                            .send({
-                                println!("1");
-                                OwnedMessage::Text("hi!".to_owned())
+                    let input = stream
+                            .for_each(move |msg|{
+                                handle_incoming(&mut state_inner.write().unwrap(), &msg);
+                                Ok(())
+                            });
+
+                    let output = pool_inner.spawn_fn(|| future::loop_fn(sink, move |sink| {
+                        thread::sleep(Duration::from_secs(4));
+                        send(&state.read().unwrap(), sink)
+                            .map(|sink| {
+                                match 1 {
+                                    1 => Loop::Continue(sink),
+                                    _ => Loop::Break(())
+                                }
                             })
-                            .map_err(|e| WebSocketError::NoDataAvailable);
+                            .boxed()
+                    }));
                     input.join(output)
                 });
             spawn_future(f, "Client Status", &handle);
             Ok(())
         });
-
 
     core.run(f).unwrap();
 }
@@ -77,7 +86,6 @@ fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
 
 
 fn handle_incoming(state: &mut State, msg: &OwnedMessage) {
-    println!("handle_incoming");
     match msg {
         &OwnedMessage::Text(ref txt) => {
             println!("Received message: {}", txt);
@@ -87,12 +95,15 @@ fn handle_incoming(state: &mut State, msg: &OwnedMessage) {
     }
 }
 
-type FramedStream = Framed<TcpStream, MessageCodec<OwnedMessage>>;
+type SplitSink = futures::stream::SplitSink<
+                    websocket::client::async::Framed<tokio_core::net::TcpStream,
+                    websocket::async::MessageCodec<websocket::OwnedMessage>>
+                >;
 
-fn send(state: &State, stream: FramedStream) -> futures::sink::Send<FramedStream> {
+fn send(state: &State, sink: SplitSink) -> futures::sink::Send<SplitSink> {
     let msg = serde_json::to_string(&state).unwrap();
     println!("Sending message: {}", msg);
-    stream.send(OwnedMessage::Text(msg))
+    sink.send(OwnedMessage::Text(msg))
 }
 
 
@@ -106,5 +117,3 @@ impl State {
         State { msg: "git gud".to_string() }
     }
 }
-
-
