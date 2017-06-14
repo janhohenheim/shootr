@@ -12,7 +12,6 @@ use std::fmt::Debug;
 use websocket::message::OwnedMessage;
 use websocket::server::InvalidConnection;
 use websocket::async::Server;
-use websocket::WebSocketError;
 
 use tokio_core::reactor::{Handle, Core};
 
@@ -32,9 +31,7 @@ fn main() {
     let pool = Rc::new(CpuPool::new_num_cpus());
     let state = Arc::new(RwLock::new(State::new()));
     let (read_channel_out, read_channel_in) = futures::sync::mpsc::unbounded();
-    let read_channel_out = Rc::new(read_channel_out);
     let (write_channel_out, write_channel_in) = futures::sync::mpsc::unbounded();
-    let write_channel_out = Rc::new(write_channel_out);
     let connection_handler = server.incoming()
         // we don't wanna save the stream if it drops
         .map_err(|InvalidConnection { error, .. }| error)
@@ -46,15 +43,19 @@ fn main() {
             }
             let read_channel_out = read_channel_out.clone();
             let write_channel_out = write_channel_out.clone();
-            upgrade
+            let handle_inner = handle.clone();
+            let f = upgrade
                 .use_protocol("rust-websocket")
                 .accept()
                 .and_then(move |(framed, _)| {
                     let (sink, stream) = framed.split();
-                    read_channel_out.send(stream);
-                    write_channel_out.send(sink);
+                    let f = read_channel_out.send(stream);
+                    spawn_future(f, "Register client listener", &handle_inner);
+                    let f = write_channel_out.send(sink);
+                    spawn_future(f, "Register client listener", &handle_inner);
                     Ok(())
                 });
+            spawn_future(f, "Client Connections", &handle);
             Ok(())
         })
         .map_err(|_| ());
@@ -62,7 +63,6 @@ fn main() {
 
     let state_read = state.clone();
     let read_handler = pool.spawn_fn(move || {
-        let state_read = state_read.clone();
         read_channel_in.for_each(move |stream| {
             let state_read = state_read.clone();
             stream.for_each(move |msg|{
@@ -71,9 +71,7 @@ fn main() {
             }).map_err(|_| ())
         })
     });
-    let state_write = state.clone();
     let write_handler = pool.spawn_fn(move || {
-        let state_write = state.clone();
         write_channel_in.for_each(move |sink| {
             let state_write = state.clone();
             future::loop_fn(sink, move |sink| {
@@ -89,6 +87,7 @@ fn main() {
         })
     });
     let handlers = connection_handler.join3(read_handler, write_handler);
+    
     core.run(handlers).unwrap();
 }
 
