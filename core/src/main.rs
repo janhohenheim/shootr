@@ -52,7 +52,7 @@ fn main() {
                     let f = read_channel_out.send(stream);
                     spawn_future(f, "Register client listener", &handle_inner);
                     let f = write_channel_out.send(sink);
-                    spawn_future(f, "Register client listener", &handle_inner);
+                    spawn_future(f, "Register client sender", &handle_inner);
                     Ok(())
                 });
             spawn_future(f, "Client Connections", &handle);
