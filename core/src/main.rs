@@ -7,7 +7,6 @@ extern crate serde_json;
 #[macro_use]
 extern crate serde_derive;
 
-use std::fmt::Debug;
 
 use websocket::message::OwnedMessage;
 use websocket::server::InvalidConnection;
@@ -20,75 +19,81 @@ use futures::future::{self, Loop};
 use futures_cpupool::CpuPool;
 
 use std::sync::{RwLock, Arc};
-use std::time::Duration;
 use std::thread;
 use std::rc::Rc;
+use std::fmt::Debug;
+use std::time::Duration;
 
 fn main() {
     let mut core = Core::new().unwrap();
     let handle = core.handle();
+    let remote = core.remote();
     let server = Server::bind("localhost:8081", &handle).unwrap();
     let pool = Rc::new(CpuPool::new_num_cpus());
     let state = Arc::new(RwLock::new(State::new()));
     let (read_channel_out, read_channel_in) = futures::sync::mpsc::unbounded();
     let (write_channel_out, write_channel_in) = futures::sync::mpsc::unbounded();
+    let handle_inner = handle.clone();
     let connection_handler = server.incoming()
         // we don't wanna save the stream if it drops
         .map_err(|InvalidConnection { error, .. }| error)
-        .for_each(|(upgrade, addr)| {
+        .for_each(move |(upgrade, addr)| {
             println!("Got a connection from: {}", addr);
             if !upgrade.protocols().iter().any(|s| s == "rust-websocket") {
-                spawn_future(upgrade.reject(), "Upgrade Rejection", &handle);
+                spawn_future(upgrade.reject(), "Upgrade Rejection", &handle_inner);
                 return Ok(());
             }
             let read_channel_out = read_channel_out.clone();
             let write_channel_out = write_channel_out.clone();
-            let handle_inner = handle.clone();
-            let f = upgrade
+            upgrade
                 .use_protocol("rust-websocket")
                 .accept()
                 .and_then(move |(framed, _)| {
                     let (sink, stream) = framed.split();
-                    let f = read_channel_out.send(stream);
-                    spawn_future(f, "Register client listener", &handle_inner);
-                    let f = write_channel_out.send(sink);
-                    spawn_future(f, "Register client sender", &handle_inner);
+                    read_channel_out.send(stream).wait().unwrap();
+                    write_channel_out.send(sink).wait().unwrap();
                     Ok(())
-                });
-            spawn_future(f, "Client Connections", &handle);
+                })
+                .wait()
+                .unwrap();
             Ok(())
         })
         .map_err(|_| ());
 
 
     let state_read = state.clone();
-    let read_handler = pool.spawn_fn(move || {
+    let remote_write = remote.clone();
+    let read_handler = pool.spawn_fn( || {
         read_channel_in.for_each(move |stream| {
             let state_read = state_read.clone();
-            stream.for_each(move |msg|{
-                    handle_incoming(&mut state_read.write().unwrap(), &msg);
-                    Ok(())
-            }).map_err(|_| ())
+            remote_write.spawn(|_| {
+                stream
+                    .for_each(move |msg|{
+                        handle_incoming(&mut state_read.write().unwrap(), &msg);
+                        Ok(())
+                    })
+                    .map_err(|_| ())
+            });
+            Ok(())
         })
     });
+
     let write_handler = pool.spawn_fn(move || {
         write_channel_in.for_each(move |sink| {
             let state_write = state.clone();
             future::loop_fn(sink, move |sink| {
-                thread::sleep(Duration::from_secs(4));
+                thread::sleep(Duration::from_millis(100));
                 send(&state_write.read().unwrap(), sink)
                     .map(|sink| {
-                        match 1 {
-                            1 => Loop::Continue(sink),
-                            _ => Loop::Break(())
-                        }
+                        Loop::Continue(sink)
                     })
+                    .map_err(|_| Loop::Break::<(), SplitSink>(()))
             }).map_err(|_| ())
         })
     });
-    let handlers = connection_handler.join3(read_handler, write_handler);
-    
-    core.run(handlers).unwrap();
+
+    let handlers = connection_handler.select2(read_handler.select(write_handler));
+    core.run(handlers).map_err(|_| println!("err")).unwrap();
 }
 
 fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
