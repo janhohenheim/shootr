@@ -84,9 +84,7 @@ fn main() {
             future::loop_fn(sink, move |sink| {
                 thread::sleep(Duration::from_millis(100));
                 send(&state_write.read().unwrap(), sink)
-                    .map(|sink| {
-                        Loop::Continue(sink)
-                    })
+                    .map(|sink| Loop::Continue(sink))
                     .map_err(|_| Loop::Break::<(), SplitSink>(()))
             }).map_err(|_| ())
         })
