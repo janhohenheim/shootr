@@ -86,11 +86,12 @@ fn main() {
             let (write_out, write_in) = futures::sync::mpsc::unbounded();
             connections_inner.write().unwrap().push(write_out);
             remote.spawn(move |_| {
-                write_in.fold(sink, |mut sink, state:Arc<RwLock<State>>|{
+                let send = sink.send(OwnedMessage::Text("Connection established".to_owned()));
+                write_in.fold(send, move |send, state:Arc<RwLock<State>>|{
                     let msg = serde_json::to_string(&state.read().unwrap().deref()).unwrap();
                     println!("Sending message: {}", msg);
-                    sink.start_send(OwnedMessage::Text(msg)).unwrap();
-                    Ok((sink))
+                    let send = send.wait().unwrap().send(OwnedMessage::Text(msg));
+                    Ok(send)
                 }).map(|_| ())
             });
             Ok(())
