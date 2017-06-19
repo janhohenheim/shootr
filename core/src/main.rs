@@ -23,6 +23,7 @@ use std::thread;
 use std::rc::Rc;
 use std::fmt::Debug;
 use std::time::Duration;
+use std::ops::Deref;
 
 fn main() {
     let mut core = Core::new().unwrap();
@@ -30,6 +31,7 @@ fn main() {
     let remote = core.remote();
     let server = Server::bind("localhost:8081", &handle).unwrap();
     let pool = Rc::new(CpuPool::new_num_cpus());
+    let connections = Arc::new(RwLock::new(Vec::new()));
     let state = Arc::new(RwLock::new(State::new()));
     let (read_channel_out, read_channel_in) = futures::sync::mpsc::unbounded();
     let (write_channel_out, write_channel_in) = futures::sync::mpsc::unbounded();
@@ -78,19 +80,39 @@ fn main() {
         })
     });
 
+    let connections_inner = connections.clone();
     let write_handler = pool.spawn_fn(move || {
         write_channel_in.for_each(move |sink| {
-            let state_write = state.clone();
-            future::loop_fn(sink, move |sink| {
+            let (write_out, write_in) = futures::sync::mpsc::unbounded();
+            connections_inner.write().unwrap().push(write_out);
+            remote.spawn(move |_| {
+                write_in.fold(sink, |mut sink, state:Arc<RwLock<State>>|{
+                    let msg = serde_json::to_string(&state.read().unwrap().deref()).unwrap();
+                    println!("Sending message: {}", msg);
+                    sink.start_send(OwnedMessage::Text(msg)).unwrap();
+                    Ok((sink))
+                }).map(|_| ())
+            });
+            Ok(())
+        })
+    });                
+
+    let game_loop = pool.spawn_fn(move || {
+         future::loop_fn(connections, move |connections| {
                 thread::sleep(Duration::from_millis(100));
-                send(&state_write.read().unwrap(), sink)
-                    .map(|sink| Loop::Continue(sink))
-                    .map_err(|_| Loop::Break::<(), SplitSink>(()))
-            }).map_err(|_| ())
+                for conn in connections.write().unwrap().iter() {
+                    let state = state.clone();
+                    conn.send(state).unwrap();
+                }
+                match 1 {
+                    1=>Ok(Loop::Continue(connections)),
+                    2=>Ok(Loop::Break(())),
+                    _=>Err(())
+                }
         })
     });
 
-    let handlers = connection_handler.select2(read_handler.select(write_handler));
+    let handlers = game_loop.select2(connection_handler.select2(read_handler.select(write_handler)));
     core.run(handlers).map_err(|_| println!("err")).unwrap();
 }
 
@@ -111,17 +133,6 @@ fn handle_incoming(state: &mut State, msg: &OwnedMessage) {
         }
         _ => {}
     }
-}
-
-type SplitSink = futures::stream::SplitSink<
-                    websocket::client::async::Framed<tokio_core::net::TcpStream,
-                    websocket::async::MessageCodec<websocket::OwnedMessage>>
-                >;
-
-fn send(state: &State, sink: SplitSink) -> futures::sink::Send<SplitSink> {
-    let msg = serde_json::to_string(&state).unwrap();
-    println!("Sending message: {}", msg);
-    sink.send(OwnedMessage::Text(msg))
 }
 
 
