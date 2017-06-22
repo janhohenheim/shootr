@@ -18,7 +18,7 @@ use futures::{Future, Sink, Stream};
 use futures::future::{self, Loop};
 use futures_cpupool::CpuPool;
 
-use std::sync::{RwLock, Arc};
+use std::sync::{RwLock, Arc, Mutex};
 use std::thread;
 use std::rc::Rc;
 use std::fmt::Debug;
@@ -34,26 +34,26 @@ fn main() {
     let connections = Arc::new(RwLock::new(Vec::new()));
     let state = Arc::new(RwLock::new(State::new()));
     let (read_channel_out, read_channel_in) = futures::sync::mpsc::unbounded();
-    let (write_channel_out, write_channel_in) = futures::sync::mpsc::unbounded();
     let handle_inner = handle.clone();
+    let connections_inner = connections.clone();
     let connection_handler = server.incoming()
         // we don't wanna save the stream if it drops
         .map_err(|InvalidConnection { error, .. }| error)
         .for_each(move |(upgrade, addr)| {
+            let connections = connections_inner.clone();
             println!("Got a connection from: {}", addr);
             if !upgrade.protocols().iter().any(|s| s == "rust-websocket") {
                 spawn_future(upgrade.reject(), "Upgrade Rejection", &handle_inner);
                 return Ok(());
             }
             let read_channel_out = read_channel_out.clone();
-            let write_channel_out = write_channel_out.clone();
             upgrade
                 .use_protocol("rust-websocket")
                 .accept()
                 .and_then(move |(framed, _)| {
                     let (sink, stream) = framed.split();
                     read_channel_out.send(stream).wait().unwrap();
-                    write_channel_out.send(sink).wait().unwrap();
+                    connections.write().unwrap().push(Arc::new(RwLock::new(sink)));
                     Ok(())
                 })
                 .wait()
@@ -65,15 +65,14 @@ fn main() {
 
     let state_read = state.clone();
     let remote_write = remote.clone();
-    let read_handler = pool.spawn_fn( || {
+    let read_handler = pool.spawn_fn(|| {
         read_channel_in.for_each(move |stream| {
             let state_read = state_read.clone();
             remote_write.spawn(|_| {
-                stream
-                    .for_each(move |msg|{
-                        handle_incoming(&mut state_read.write().unwrap(), &msg);
-                        Ok(())
-                    })
+                stream.for_each(move |msg| {
+                                    handle_incoming(&mut state_read.write().unwrap(), &msg);
+                                    Ok(())
+                                })
                     .map_err(|_| ())
             });
             Ok(())
@@ -81,39 +80,48 @@ fn main() {
     });
 
     let connections_inner = connections.clone();
+    let (write_channel_out, write_channel_in) = futures::sync::mpsc::unbounded();
+
+    type MessageCodec = websocket::async::MessageCodec<OwnedMessage>;
+    type Framed = websocket::client::async::Framed<tokio_core::net::TcpStream, MessageCodec>;
+    type SplitSink = futures::stream::SplitSink<Framed>;
     let write_handler = pool.spawn_fn(move || {
-        write_channel_in.for_each(move |sink| {
-            let (write_out, write_in) = futures::sync::mpsc::unbounded();
-            connections_inner.write().unwrap().push(write_out);
-            remote.spawn(move |_| {
-                let send = sink.send(OwnedMessage::Text("Connection established".to_owned()));
-                write_in.fold(send, move |send, state:Arc<RwLock<State>>|{
-                    let msg = serde_json::to_string(&state.read().unwrap().deref()).unwrap();
-                    println!("Sending message: {}", msg);
-                    let send = send.wait().unwrap().send(OwnedMessage::Text(msg));
-                    Ok(send)
-                }).map(|_| ())
-            });
-            Ok(())
-        })
-    });                
+        write_channel_in.for_each(move |(sink, state): (Arc<RwLock<SplitSink>>,
+                                                        Arc<RwLock<State>>)| {
+                let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
+                println!("Sending message: {}", msg);
+                sink.write()
+                    .unwrap()
+                    .start_send(OwnedMessage::Text(msg))
+                    .unwrap();
+                sink.write()
+                    .unwrap()
+                    .poll_complete()
+                    .unwrap();
+                Ok(())
+            })
+            .map_err(|_| ())
+    });
 
     let game_loop = pool.spawn_fn(move || {
-         future::loop_fn(connections, move |connections| {
-                thread::sleep(Duration::from_millis(100));
-                for conn in connections.write().unwrap().iter() {
-                    let state = state.clone();
-                    conn.send(state).unwrap();
-                }
-                match 1 {
-                    1=>Ok(Loop::Continue(connections)),
-                    2=>Ok(Loop::Break(())),
-                    _=>Err(())
-                }
+        future::loop_fn(write_channel_out, move |write_channel_out| {
+            thread::sleep(Duration::from_millis(100));
+            if !connections.read().unwrap().is_empty() {
+                write_channel_out.clone()
+                    .send((connections.write().unwrap()[0].clone(), state.clone()))
+                    .wait()
+                    .unwrap();
+            }
+            match 1 {
+                1 => Ok(Loop::Continue(write_channel_out)),
+                2 => Ok(Loop::Break(())),
+                _ => Err(()),
+            }
         })
     });
 
-    let handlers = game_loop.select2(connection_handler.select2(read_handler.select(write_handler)));
+    let handlers =
+        game_loop.select2(connection_handler.select2(read_handler.select(write_handler)));
     core.run(handlers).map_err(|_| println!("err")).unwrap();
 }
 
@@ -130,20 +138,50 @@ fn handle_incoming(state: &mut State, msg: &OwnedMessage) {
     match msg {
         &OwnedMessage::Text(ref txt) => {
             println!("Received message: {}", txt);
-            state.msg = txt.clone();
+            //state.msg = txt.clone();
         }
         _ => {}
     }
 }
 
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 struct State {
-    msg: String,
+    positions: Vec<Pos>,
 }
 
 impl State {
-    fn new() -> State {
-        State { msg: "git gud".to_string() }
+    fn new() -> Self {
+        Self { positions: Vec::new() }
+    }
+}
+
+
+#[derive(Serialize, Deserialize)]
+struct Pos {
+    x: i32,
+    y: i32,
+}
+
+impl Pos {
+    fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
+
+    fn add_x(&mut self, x: i32) -> &mut Self {
+        self.x += x;
+        self
+    }
+
+
+    fn add_y(&mut self, y: i32) -> &mut Self {
+        self.y += y;
+        self
+    }
+
+    fn add(&mut self, x: i32, y: i32) -> &mut Self {
+        self.x += x;
+        self.y += y;
+        self
     }
 }
