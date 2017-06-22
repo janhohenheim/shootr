@@ -107,7 +107,8 @@ fn main() {
         future::loop_fn(write_channel_out, move |write_channel_out| {
             thread::sleep(Duration::from_millis(100));
             if !connections.read().unwrap().is_empty() {
-                write_channel_out.clone()
+                write_channel_out
+                    .clone()
                     .send((connections.write().unwrap()[0].clone(), state.clone()))
                     .wait()
                     .unwrap();
@@ -120,9 +121,14 @@ fn main() {
         })
     });
 
-    let handlers =
-        game_loop.select2(connection_handler.select2(read_handler.select(write_handler)));
-    core.run(handlers).map_err(|_| println!("err")).unwrap();
+    let handlers = game_loop
+        .select2(connection_handler
+        .select2(read_handler
+        .select(write_handler)));
+    core
+        .run(handlers)
+        .map_err(|_| println!("err"))
+        .unwrap();
 }
 
 fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
