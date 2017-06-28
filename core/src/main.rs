@@ -107,12 +107,16 @@ fn main() {
     let game_loop = pool.spawn_fn(move || {
         future::loop_fn(write_channel_out, move |write_channel_out| {
             thread::sleep(Duration::from_millis(100));
-            for conn in connections.write().unwrap().iter() {
-                write_channel_out.clone()
-                    .send((conn.clone(), state.clone()))
-                    .wait()
-                    .unwrap();
-            }
+            let connections = connections.clone();
+            let state = state.clone();
+            let write_channel_out_inner = write_channel_out.clone();
+            remote.spawn(move |handle| {
+                for conn in connections.write().unwrap().iter() {
+                    let f = write_channel_out_inner.clone().send((conn.clone(), state.clone()));
+                    spawn_future(f, "Send message to client", handle);
+                }
+                Ok(())
+            });
             match 1 {
                 1 => Ok(Loop::Continue(write_channel_out)),
                 2 => Ok(Loop::Break(())),
