@@ -18,7 +18,7 @@ use futures::{Future, Sink, Stream};
 use futures::future::{self, Loop};
 use futures_cpupool::CpuPool;
 
-use std::sync::{RwLock, Arc, Mutex};
+use std::sync::{RwLock, Arc};
 use std::thread;
 use std::rc::Rc;
 use std::fmt::Debug;
@@ -79,7 +79,6 @@ fn main() {
         })
     });
 
-    let connections_inner = connections.clone();
     let (write_channel_out, write_channel_in) = futures::sync::mpsc::unbounded();
 
     type MessageCodec = websocket::async::MessageCodec<OwnedMessage>;
@@ -107,8 +106,7 @@ fn main() {
         future::loop_fn(write_channel_out, move |write_channel_out| {
             thread::sleep(Duration::from_millis(100));
             if !connections.read().unwrap().is_empty() {
-                write_channel_out
-                    .clone()
+                write_channel_out.clone()
                     .send((connections.write().unwrap()[0].clone(), state.clone()))
                     .wait()
                     .unwrap();
@@ -121,14 +119,9 @@ fn main() {
         })
     });
 
-    let handlers = game_loop
-        .select2(connection_handler
-        .select2(read_handler
-        .select(write_handler)));
-    core
-        .run(handlers)
-        .map_err(|_| println!("err"))
-        .unwrap();
+    let handlers =
+        game_loop.select2(connection_handler.select2(read_handler.select(write_handler)));
+    core.run(handlers).map_err(|_| println!("err")).unwrap();
 }
 
 fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
@@ -140,13 +133,10 @@ fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
 }
 
 
-fn handle_incoming(state: &mut State, msg: &OwnedMessage) {
-    match msg {
-        &OwnedMessage::Text(ref txt) => {
-            println!("Received message: {}", txt);
-            //state.msg = txt.clone();
-        }
-        _ => {}
+fn handle_incoming(_: &mut State, msg: &OwnedMessage) {
+    if let OwnedMessage::Text(ref txt) = *msg {
+        println!("Received message: {}", txt);
+        //state.msg = txt.clone();
     }
 }
 
@@ -169,6 +159,7 @@ struct Pos {
     y: i32,
 }
 
+/*
 impl Pos {
     fn new(x: i32, y: i32) -> Self {
         Self { x, y }
@@ -191,3 +182,4 @@ impl Pos {
         self
     }
 }
+*/
