@@ -39,7 +39,7 @@ fn main() {
     let state = Arc::new(RwLock::new(State::new()));
     let (read_channel_out, read_channel_in) = mpsc::unbounded();
     let connections_inner = connections.clone();
-    let conn_id = Arc::new(RwLock::new(Counter::new()));
+    let conn_id = Rc::new(Counter::new());
     let conn_id_inner = conn_id.clone();
     let connection_handler = server.incoming()
         // we don't wanna save the stream if it drops
@@ -49,7 +49,7 @@ fn main() {
             println!("Got a connection from: {}", addr);
             let channel = read_channel_out.clone();
             let handle_inner = handle.clone();
-            let conn_id = conn_id_inner.clone();
+            let mut conn_id = conn_id_inner.clone();
             let f = upgrade
                 .use_protocol("rust-websocket")
                 .accept()
@@ -57,7 +57,7 @@ fn main() {
                     let (sink, stream) = framed.split();
                     let f = channel.send(stream);
                     spawn_future(f, "Senk stream to connection pool", &handle_inner);
-                    let id = conn_id.write()
+                    let id = Rc::get_mut(&mut conn_id)
                         .unwrap()
                         .next()
                         .expect("maximum amount of ids reached");
