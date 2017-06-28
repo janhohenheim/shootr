@@ -16,6 +16,7 @@ use tokio_core::reactor::{Handle, Core};
 
 use futures::{Future, Sink, Stream};
 use futures::future::{self, Loop};
+use futures::sync::mpsc;
 use futures_cpupool::CpuPool;
 
 use std::sync::{RwLock, Arc};
@@ -26,14 +27,14 @@ use std::time::Duration;
 use std::ops::Deref;
 
 fn main() {
-    let mut core = Core::new().unwrap();
+    let mut core = Core::new().expect("Failed to create Tokio event loop");
     let handle = core.handle();
     let remote = core.remote();
-    let server = Server::bind("localhost:8081", &handle).unwrap();
+    let server = Server::bind("localhost:8081", &handle).expect("Failed to create server");
     let pool = Rc::new(CpuPool::new_num_cpus());
     let connections = Arc::new(RwLock::new(Vec::new()));
     let state = Arc::new(RwLock::new(State::new()));
-    let (read_channel_out, read_channel_in) = futures::sync::mpsc::unbounded();
+    let (read_channel_out, read_channel_in) = mpsc::unbounded();
     let handle_inner = handle.clone();
     let connections_inner = connections.clone();
     let connection_handler = server.incoming()
@@ -105,9 +106,9 @@ fn main() {
     let game_loop = pool.spawn_fn(move || {
         future::loop_fn(write_channel_out, move |write_channel_out| {
             thread::sleep(Duration::from_millis(100));
-            if !connections.read().unwrap().is_empty() {
+            for conn in connections.write().unwrap().iter() {
                 write_channel_out.clone()
-                    .send((connections.write().unwrap()[0].clone(), state.clone()))
+                    .send((conn.clone(), state.clone()))
                     .wait()
                     .unwrap();
             }
