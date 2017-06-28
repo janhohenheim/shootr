@@ -26,6 +26,8 @@ use std::fmt::Debug;
 use std::time::Duration;
 use std::ops::Deref;
 
+
+
 fn main() {
     let mut core = Core::new().expect("Failed to create Tokio event loop");
     let handle = core.handle();
@@ -35,31 +37,26 @@ fn main() {
     let connections = Arc::new(RwLock::new(Vec::new()));
     let state = Arc::new(RwLock::new(State::new()));
     let (read_channel_out, read_channel_in) = mpsc::unbounded();
-    let handle_inner = handle.clone();
     let connections_inner = connections.clone();
     let connection_handler = server.incoming()
         // we don't wanna save the stream if it drops
         .map_err(|InvalidConnection { error, .. }| error)
         .for_each(move |(upgrade, addr)| {
-            let connections = connections_inner.clone();
+            let connections_inner = connections_inner.clone();
             println!("Got a connection from: {}", addr);
-            if !upgrade.protocols().iter().any(|s| s == "rust-websocket") {
-                spawn_future(upgrade.reject(), "Upgrade Rejection", &handle_inner);
-                return Ok(());
-            }
-            let read_channel_out = read_channel_out.clone();
-            let handle = handle_inner.clone();
+            let channel = read_channel_out.clone();
+            let handle_inner = handle.clone();
             let f = upgrade
                 .use_protocol("rust-websocket")
                 .accept()
                 .and_then(move |(framed, _)| {
                     let (sink, stream) = framed.split();
-                    let f = read_channel_out.send(stream);
-                    spawn_future(f, "Senk sink to connection pool", &handle);
-                    connections.write().unwrap().push(Arc::new(RwLock::new(sink)));
+                    let f = channel.send(stream);
+                    spawn_future(f, "Senk sink to connection pool", &handle_inner);
+                    connections_inner.write().unwrap().push(Arc::new(RwLock::new(sink)));
                     Ok(())
                 });
-            spawn_future(f, "Handle new connection", &handle_inner);
+            spawn_future(f, "Handle new connection", &handle);
             Ok(())
         })
         .map_err(|_| ());
@@ -117,6 +114,8 @@ fn main() {
                 }
                 Ok(())
             });
+
+            // insert your terminating condition here
             match 1 {
                 1 => Ok(Loop::Continue(write_channel_out)),
                 2 => Ok(Loop::Break(())),
