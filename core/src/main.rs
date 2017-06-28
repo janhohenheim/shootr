@@ -48,17 +48,17 @@ fn main() {
                 return Ok(());
             }
             let read_channel_out = read_channel_out.clone();
-            upgrade
+            let handle = handle_inner.clone();
+            let f = upgrade
                 .use_protocol("rust-websocket")
                 .accept()
                 .and_then(move |(framed, _)| {
                     let (sink, stream) = framed.split();
-                    read_channel_out.send(stream).wait().unwrap();
+                    spawn_future(read_channel_out.send(stream), "Senk sink to connection pool", &handle);
                     connections.write().unwrap().push(Arc::new(RwLock::new(sink)));
                     Ok(())
-                })
-                .wait()
-                .unwrap();
+                });
+            spawn_future(f, "Handle new connection", &handle_inner);
             Ok(())
         })
         .map_err(|_| ());
