@@ -54,7 +54,8 @@ fn main() {
                 .accept()
                 .and_then(move |(framed, _)| {
                     let (sink, stream) = framed.split();
-                    spawn_future(read_channel_out.send(stream), "Senk sink to connection pool", &handle);
+                    let f = read_channel_out.send(stream);
+                    spawn_future(f, "Senk sink to connection pool", &handle);
                     connections.write().unwrap().push(Arc::new(RwLock::new(sink)));
                     Ok(())
                 });
