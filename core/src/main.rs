@@ -25,8 +25,9 @@ use std::rc::Rc;
 use std::fmt::Debug;
 use std::time::Duration;
 use std::ops::Deref;
+use std::collections::HashMap;
 
-
+type Id = u32;
 
 fn main() {
     let mut core = Core::new().expect("Failed to create Tokio event loop");
@@ -34,10 +35,12 @@ fn main() {
     let remote = core.remote();
     let server = Server::bind("localhost:8081", &handle).expect("Failed to create server");
     let pool = Rc::new(CpuPool::new_num_cpus());
-    let connections = Arc::new(RwLock::new(Vec::new()));
+    let connections = Arc::new(RwLock::new(HashMap::new()));
     let state = Arc::new(RwLock::new(State::new()));
     let (read_channel_out, read_channel_in) = mpsc::unbounded();
     let connections_inner = connections.clone();
+    let conn_id = Arc::new(RwLock::new(Counter::new()));
+    let conn_id_inner = conn_id.clone();
     let connection_handler = server.incoming()
         // we don't wanna save the stream if it drops
         .map_err(|InvalidConnection { error, .. }| error)
@@ -46,14 +49,19 @@ fn main() {
             println!("Got a connection from: {}", addr);
             let channel = read_channel_out.clone();
             let handle_inner = handle.clone();
+            let conn_id = conn_id_inner.clone();
             let f = upgrade
                 .use_protocol("rust-websocket")
                 .accept()
                 .and_then(move |(framed, _)| {
                     let (sink, stream) = framed.split();
                     let f = channel.send(stream);
-                    spawn_future(f, "Senk sink to connection pool", &handle_inner);
-                    connections_inner.write().unwrap().push(Arc::new(RwLock::new(sink)));
+                    spawn_future(f, "Senk stream to connection pool", &handle_inner);
+                    let id = conn_id.write()
+                        .unwrap()
+                        .next()
+                        .expect("maximum amount of ids reached");
+                    connections_inner.write().unwrap().insert(id, sink);
                     Ok(())
                 });
             spawn_future(f, "Handle new connection", &handle);
@@ -78,24 +86,22 @@ fn main() {
         })
     });
 
-    let (write_channel_out, write_channel_in) = futures::sync::mpsc::unbounded();
 
-    type MessageCodec = websocket::async::MessageCodec<OwnedMessage>;
-    type Framed = websocket::client::async::Framed<tokio_core::net::TcpStream, MessageCodec>;
-    type SplitSink = futures::stream::SplitSink<Framed>;
+    let (write_channel_out, write_channel_in) = mpsc::unbounded();
+    let connections_inner = connections.clone();
     let write_handler = pool.spawn_fn(move || {
-        write_channel_in.for_each(move |(sink, state): (Arc<RwLock<SplitSink>>,
-                                                        Arc<RwLock<State>>)| {
+        let connections = connections_inner.clone();
+        write_channel_in.for_each(move |(id, state): (Id, Arc<RwLock<State>>)| {
+                let connections = connections.clone();
+                let mut connections = connections.write().unwrap();
+                let sink = connections.remove(&id).expect("Tried to send to invalid client id");
+
                 let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
                 println!("Sending message: {}", msg);
-                sink.write()
-                    .unwrap()
-                    .start_send(OwnedMessage::Text(msg))
-                    .unwrap();
-                sink.write()
-                    .unwrap()
-                    .poll_complete()
-                    .unwrap();
+                let sink = sink.send(OwnedMessage::Text(msg))
+                    .wait()
+                    .expect("Error while sending to client");
+                connections.insert(id, sink);
                 Ok(())
             })
             .map_err(|_| ())
@@ -108,8 +114,8 @@ fn main() {
             let state = state.clone();
             let write_channel_out_inner = write_channel_out.clone();
             remote.spawn(move |handle| {
-                for conn in connections.write().unwrap().iter() {
-                    let f = write_channel_out_inner.clone().send((conn.clone(), state.clone()));
+                for (id, _) in connections.read().unwrap().iter() {
+                    let f = write_channel_out_inner.clone().send((*id, state.clone()));
                     spawn_future(f, "Send message to client", handle);
                 }
                 Ok(())
@@ -126,7 +132,7 @@ fn main() {
 
     let handlers =
         game_loop.select2(connection_handler.select2(read_handler.select(write_handler)));
-    core.run(handlers).map_err(|_| println!("err")).unwrap();
+    core.run(handlers).map_err(|_| println!("Error while running core loop")).unwrap();
 }
 
 fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
@@ -142,6 +148,29 @@ fn handle_incoming(_: &mut State, msg: &OwnedMessage) {
     if let OwnedMessage::Text(ref txt) = *msg {
         println!("Received message: {}", txt);
         //state.msg = txt.clone();
+    }
+}
+
+struct Counter {
+    count: Id,
+}
+impl Counter {
+    fn new() -> Self {
+        Counter { count: 0 }
+    }
+}
+
+
+impl Iterator for Counter {
+    type Item = Id;
+
+    fn next(&mut self) -> Option<Id> {
+        if self.count != Id::max_value() {
+            self.count += 1;
+            Some(self.count)
+        } else {
+            None
+        }
     }
 }
 
