@@ -1,3 +1,5 @@
+#![feature(conservative_impl_trait)]
+
 extern crate websocket;
 extern crate futures;
 extern crate futures_cpupool;
@@ -26,20 +28,21 @@ use std::fmt::Debug;
 use std::time::Duration;
 use std::ops::Deref;
 use std::collections::HashMap;
+use std::cell::RefCell;
 
 type Id = u32;
 
 fn main() {
     let mut core = Core::new().expect("Failed to create Tokio event loop");
     let handle = core.handle();
-    let remote = core.remote();
     let server = Server::bind("localhost:8081", &handle).expect("Failed to create server");
     let pool = Rc::new(CpuPool::new_num_cpus());
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let state = Arc::new(RwLock::new(State::new()));
     let (read_channel_out, read_channel_in) = mpsc::unbounded();
+    let conn_id = Rc::new(RefCell::new(Counter::new()));
+
     let connections_inner = connections.clone();
-    let conn_id = Rc::new(Counter::new());
     let conn_id_inner = conn_id.clone();
     let connection_handler = server.incoming()
         // we don't wanna save the stream if it drops
@@ -49,7 +52,7 @@ fn main() {
             println!("Got a connection from: {}", addr);
             let channel = read_channel_out.clone();
             let handle_inner = handle.clone();
-            let mut conn_id = conn_id_inner.clone();
+            let conn_id = conn_id_inner.clone();
             let f = upgrade
                 .use_protocol("rust-websocket")
                 .accept()
@@ -57,8 +60,8 @@ fn main() {
                     let (sink, stream) = framed.split();
                     let f = channel.send(stream);
                     spawn_future(f, "Senk stream to connection pool", &handle_inner);
-                    let id = Rc::get_mut(&mut conn_id)
-                        .unwrap()
+                    let id = conn_id
+                        .borrow_mut()
                         .next()
                         .expect("maximum amount of ids reached");
                     connections_inner.write().unwrap().insert(id, sink);
@@ -71,11 +74,11 @@ fn main() {
 
 
     let state_read = state.clone();
-    let remote_write = remote.clone();
+    let remote = core.remote();
     let read_handler = pool.spawn_fn(|| {
         read_channel_in.for_each(move |stream| {
             let state_read = state_read.clone();
-            remote_write.spawn(|_| {
+            remote.spawn(|_| {
                 stream.for_each(move |msg| {
                                     handle_incoming(&mut state_read.write().unwrap(), &msg);
                                     Ok(())
@@ -107,6 +110,7 @@ fn main() {
             .map_err(|_| ())
     });
 
+    let remote = core.remote();
     let game_loop = pool.spawn_fn(move || {
         future::loop_fn(write_channel_out, move |write_channel_out| {
             thread::sleep(Duration::from_millis(100));
