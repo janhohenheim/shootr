@@ -57,13 +57,13 @@ fn main() {
                 .use_protocol("rust-websocket")
                 .accept()
                 .and_then(move |(framed, _)| {
-                    let (sink, stream) = framed.split();
-                    let f = channel.send(stream);
-                    spawn_future(f, "Senk stream to connection pool", &handle_inner);
                     let id = conn_id
                         .borrow_mut()
                         .next()
                         .expect("maximum amount of ids reached");
+                    let (sink, stream) = framed.split();
+                    let f = channel.send((id, stream));
+                    spawn_future(f, "Senk stream to connection pool", &handle_inner);
                     connections_inner.write().unwrap().insert(id, sink);
                     Ok(())
                 });
@@ -76,11 +76,11 @@ fn main() {
     let state_read = state.clone();
     let remote = core.remote();
     let read_handler = pool.spawn_fn(|| {
-        read_channel_in.for_each(move |stream| {
+        read_channel_in.for_each(move |(id, stream)| {
             let state_read = state_read.clone();
-            remote.spawn(|_| {
+            remote.spawn(move |_| {
                 stream.for_each(move |msg| {
-                                    handle_incoming(&mut state_read.write().unwrap(), &msg);
+                                    handle_incoming(id, &msg, &mut state_read.write().unwrap());
                                     Ok(())
                                 })
                     .map_err(|_| ())
@@ -97,6 +97,7 @@ fn main() {
         write_channel_in.for_each(move |(id, state): (Id, Arc<RwLock<State>>)| {
                 let connections = connections.clone();
                 let mut connections = connections.write().unwrap();
+
                 let sink = connections.remove(&id).expect("Tried to send to invalid client id");
 
                 let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
@@ -104,6 +105,7 @@ fn main() {
                 let sink = sink.send(OwnedMessage::Text(msg))
                     .wait()
                     .expect("Error while sending to client");
+                
                 connections.insert(id, sink);
                 Ok(())
             })
@@ -148,7 +150,7 @@ fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
 }
 
 
-fn handle_incoming(_: &mut State, msg: &OwnedMessage) {
+fn handle_incoming(_:u32, msg: &OwnedMessage,  _: &mut State) {
     if let OwnedMessage::Text(ref txt) = *msg {
         println!("Received message: {}", txt);
         //state.msg = txt.clone();
