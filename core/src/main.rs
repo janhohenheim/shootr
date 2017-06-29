@@ -80,10 +80,11 @@ fn main() {
         receive_channel_in.for_each(move |(id, stream)| {
             let state_read = state_read.clone();
             remote_inner.spawn(move |_| {
-                stream.for_each(move |msg| {
-                                    process_message(id, &msg, &mut state_read.write().unwrap());
-                                    Ok(())
-                                })
+                stream
+                    .for_each(move |msg| {
+                        process_message(id, &msg, &mut state_read.write().unwrap());
+                        Ok(())
+                    })
                     .map_err(|_| ())
             });
             Ok(())
@@ -95,38 +96,39 @@ fn main() {
     // Handle sending messages to a client
     let connections_inner = connections.clone();
     let remote_inner = remote.clone();
-    let send_handler =
-        pool.spawn_fn(move || {
-            let connections = connections_inner.clone();
-            let remote = remote_inner.clone();
-            send_channel_in.for_each(move |(id, state): (Id, Arc<RwLock<State>>)| {
-                    let connections = connections.clone();
-                    let sink = connections.write()
-                        .unwrap()
-                        .remove(&id)
-                        .expect("Tried to send to invalid client id");
+    let send_handler = pool.spawn_fn(move || {
+        let connections = connections_inner.clone();
+        let remote = remote_inner.clone();
+        send_channel_in
+            .for_each(move |(id, state): (Id, Arc<RwLock<State>>)| {
+                let connections = connections.clone();
+                let sink = connections.write().unwrap().remove(&id).expect(
+                    "Tried to send to invalid client id",
+                );
 
-                    let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
-                    println!("Sending message: {}", msg);
-                    let f = sink.send(OwnedMessage::Text(msg)).and_then(move |sink| {
-                        connections.write().unwrap().insert(id, sink);
-                        Ok(())
-                    });
-                    remote.spawn(move |_| f.map_err(|_| ()));
+                let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
+                println!("Sending message: {}", msg);
+                let f = sink.send(OwnedMessage::Text(msg)).and_then(move |sink| {
+                    connections.write().unwrap().insert(id, sink);
                     Ok(())
-                })
-                .map_err(|_| ())
-        });
+                });
+                remote.spawn(move |_| f.map_err(|_| ()));
+                Ok(())
+            })
+            .map_err(|_| ())
+    });
 
     // Main 'logic' loop
     let game_loop = pool.spawn_fn(move || {
         future::loop_fn(send_channel_out, move |send_channel_out| {
             thread::sleep(Duration::from_millis(100));
 
-            let should_continue = update(connections.clone(),
-                                         state.clone(),
-                                         send_channel_out.clone(),
-                                         &remote);
+            let should_continue = update(
+                connections.clone(),
+                state.clone(),
+                send_channel_out.clone(),
+                &remote,
+            );
             match should_continue {
                 Ok(true) => Ok(Loop::Continue(send_channel_out)),
                 Ok(false) => Ok(Loop::Break(())),
@@ -135,17 +137,23 @@ fn main() {
         })
     });
 
-    let handlers =
-        game_loop.select2(connection_handler.select2(receive_handler.select(send_handler)));
-    core.run(handlers).map_err(|_| println!("Error while running core loop")).unwrap();
+    let handlers = game_loop.select2(connection_handler.select2(
+        receive_handler.select(send_handler),
+    ));
+    core.run(handlers)
+        .map_err(|_| println!("Error while running core loop"))
+        .unwrap();
 }
 
 fn spawn_future<F, I, E>(f: F, desc: &'static str, handle: &Handle)
-    where F: Future<Item = I, Error = E> + 'static,
-          E: Debug
+where
+    F: Future<Item = I, Error = E> + 'static,
+    E: Debug,
 {
-    handle.spawn(f.map_err(move |e| println!("Error in {}: '{:?}'", desc, e))
-                     .map(move |_| println!("{}: Finished.", desc)));
+    handle.spawn(
+        f.map_err(move |e| println!("Error in {}: '{:?}'", desc, e))
+            .map(move |_| println!("{}: Finished.", desc)),
+    );
 }
 
 
@@ -156,16 +164,18 @@ fn process_message(_: u32, msg: &OwnedMessage, _: &mut State) {
     }
 }
 
-type SinkContent =
-    websocket::client::async::Framed<tokio_core::net::TcpStream,
-                                     websocket::async::MessageCodec<OwnedMessage>>;
+type SinkContent = websocket::client::async::Framed<
+    tokio_core::net::TcpStream,
+    websocket::async::MessageCodec<OwnedMessage>,
+>;
 type SplitSink = futures::stream::SplitSink<SinkContent>;
 // Represents one tick in the main loop
-fn update(connections: Arc<RwLock<HashMap<Id, SplitSink>>>,
-          state: Arc<RwLock<State>>,
-          channel: mpsc::UnboundedSender<(Id, Arc<RwLock<State>>)>,
-          remote: &Remote)
-          -> Result<bool, ()> {
+fn update(
+    connections: Arc<RwLock<HashMap<Id, SplitSink>>>,
+    state: Arc<RwLock<State>>,
+    channel: mpsc::UnboundedSender<(Id, Arc<RwLock<State>>)>,
+    remote: &Remote,
+) -> Result<bool, ()> {
     remote.spawn(move |handle| {
         for (id, _) in connections.read().unwrap().iter() {
             let f = channel.clone().send((*id, state.clone()));
@@ -217,4 +227,3 @@ struct Pos {
     x: i32,
     y: i32,
 }
-
