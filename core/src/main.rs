@@ -158,12 +158,12 @@ fn process_message(_: u32, msg: &OwnedMessage, _: &mut State) {
 
 type SinkContent =
     websocket::client::async::Framed<tokio_core::net::TcpStream,
-                                     websocket::async::MessageCodec<websocket::OwnedMessage>>;
+                                     websocket::async::MessageCodec<OwnedMessage>>;
 type SplitSink = futures::stream::SplitSink<SinkContent>;
 // Represents one tick in the main loop
 fn update(connections: Arc<RwLock<HashMap<Id, SplitSink>>>,
           state: Arc<RwLock<State>>,
-          channel: futures::sync::mpsc::UnboundedSender<(Id, Arc<RwLock<State>>)>,
+          channel: mpsc::UnboundedSender<(Id, Arc<RwLock<State>>)>,
           remote: &Remote)
           -> Result<bool, ()> {
     remote.spawn(move |handle| {
@@ -218,27 +218,3 @@ struct Pos {
     y: i32,
 }
 
-/*
-impl Pos {
-    fn new(x: i32, y: i32) -> Self {
-        Self { x, y }
-    }
-
-    fn add_x(&mut self, x: i32) -> &mut Self {
-        self.x += x;
-        self
-    }
-
-
-    fn add_y(&mut self, y: i32) -> &mut Self {
-        self.y += y;
-        self
-    }
-
-    fn add(&mut self, x: i32, y: i32) -> &mut Self {
-        self.x += x;
-        self.y += y;
-        self
-    }
-}
-*/
