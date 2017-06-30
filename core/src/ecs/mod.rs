@@ -4,13 +4,14 @@ pub mod sys;
 
 extern crate specs;
 extern crate chrono;
+extern crate futures;
 
 use self::specs::{DispatcherBuilder, World};
 use self::chrono::prelude::*;
 
 
 
-pub fn main_loop() {
+pub fn main_loop(conn_info: ::engine::Engine) -> Box<futures::Future<Error = (), Item = ()>> {
     let mut world = World::new();
     world.register::<comp::Pos>();
     world.register::<comp::Vel>();
