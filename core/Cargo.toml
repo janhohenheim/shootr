@@ -4,10 +4,15 @@ name = "shootr"
 version = "0.1.0"
 
 [dependencies]
-futures = "0.1"
-futures-cpupool = "0.1"
 serde = "1"
 serde_derive = "1"
 serde_json = "1"
+
 tokio-core = "0.1"
+futures = "0.1"
+futures-cpupool = "0.1"
+
 websocket = "0.20"
+
+specs = "0.9"
+chrono = "0.4"
