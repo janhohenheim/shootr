@@ -1,36 +1,25 @@
 extern crate websocket;
 extern crate futures;
-extern crate futures_cpupool;
 extern crate tokio_core;
 extern crate serde;
 extern crate serde_json;
-#[macro_use]
-extern crate serde_derive;
 
 extern crate shootr;
 
 use websocket::message::OwnedMessage;
-use websocket::server::InvalidConnection;
-use websocket::async::Server;
 
-use tokio_core::reactor::{Handle, Remote, Core};
+use tokio_core::reactor::Remote;
 
-use futures::{Future, BoxFuture, Sink, Stream};
+use futures::{Future, BoxFuture, Sink};
 use futures::future::{self, Loop};
 use futures::sync::mpsc;
-use futures_cpupool::{CpuPool, CpuFuture};
 
 use std::sync::{RwLock, Arc};
 use std::thread;
-use std::rc::Rc;
-use std::fmt::Debug;
 use std::time::Duration;
-use std::ops::Deref;
 use std::collections::HashMap;
-use std::cell::RefCell;
 
 use shootr::model::ClientState;
-use shootr::ecs::res;
 use shootr::engine;
 
 fn main() {
