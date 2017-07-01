@@ -6,6 +6,13 @@ extern crate serde_json;
 
 extern crate shootr;
 
+extern crate specs;
+extern crate chrono;
+
+use self::specs::{DispatcherBuilder, World};
+use self::chrono::prelude::*;
+
+
 use websocket::message::OwnedMessage;
 
 use tokio_core::reactor::Remote;
@@ -21,6 +28,7 @@ use std::collections::HashMap;
 
 use shootr::model::ClientState;
 use shootr::engine;
+use shootr::ecs::{comp, sys, res};
 
 fn main() {
     shootr::engine::execute(main_loop);
@@ -29,42 +37,55 @@ fn main() {
 
 
 fn main_loop(engine: engine::Engine) -> BoxFuture<(), ()> {
-    future::loop_fn(engine, |conn_info| {
-        thread::sleep(Duration::from_millis(100));
+    let mut world = World::new();
+    world.register::<comp::Pos>();
+    world.register::<comp::Vel>();
 
-        let should_continue = update(
-            conn_info.connections.clone(),
-            conn_info.channel.clone(),
-            &conn_info.remote,
-        );
-        match should_continue {
-            Ok(true) => Ok(Loop::Continue(conn_info)),
+    for _ in 0..1 {
+        world
+            .create_entity()
+            .with(comp::Vel { x: 1, y: 1 })
+            .with(comp::Pos { x: 0, y: 0 })
+            .build();
+    }
+
+
+    let mut physics = DispatcherBuilder::new()
+        .add(sys::Physics, "physics", &[])
+        .build();
+    let mut renderer = DispatcherBuilder::new().add(sys::Send, "send", &[]).build();
+    physics.dispatch(&mut world.res);
+
+    let mut lag: i64 = 0;
+    let mut previous = Utc::now();
+    const MS_PER_UPDATE: i64 = 150;
+
+    future::loop_fn((), move |()| {
+
+        let current = Utc::now();
+        let elapsed = elapsed_time(previous, current);
+        previous = current;
+        lag += elapsed;
+        while lag >= MS_PER_UPDATE {
+            //physics.dispatch(&mut world.res);
+            lag -= MS_PER_UPDATE;
+        }
+        let progress = lag as f64 / MS_PER_UPDATE as f64;
+        //world.add_resource(res::TimeProgess(progress));
+        //renderer.dispatch(&mut world.res);
+
+
+        match Ok(true) {
+            Ok(true) => Ok(Loop::Continue(())),
             Ok(false) => Ok(Loop::Break(())),
             Err(()) => Err(()),
         }
     }).boxed()
 }
 
-type Id = u32;
 
-type SinkContent = websocket::client::async::Framed<
-    tokio_core::net::TcpStream,
-    websocket::async::MessageCodec<OwnedMessage>,
->;
-type SplitSink = futures::stream::SplitSink<SinkContent>;
-// Represents one tick in the main loop
-fn update(
-    connections: Arc<RwLock<HashMap<Id, SplitSink>>>,
-    channel: mpsc::UnboundedSender<(Id, Arc<RwLock<ClientState>>)>,
-    remote: &Remote,
-) -> Result<bool, ()> {
-    remote.spawn(move |handle| {
-        let state = Arc::new(RwLock::new(ClientState {}));
-        for (id, _) in connections.read().unwrap().iter() {
-            let f = channel.clone().send((*id, state.clone()));
-            shootr::engine::spawn_future(f, "Send message to write handler", handle);
-        }
-        Ok(())
-    });
-    Ok(true)
+fn elapsed_time(from: chrono::DateTime<Utc>, to: chrono::DateTime<Utc>) -> i64 {
+    to.signed_duration_since(from).num_microseconds().expect(
+        "Too much time passed between DateTimes",
+    )
 }

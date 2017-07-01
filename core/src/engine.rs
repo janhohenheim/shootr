@@ -4,7 +4,6 @@ extern crate futures_cpupool;
 extern crate tokio_core;
 extern crate serde;
 extern crate serde_json;
-extern crate serde_derive;
 
 
 use self::websocket::message::OwnedMessage;
