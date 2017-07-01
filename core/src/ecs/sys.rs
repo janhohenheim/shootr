@@ -4,15 +4,13 @@ extern crate futures;
 use self::specs::{Join, ReadStorage, WriteStorage, Fetch, System};
 
 use super::comp::{Pos, Vel};
-use super::res::TimeProgess;
+use super::res::TimeProgress;
 use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 use engine::{Engine, spawn_future};
 use model::ClientState;
 
-use self::futures::{Future, BoxFuture, Sink};
-use self::futures::future::{self, Loop};
-use self::futures::sync::mpsc;
+use self::futures::Sink;
 
 pub struct Physics;
 impl<'a> System<'a> for Physics {
@@ -28,7 +26,7 @@ impl<'a> System<'a> for Physics {
 
 pub struct Send;
 impl<'a> System<'a> for Send {
-    type SystemData = (Fetch<'a, TimeProgess>, Fetch<'a, Engine>, ReadStorage<'a, Pos>);
+    type SystemData = (Fetch<'a, TimeProgress>, Fetch<'a, Engine>, ReadStorage<'a, Pos>);
 
     fn run(&mut self, data: Self::SystemData) {
         let (progress, engine, pos) = data;
@@ -38,11 +36,11 @@ impl<'a> System<'a> for Send {
             println!("Pos: {:?}", pos);
         }
         let state = ClientState {};
-        send(engine.clone(), state);
+        send(engine.clone(), progress, state);
     }
 }
 
-fn send(engine: Engine, state: ClientState) {
+fn send(engine: Engine, _: &TimeProgress, state: ClientState) {
     let state = Arc::new(RwLock::new(state));
     let engine_inner = engine.clone();
     engine.remote.spawn(move |handle| {

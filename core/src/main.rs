@@ -1,9 +1,3 @@
-extern crate websocket;
-extern crate futures;
-extern crate tokio_core;
-extern crate serde;
-extern crate serde_json;
-
 extern crate shootr;
 
 extern crate specs;
@@ -12,21 +6,6 @@ extern crate chrono;
 use self::specs::{DispatcherBuilder, World};
 use self::chrono::prelude::*;
 
-
-use websocket::message::OwnedMessage;
-
-use tokio_core::reactor::Remote;
-
-use futures::{Future, BoxFuture, Sink};
-use futures::future::{self, Loop};
-use futures::sync::mpsc;
-
-use std::sync::{RwLock, Arc};
-use std::thread;
-use std::time::Duration;
-use std::collections::HashMap;
-
-use shootr::model::ClientState;
 use shootr::engine;
 use shootr::ecs::{comp, sys, res};
 
@@ -40,7 +19,7 @@ fn main_loop(engine: engine::Engine) {
     let mut world = World::new();
     world.register::<comp::Pos>();
     world.register::<comp::Vel>();
-
+    world.add_resource(engine);
     for _ in 0..1 {
         world
             .create_entity()
@@ -70,7 +49,7 @@ fn main_loop(engine: engine::Engine) {
             lag -= MS_PER_UPDATE;
         }
         let progress = lag as f64 / MS_PER_UPDATE as f64;
-        world.add_resource(res::TimeProgess(progress));
+        world.add_resource(res::TimeProgress(progress));
         renderer.dispatch(&mut world.res);
     }
 }

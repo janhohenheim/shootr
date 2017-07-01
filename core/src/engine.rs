@@ -12,16 +12,13 @@ use self::websocket::async::Server;
 
 use self::tokio_core::reactor::{Handle, Remote, Core};
 
-use self::futures::{Future, BoxFuture, Sink, Stream, IntoFuture};
-use self::futures::future::{self, Loop};
+use self::futures::{Future, Sink, Stream};
 use self::futures::sync::mpsc;
-use self::futures_cpupool::{CpuPool, CpuFuture};
+use self::futures_cpupool::CpuPool;
 
 use std::sync::{RwLock, Arc};
-use std::thread;
 use std::rc::Rc;
 use std::fmt::Debug;
-use std::time::Duration;
 use std::ops::Deref;
 use std::collections::HashMap;
 use std::cell::RefCell;
@@ -32,7 +29,7 @@ type Id = u32;
 
 pub fn execute<F>(function: F)
 where
-    F: FnOnce(Engine) + Send + 'static
+    F: FnOnce(Engine) + Send + 'static,
 {
     let mut core = Core::new().expect("Failed to create Tokio event loop");
     let handle = core.handle();
@@ -125,7 +122,10 @@ where
         remote: remote,
         pool: pool.clone(),
     };
-    let function = pool.read().unwrap().spawn_fn(move || {function(engine); Ok::<(),()>(())});
+    let function = pool.read().unwrap().spawn_fn(move || {
+        function(engine);
+        Ok::<(), ()>(())
+    });
     let handlers = function.select2(connection_handler.select2(
         receive_handler.select(send_handler),
     ));
