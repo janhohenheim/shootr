@@ -36,7 +36,7 @@ fn main() {
 
 
 
-fn main_loop(engine: engine::Engine) -> BoxFuture<(), ()> {
+fn main_loop(engine: engine::Engine) {
     let mut world = World::new();
     world.register::<comp::Pos>();
     world.register::<comp::Vel>();
@@ -60,27 +60,19 @@ fn main_loop(engine: engine::Engine) -> BoxFuture<(), ()> {
     let mut previous = Utc::now();
     const MS_PER_UPDATE: i64 = 150;
 
-    future::loop_fn((), move |()| {
-
+    loop {
         let current = Utc::now();
         let elapsed = elapsed_time(previous, current);
         previous = current;
         lag += elapsed;
         while lag >= MS_PER_UPDATE {
-            //physics.dispatch(&mut world.res);
+            physics.dispatch(&mut world.res);
             lag -= MS_PER_UPDATE;
         }
         let progress = lag as f64 / MS_PER_UPDATE as f64;
-        //world.add_resource(res::TimeProgess(progress));
-        //renderer.dispatch(&mut world.res);
-
-
-        match Ok(true) {
-            Ok(true) => Ok(Loop::Continue(())),
-            Ok(false) => Ok(Loop::Break(())),
-            Err(()) => Err(()),
-        }
-    }).boxed()
+        world.add_resource(res::TimeProgess(progress));
+        renderer.dispatch(&mut world.res);
+    }
 }
 
 

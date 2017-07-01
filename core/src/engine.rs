@@ -32,7 +32,7 @@ type Id = u32;
 
 pub fn execute<F>(function: F)
 where
-    F: FnOnce(Engine) -> BoxFuture<(), ()> + Send + 'static,
+    F: FnOnce(Engine) + Send + 'static
 {
     let mut core = Core::new().expect("Failed to create Tokio event loop");
     let handle = core.handle();
@@ -125,7 +125,7 @@ where
         remote: remote,
         pool: pool.clone(),
     };
-    let function = pool.read().unwrap().spawn_fn(move || function(engine));
+    let function = pool.read().unwrap().spawn_fn(move || {function(engine); Ok::<(),()>(())});
     let handlers = function.select2(connection_handler.select2(
         receive_handler.select(send_handler),
     ));
