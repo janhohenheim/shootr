@@ -103,7 +103,9 @@ where
                 );
                 let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
                 println!("Sending message: {}", msg);
-                sink.start_send(OwnedMessage::Text(msg)).expect("Failed to start sending message");
+                sink.start_send(OwnedMessage::Text(msg)).expect(
+                    "Failed to start sending message",
+                );
                 sink.poll_complete().expect("Failed to send message");
                 Ok(())
             })

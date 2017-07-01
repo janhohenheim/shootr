@@ -17,15 +17,9 @@ impl<'a> System<'a> for Physics {
     type SystemData = (WriteStorage<'a, Pos>, WriteStorage<'a, Vel>);
 
     fn run(&mut self, (mut pos, mut vel): Self::SystemData) {
-        let min = Pos {
-            x: 0,
-            y: 0,
-        };
-        let max = Pos {
-            x: 1000,
-            y: 1000,
-        };
-        for (mut pos, mut vel) in (&mut pos, &mut vel).join() { 
+        let min = Pos { x: 0, y: 0 };
+        let max = Pos { x: 1000, y: 1000 };
+        for (mut pos, mut vel) in (&mut pos, &mut vel).join() {
             handle_movement(&mut pos, &mut vel, &min, &max);
         }
     }
@@ -36,7 +30,7 @@ fn handle_movement(pos: &mut Pos, vel: &mut Vel, min: &Pos, max: &Pos) {
 
     let new_x = pos.x + vel.x;
     let new_y = pos.y + vel.y;
-    if new_x > max.x {                
+    if new_x > max.x {
         bounce(pos, vel, max, &Axis::X);
     } else if new_x < 0 {
         bounce(pos, vel, min, &Axis::X);
@@ -44,8 +38,7 @@ fn handle_movement(pos: &mut Pos, vel: &mut Vel, min: &Pos, max: &Pos) {
         bounce(pos, vel, max, &Axis::Y);
     } else if new_y < 0 {
         bounce(pos, vel, min, &Axis::Y);
-    }
-    else {
+    } else {
         *(&mut pos.x) = new_x;
         *(&mut pos.y) = new_y;
     }
@@ -68,7 +61,7 @@ fn bounce(pos: &mut Pos, vel: &mut Vel, max: &Pos, overflowing_axis: &Axis) {
     let delta = (*pos_overflow + *vel_overflow) - max_overflow;
     let coefficient = *vel_overflow as f64 / delta as f64;
     *pos_overflow = max_overflow;
-    *pos_other += (*vel_other as f64 * coefficient) as i32; 
+    *pos_other += (*vel_other as f64 * coefficient) as i32;
     *vel_overflow = -*vel_overflow;
 }
 
@@ -80,7 +73,7 @@ impl<'a> System<'a> for Send {
         let (progress, engine, pos) = data;
         let progress = progress.deref();
         let engine = engine.deref();
-    
+
         let state = ClientState {
             pos: pos.join().take(1).next().unwrap().clone(),
             progress: progress.clone(),

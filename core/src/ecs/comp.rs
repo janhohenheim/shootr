@@ -12,7 +12,7 @@ impl Component for Vel {
 }
 
 
-#[derive(Debug,Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Pos {
     pub x: i32,
     pub y: i32,

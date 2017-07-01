@@ -1,5 +1,5 @@
-use ::ecs::comp::Pos;
-use ::ecs::res::TimeProgress;
+use ecs::comp::Pos;
+use ecs::res::TimeProgress;
 
 #[derive(Serialize)]
 pub struct ClientState {
@@ -9,5 +9,6 @@ pub struct ClientState {
 
 #[derive(Serialize, Debug)]
 pub enum Axis {
-    X, Y
+    X,
+    Y,
 }
