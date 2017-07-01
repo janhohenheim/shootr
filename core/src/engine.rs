@@ -93,22 +93,18 @@ where
 
     // Handle sending messages to a client
     let connections_inner = connections.clone();
-    let remote_inner = remote.clone();
     let send_handler = pool.read().unwrap().spawn_fn(move || {
         let connections = connections_inner.clone();
-        let remote = remote_inner.clone();
         send_channel_in
             .for_each(move |(id, state): (Id, Arc<RwLock<ClientState>>)| {
-                if let Some(sink) = connections.write().unwrap().remove(&id) {
-                    let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
-                    println!("Sending message: {}", msg);
-                    let connections = connections.clone();
-                    let f = sink.send(OwnedMessage::Text(msg)).and_then(move |sink| {
-                        connections.write().unwrap().insert(id, sink);
-                        Ok(())
-                    });
-                    remote.spawn(move |_| f.map_err(|_| ()));
-                };
+                let mut sink_guard = connections.write().unwrap();
+                let mut sink = sink_guard.get_mut(&id).expect(
+                    "Tried to send to invalid client id",
+                );
+                let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
+                println!("Sending message: {}", msg);
+                sink.start_send(OwnedMessage::Text(msg)).expect("Failed to start sending message");
+                sink.poll_complete().expect("Failed to send message");
                 Ok(())
             })
             .map_err(|_| ())
