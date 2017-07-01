@@ -33,7 +33,7 @@ impl<'a> System<'a> for Send {
         let progress = progress.deref();
         let engine = engine.deref();
         for pos in pos.join() {
-            println!("Pos: {:?}", pos);
+            //println!("Pos: {:?}", pos);
         }
         let state = ClientState {};
         send(engine.clone(), progress, state);

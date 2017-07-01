@@ -61,7 +61,7 @@ where
                         .expect("maximum amount of ids reached");
                     let (sink, stream) = framed.split();
                     let f = channel.send((id, stream));
-                    spawn_future(f, "Senk stream to connection pool", &handle_inner);
+                    spawn_future(f, "Send stream to connection pool", &handle_inner);
                     connections_inner.write().unwrap().insert(id, sink);
                     Ok(())
                 });
@@ -99,18 +99,16 @@ where
         let remote = remote_inner.clone();
         send_channel_in
             .for_each(move |(id, state): (Id, Arc<RwLock<ClientState>>)| {
-                let connections = connections.clone();
-                let sink = connections.write().unwrap().remove(&id).expect(
-                    "Tried to send to invalid client id",
-                );
-
-                let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
-                println!("Sending message: {}", msg);
-                let f = sink.send(OwnedMessage::Text(msg)).and_then(move |sink| {
-                    connections.write().unwrap().insert(id, sink);
-                    Ok(())
-                });
-                remote.spawn(move |_| f.map_err(|_| ()));
+                if let Some(sink) = connections.write().unwrap().remove(&id) {
+                    let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
+                    println!("Sending message: {}", msg);
+                    let connections = connections.clone();
+                    let f = sink.send(OwnedMessage::Text(msg)).and_then(move |sink| {
+                        connections.write().unwrap().insert(id, sink);
+                        Ok(())
+                    });
+                    remote.spawn(move |_| f.map_err(|_| ()));
+                };
                 Ok(())
             })
             .map_err(|_| ())
