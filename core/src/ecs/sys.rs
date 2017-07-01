@@ -17,43 +17,50 @@ impl<'a> System<'a> for Physics {
     type SystemData = (WriteStorage<'a, Pos>, WriteStorage<'a, Vel>);
 
     fn run(&mut self, (mut pos, mut vel): Self::SystemData) {
+        let min = Pos {
+            x: 0,
+            y: 0,
+        };
         let max = Pos {
             x: 1000,
             y: 1000,
         };
         for (mut pos, mut vel) in (&mut pos, &mut vel).join() { 
-            handle_movement(&mut pos, &mut vel, &max, &Axis::X);
-            handle_movement(&mut pos, &mut vel, &max, &Axis::Y);
+            handle_movement(&mut pos, &mut vel, &min, &max);
         }
     }
 }
 
-fn handle_movement(pos: &mut Pos, vel: &mut Vel, max: &Pos, overflowing_axis: &Axis) {
-    let (mut axis_pos, mut axis_vel, mut axis_max) = match *overflowing_axis {
-        Axis::X => (pos.x, vel.x, max.x),
-        Axis::Y => (pos.y, vel.y, max.y),
-    };
-    let new_pos = axis_pos + axis_vel;
-    if new_pos > axis_max {                
-        bounce(pos, vel, max, overflowing_axis);
-    } else if new_pos < 0 {
-        bounce(pos, vel, max, overflowing_axis);
+fn handle_movement(pos: &mut Pos, vel: &mut Vel, min: &Pos, max: &Pos) {
+
+
+    let new_x = pos.x + vel.x;
+    let new_y = pos.y + vel.y;
+    if new_x > max.x {                
+        bounce(pos, vel, max, &Axis::X);
+    } else if new_x < 0 {
+        bounce(pos, vel, min, &Axis::X);
+    } else if new_y > max.y {
+        bounce(pos, vel, max, &Axis::Y);
+    } else if new_y < 0 {
+        bounce(pos, vel, min, &Axis::Y);
     }
     else {
-        axis_pos = new_pos;
+        *(&mut pos.x) = new_x;
+        *(&mut pos.y) = new_y;
     }
 }
 
 fn bounce(pos: &mut Pos, vel: &mut Vel, max: &Pos, overflowing_axis: &Axis) {
-    let (mut pos_overflow, mut pos_other) = match *overflowing_axis {
+    let (pos_overflow, pos_other) = match *overflowing_axis {
         Axis::X => (&mut pos.x, &mut pos.y),
         Axis::Y => (&mut pos.y, &mut pos.x),
     };
-    let (mut vel_overflow, mut vel_other) = match *overflowing_axis {
+    let (vel_overflow, vel_other) = match *overflowing_axis {
         Axis::X => (&mut vel.x, &mut vel.y),
         Axis::Y => (&mut vel.y, &mut vel.x),
     };
-    let (mut max_overflow, mut max_other) = match *overflowing_axis {
+    let (max_overflow, max_other) = match *overflowing_axis {
         Axis::X => (max.x, max.y),
         Axis::Y => (max.y, max.x),
     };
