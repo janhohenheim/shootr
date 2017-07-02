@@ -1,13 +1,50 @@
 'use strict'
 
-const io = new WebSocket('ws://localhost:8081')
-let lastMessage = undefined
+let io = null
+let reconnectingID = null
 
-io.onmessage = (msg) => {
-    lastMessage = msg.data
+function start_websocket(wsLocation) {
+    io = new WebSocket(wsLocation)
+    io.onopen = (event) => {
+        if (!reconnectingID)
+            return;
+        window.clearInterval(reconnectingID)
+        reconnectingID = 0
+        if (reconnectingText) {
+            app.stage.removeChild(reconnectingText)
+            reconnectingText = null
+        }
+    }
+
+    io.onmessage = (msg) => {
+        lastMessage = msg.data
+    }
+
+    io.onclose = () => {
+        if (reconnectingID)
+            return;
+        reconnectingText = new PIXI.Text('Reconnecting...')
+        reconnectingText.anchor.set(0.5)
+        reconnectingText.x = 400
+        reconnectingText.y = 500
+
+        app.stage.addChild(reconnectingText)
+
+        io = null
+        reconnectingID = setInterval(() => {
+            start_websocket(wsLocation)
+        }, 1000)
+    }
 }
 
+
+let lastMessage = undefined
+let reconnectingText = undefined;
+
+
 function send(data) {
+    if (!io || !reconnectingID)
+        return;
     console.log('sending data: ', data)
     io.send(data)
 }
@@ -25,6 +62,7 @@ const app = new Application(
         resolution: 1,
     },
 )
+start_websocket('ws://localhost:8081')
 document.body.appendChild(app.view)
 
 loader
