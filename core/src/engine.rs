@@ -74,81 +74,95 @@ where
     let conn_id = Rc::new(RefCell::new(Counter::new()));
     let connections_inner = connections.clone();
     // Handle new connection
-    let connection_handler = server.incoming()
-        // we don't wanna save the stream if it drops
-        .map_err(|InvalidConnection { error, .. }| error)
-        .for_each(move |(upgrade, addr)| {
+    let connection_handler = server
+        .incoming()
+        .map(|(upgrade, addr)| Some((upgrade, addr)))
+        .or_else(|InvalidConnection { error, .. }| {
+            println!("Connection dropped: {}", error);
+            Ok(None)
+        })
+        .for_each(move |conn| {
+            if let None = conn {
+                return Ok(());
+            }
+            let (upgrade, addr) = conn.unwrap();
             let connections_inner = connections_inner.clone();
             println!("Got a connection from: {}", addr);
             let channel = receive_channel_out.clone();
             let conn_id = conn_id.clone();
-            let f = upgrade
-                .accept()
-                .and_then(move |(framed, _)| {
-                    let id = conn_id
-                        .borrow_mut()
-                        .next()
-                        .expect("maximum amount of ids reached");
-                    let (sink, stream) = framed.split();
-                    channel.send((id, stream)).wait().unwrap();
-                    connections_inner.write().unwrap().insert(id, sink);
-                    Ok(())
-                });
+            let f = upgrade.accept().and_then(move |(framed, _)| {
+                let id = conn_id.borrow_mut().next().expect(
+                    "maximum amount of ids reached",
+                );
+                let (sink, stream) = framed.split();
+                channel.send((id, stream)).wait().unwrap();
+                connections_inner.write().unwrap().insert(id, sink);
+                Ok(())
+            });
             spawn_future(f, "Handle new connection", &handle);
             Ok(())
         })
-        .map_err(|e| println!("Error while upgrading connection: {}", e));
+        .map_err(|e: ()| e);
 
 
     // Handle receiving messages from a client
     let remote_inner = remote.clone();
     let engine_inner = engine.clone();
     let message_cb = Arc::new(message_cb);
-    let receive_handler = pool.read().unwrap().spawn_fn(|| {
-        receive_channel_in.for_each(move |(id, stream)| {
-            let engine = engine_inner.clone();
-            let message_cb = message_cb.clone();
-            remote_inner.spawn(move |_| {
-                let engine = engine.clone();
+    let receive_handler = pool.read()
+        .unwrap()
+        .spawn_fn(|| {
+            receive_channel_in.for_each(move |(id, stream)| {
+                let engine = engine_inner.clone();
                 let message_cb = message_cb.clone();
-                stream
-                    .for_each(move |msg| {
-                        let engine = engine.read().unwrap();
-                        process_message(id, &msg, &*engine, message_cb.clone());
-                        Ok(())
-                    })
-                    .map_err(|e| println!("Error while receiving messages: {}", e))
-            });
-            Ok(())
+                remote_inner.spawn(move |_| {
+                    let engine = engine.clone();
+                    let message_cb = message_cb.clone();
+                    stream
+                        .for_each(move |msg| {
+                            let engine = engine.read().unwrap();
+                            process_message(id, &msg, &*engine, message_cb.clone());
+                            Ok(())
+                        })
+                        .map_err(|e| println!("Error while receiving messages: {}", e))
+                });
+                Ok(())
+            })
         })
-    });
+        .map_err(|e| println!("Error while receiving messages: {:?}", e));
 
 
     // Handle sending messages to a client
     let connections_inner = connections.clone();
-    let send_handler = pool.read().unwrap().spawn_fn(move || {
-        let connections = connections_inner.clone();
-        send_channel_in.for_each(move |(id, state): (Id, Arc<RwLock<ClientState>>)| {
-            let mut sink_guard = connections.write().unwrap();
-            // Todo: don't even send invalid ids 
-            if let Some(mut sink) = sink_guard.get_mut(&id) {
-                let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
-                //println!("Sending message: {}", msg);
-                sink.start_send(OwnedMessage::Text(msg)).expect(
-                    "Failed to start sending message",
-                );
-                sink.poll_complete().expect("Failed to send message");
-            }
-            Ok(())
+    let send_handler = pool.read()
+        .unwrap()
+        .spawn_fn(move || {
+            let connections = connections_inner.clone();
+            send_channel_in.for_each(move |(id, state): (Id, Arc<RwLock<ClientState>>)| {
+                let mut sink_guard = connections.write().unwrap();
+                // Todo: don't even send invalid ids
+                if let Some(mut sink) = sink_guard.get_mut(&id) {
+                    let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
+                    //println!("Sending message: {}", msg);
+                    sink.start_send(OwnedMessage::Text(msg)).expect(
+                        "Failed to start sending message",
+                    );
+                    sink.poll_complete().expect("Failed to send message");
+                }
+                Ok(())
+            })
         })
-    });
+        .map_err(|e| println!("Error while sending messages: {:?}", e));
 
-    let function = pool.read().unwrap().spawn_fn(move || {
-        let engine = engine.read().unwrap();
-        main_cb(&*engine);
-        Ok::<(), ()>(())
-    });
-    let handlers = function.select2(connection_handler.select2(
+    let main_fn = pool.read()
+        .unwrap()
+        .spawn_fn(move || {
+            let engine = engine.read().unwrap();
+            main_cb(&*engine);
+            Ok::<(), ()>(())
+        })
+        .map_err(|e| println!("Error in main callback function: {:?}", e));
+    let handlers = main_fn.select2(connection_handler.select2(
         receive_handler.select(send_handler),
     ));
     core.run(handlers)
@@ -163,7 +177,7 @@ where
 {
     handle.spawn(
         f.map_err(move |e| println!("Error in {}: '{:?}'", desc, e))
-            .map(move |_| println!("Finished: {}", desc)),
+            .map(move |_| ()),
     );
 }
 

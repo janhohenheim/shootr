@@ -14,7 +14,6 @@ fn main() {
 }
 
 
-
 fn main_loop(engine: &Engine) {
     let mut world = World::new();
     world.register::<comp::Pos>();
