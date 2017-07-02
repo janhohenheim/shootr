@@ -61,7 +61,7 @@ where
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
     let (send_channel_out, send_channel_in) = mpsc::unbounded();
-    
+
     let engine = Engine {
         connections: connections.clone(),
         send_channel: send_channel_out.clone(),

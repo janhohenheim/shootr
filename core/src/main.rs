@@ -23,8 +23,8 @@ fn main_loop(engine: &Engine) {
     for _ in 0..1 {
         world
             .create_entity()
-            .with(comp::Vel { x: 1, y: 1 })
-            .with(comp::Pos { x: 0, y: 0 })
+            .with(comp::Vel { x: 3, y: 2 })
+            .with(comp::Pos { x: 500, y: 500 })
             .build();
     }
 
@@ -37,7 +37,7 @@ fn main_loop(engine: &Engine) {
 
     let mut lag: i64 = 0;
     let mut previous = Utc::now();
-    const MS_PER_UPDATE: i64 = 150;
+    const MS_PER_UPDATE: i64 = 6000;
 
     loop {
         let current = Utc::now();
