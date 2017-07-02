@@ -88,7 +88,8 @@ fn send(engine: &Engine, state: ClientState) {
     engine.remote.spawn(move |handle| {
         let engine = engine_inner;
         for (id, _) in engine.connections.read().unwrap().iter() {
-            let f = engine.channel.clone().send((*id, state.clone()));
+            let channel = engine.send_channel.clone();
+            let f = channel.send((*id, state.clone()));
             spawn_future(f, "Send message to write handler", handle);
         }
         Ok(())

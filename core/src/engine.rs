@@ -36,7 +36,7 @@ type SplitSink = futures::stream::SplitSink<SinkContent>;
 #[derive(Clone)]
 pub struct Engine {
     pub connections: Arc<RwLock<HashMap<Id, SplitSink>>>,
-    pub channel: mpsc::UnboundedSender<(Id, Arc<RwLock<ClientState>>)>,
+    pub send_channel: mpsc::UnboundedSender<(Id, Arc<RwLock<ClientState>>)>,
     pub remote: Remote,
     pub pool: Arc<RwLock<CpuPool>>,
 }
@@ -61,12 +61,14 @@ where
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
     let (send_channel_out, send_channel_in) = mpsc::unbounded();
-    let engine = Arc::new(RwLock::new(Engine {
+    
+    let engine = Engine {
         connections: connections.clone(),
-        channel: send_channel_out.clone(),
+        send_channel: send_channel_out.clone(),
         remote: remote.clone(),
         pool: pool.clone(),
-    }));
+    };
+    let engine = Arc::new(RwLock::new(engine));
 
     let conn_id = Rc::new(RefCell::new(Counter::new()));
     let connections_inner = connections.clone();
@@ -112,7 +114,8 @@ where
                 let message_cb = message_cb.clone();
                 stream
                     .for_each(move |msg| {
-                        process_message(id, &msg, &*engine.read().unwrap(), message_cb.clone());
+                        let engine = engine.read().unwrap();
+                        process_message(id, &msg, &*engine, message_cb.clone());
                         Ok(())
                     })
                     .map_err(|_| ())
@@ -144,7 +147,8 @@ where
     });
 
     let function = pool.read().unwrap().spawn_fn(move || {
-        main_cb(&*engine.read().unwrap());
+        let engine = engine.read().unwrap();
+        main_cb(&*engine);
         Ok::<(), ()>(())
     });
     let handlers = function.select2(connection_handler.select2(
