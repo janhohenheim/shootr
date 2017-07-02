@@ -54,7 +54,7 @@ fn main_loop(engine: Engine) {
     }
 }
 
-fn handle_message(_: Engine, msg: Msg) {
+fn handle_message(_: &Engine, msg: &Msg) {
     println!("Received message: {}", msg.content);
 }
 

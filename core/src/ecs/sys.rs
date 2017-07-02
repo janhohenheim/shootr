@@ -78,7 +78,7 @@ impl<'a> System<'a> for Send {
             pos: pos.join().take(1).next().unwrap().clone(),
             progress: progress.clone(),
         };
-        send(&engine, state);
+        send(engine, state);
     }
 }
 

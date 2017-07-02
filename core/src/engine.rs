@@ -51,7 +51,7 @@ pub struct Msg {
 pub fn execute<Fm, Fi>(main_cb: Fm, message_cb: Fi)
 where
     Fm: FnOnce(Engine) + Send + 'static,
-    Fi: Fn(Engine, Msg) + Sync + Send + 'static,
+    Fi: Fn(&Engine, &Msg) + Sync + Send + 'static,
 {
     let mut core = Core::new().expect("Failed to create Tokio event loop");
     let handle = core.handle();
@@ -112,7 +112,7 @@ where
                 let message_cb = message_cb.clone();
                 stream
                     .for_each(move |msg| {
-                        process_message(id, &msg, engine.clone(), message_cb.clone());
+                        process_message(id, &msg, &engine.clone(), message_cb.clone());
                         Ok(())
                     })
                     .map_err(|_| ())
@@ -167,16 +167,16 @@ where
 }
 
 
-fn process_message<F>(id: Id, msg: &OwnedMessage, engine: Engine, cb: Arc<F>)
+fn process_message<F>(id: Id, msg: &OwnedMessage, engine: &Engine, cb: Arc<F>)
 where
-    F: Fn(Engine, Msg) + Send + 'static,
+    F: Fn(&Engine, &Msg) + Send + 'static,
 {
     if let OwnedMessage::Text(ref content) = *msg {
         let msg = Msg {
             id,
             content: content.clone(),
         };
-        cb(engine, msg);
+        cb(engine, &msg);
     }
 }
 
