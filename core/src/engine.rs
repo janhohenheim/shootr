@@ -88,7 +88,7 @@ where
 
     // Handle receiving messages from a client
     let state_read = state.clone();
-    let remote_inner = remote.clone(); 
+    let remote_inner = remote.clone();
     let engine_inner = engine.clone();
     let message_cb = Arc::new(message_cb);
     let receive_handler = pool.read().unwrap().spawn_fn(|| {
@@ -98,7 +98,7 @@ where
             let message_cb = message_cb.clone();
             remote_inner.spawn(move |_| {
                 let engine = engine.clone();
-                let message_cb = message_cb.clone();;
+                let message_cb = message_cb.clone();
                 stream
                     .for_each(move |msg| {
                         process_message(id, &msg, engine.clone(), message_cb.clone());
@@ -110,7 +110,7 @@ where
         })
     });
 
-   
+
     // Handle sending messages to a client
     let connections_inner = connections.clone();
     let send_handler = pool.read().unwrap().spawn_fn(move || {
@@ -157,9 +157,14 @@ where
 
 
 fn process_message<F>(id: Id, msg: &OwnedMessage, engine: Engine, cb: Arc<F>)
-where F: Fn(Engine, Msg) + Send + 'static {
+where
+    F: Fn(Engine, Msg) + Send + 'static,
+{
     if let OwnedMessage::Text(ref content) = *msg {
-        let msg = Msg { id, content: content.clone() };
+        let msg = Msg {
+            id,
+            content: content.clone(),
+        };
         cb(engine, msg);
     }
 }

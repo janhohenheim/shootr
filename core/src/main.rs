@@ -60,7 +60,7 @@ fn handle_message(engine: Engine, msg: Msg) {
 
 
 fn elapsed_time(from: chrono::DateTime<Utc>, to: chrono::DateTime<Utc>) -> i64 {
-    to.signed_duration_since(from)
-        .num_microseconds()
-        .expect("Too much time passed between DateTimes")
+    to.signed_duration_since(from).num_microseconds().expect(
+        "Too much time passed between DateTimes",
+    )
 }
