@@ -39,8 +39,8 @@ fn handle_movement(pos: &mut Pos, vel: &mut Vel, min: &Pos, max: &Pos) {
     } else if new_y < 0 {
         bounce(pos, vel, min, &Axis::Y);
     } else {
-        *(&mut pos.x) = new_x;
-        *(&mut pos.y) = new_y;
+        pos.x = new_x;
+        pos.y = new_y;
     }
 }
 
@@ -53,7 +53,7 @@ fn bounce(pos: &mut Pos, vel: &mut Vel, max: &Pos, overflowing_axis: &Axis) {
         Axis::X => (&mut vel.x, &mut vel.y),
         Axis::Y => (&mut vel.y, &mut vel.x),
     };
-    let (max_overflow, max_other) = match *overflowing_axis {
+    let (max_overflow, _) = match *overflowing_axis {
         Axis::X => (max.x, max.y),
         Axis::Y => (max.y, max.x),
     };
@@ -78,11 +78,11 @@ impl<'a> System<'a> for Send {
             pos: pos.join().take(1).next().unwrap().clone(),
             progress: progress.clone(),
         };
-        send(engine.clone(), state);
+        send(&engine, state);
     }
 }
 
-fn send(engine: Engine, state: ClientState) {
+fn send(engine: &Engine, state: ClientState) {
     let state = Arc::new(RwLock::new(state));
     let engine_inner = engine.clone();
     engine.remote.spawn(move |handle| {

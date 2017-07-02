@@ -6,7 +6,7 @@ extern crate chrono;
 use self::specs::{DispatcherBuilder, World};
 use self::chrono::prelude::*;
 
-use shootr::engine::{self, Msg, Engine};
+use shootr::engine::{Msg, Engine};
 use shootr::ecs::{comp, sys, res};
 
 fn main() {
@@ -54,7 +54,7 @@ fn main_loop(engine: Engine) {
     }
 }
 
-fn handle_message(engine: Engine, msg: Msg) {
+fn handle_message(_: Engine, msg: Msg) {
     println!("Received message: {}", msg.content);
 }
 

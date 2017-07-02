@@ -27,6 +27,20 @@ use model::ClientState;
 
 pub type Id = u32;
 
+type SinkContent = websocket::client::async::Framed<
+    tokio_core::net::TcpStream,
+    websocket::async::MessageCodec<OwnedMessage>,
+>;
+type SplitSink = futures::stream::SplitSink<SinkContent>;
+
+#[derive(Clone)]
+pub struct Engine {
+    pub connections: Arc<RwLock<HashMap<Id, SplitSink>>>,
+    pub channel: mpsc::UnboundedSender<(Id, Arc<RwLock<ClientState>>)>,
+    pub remote: Remote,
+    pub pool: Arc<RwLock<CpuPool>>,
+}
+
 
 #[derive(Serialize, Debug)]
 pub struct Msg {
@@ -45,7 +59,6 @@ where
     let server = Server::bind("localhost:8081", &handle).expect("Failed to create server");
     let pool = Arc::new(RwLock::new(CpuPool::new_num_cpus()));
     let connections = Arc::new(RwLock::new(HashMap::new()));
-    let state = Arc::new(RwLock::new(State::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
     let (send_channel_out, send_channel_in) = mpsc::unbounded();
     let engine = Engine {
@@ -63,7 +76,7 @@ where
         .map_err(|InvalidConnection { error, .. }| error)
         .for_each(move |(upgrade, addr)| {
             let connections_inner = connections_inner.clone();
-            //println!("Got a connection from: {}", addr);
+            println!("Got a connection from: {}", addr);
             let channel = receive_channel_out.clone();
             let handle_inner = handle.clone();
             let conn_id = conn_id.clone();
@@ -87,13 +100,11 @@ where
 
 
     // Handle receiving messages from a client
-    let state_read = state.clone();
     let remote_inner = remote.clone();
     let engine_inner = engine.clone();
     let message_cb = Arc::new(message_cb);
     let receive_handler = pool.read().unwrap().spawn_fn(|| {
         receive_channel_in.for_each(move |(id, stream)| {
-            let state_read = state_read.clone();
             let engine = engine_inner.clone();
             let message_cb = message_cb.clone();
             remote_inner.spawn(move |_| {
@@ -191,38 +202,4 @@ impl Iterator for Counter {
             None
         }
     }
-}
-
-
-#[derive(Serialize, Deserialize)]
-struct State {
-    positions: Vec<Pos>,
-}
-
-impl State {
-    fn new() -> Self {
-        Self { positions: Vec::new() }
-    }
-}
-
-
-#[derive(Serialize, Deserialize)]
-struct Pos {
-    x: i32,
-    y: i32,
-}
-
-
-
-type SinkContent = websocket::client::async::Framed<
-    tokio_core::net::TcpStream,
-    websocket::async::MessageCodec<OwnedMessage>,
->;
-type SplitSink = futures::stream::SplitSink<SinkContent>;
-#[derive(Clone)]
-pub struct Engine {
-    pub connections: Arc<RwLock<HashMap<Id, SplitSink>>>,
-    pub channel: mpsc::UnboundedSender<(Id, Arc<RwLock<ClientState>>)>,
-    pub remote: Remote,
-    pub pool: Arc<RwLock<CpuPool>>,
 }
