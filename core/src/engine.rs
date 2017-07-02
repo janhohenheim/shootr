@@ -23,7 +23,7 @@ use std::ops::Deref;
 use std::collections::HashMap;
 use std::cell::RefCell;
 
-use ::model::ClientState;
+use model::ClientState;
 
 pub type Id = u32;
 
@@ -48,6 +48,7 @@ pub struct Msg {
     pub content: String,
 }
 
+// Todo: Accept a trait parameter instead
 pub fn execute<Fm, Fi>(main_cb: Fm, message_cb: Fi)
 where
     Fm: FnOnce(&Engine) + Send + 'static,
@@ -96,7 +97,7 @@ where
             spawn_future(f, "Handle new connection", &handle);
             Ok(())
         })
-        .map_err(|_| ());
+        .map_err(|e| println!("Error while upgrading connection: {}", e));
 
 
     // Handle receiving messages from a client
@@ -116,7 +117,7 @@ where
                         process_message(id, &msg, &*engine, message_cb.clone());
                         Ok(())
                     })
-                    .map_err(|_| ())
+                    .map_err(|e| println!("Error while receiving messages: {}", e))
             });
             Ok(())
         })
@@ -127,21 +128,19 @@ where
     let connections_inner = connections.clone();
     let send_handler = pool.read().unwrap().spawn_fn(move || {
         let connections = connections_inner.clone();
-        send_channel_in
-            .for_each(move |(id, state): (Id, Arc<RwLock<ClientState>>)| {
-                let mut sink_guard = connections.write().unwrap();
-                let mut sink = sink_guard.get_mut(&id).expect(
-                    "Tried to send to invalid client id",
-                );
+        send_channel_in.for_each(move |(id, state): (Id, Arc<RwLock<ClientState>>)| {
+            let mut sink_guard = connections.write().unwrap();
+            // Todo: don't even send invalid ids 
+            if let Some(mut sink) = sink_guard.get_mut(&id) {
                 let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
                 //println!("Sending message: {}", msg);
                 sink.start_send(OwnedMessage::Text(msg)).expect(
                     "Failed to start sending message",
                 );
                 sink.poll_complete().expect("Failed to send message");
-                Ok(())
-            })
-            .map_err(|_| ())
+            }
+            Ok(())
+        })
     });
 
     let function = pool.read().unwrap().spawn_fn(move || {
@@ -153,7 +152,7 @@ where
         receive_handler.select(send_handler),
     ));
     core.run(handlers)
-        .map_err(|_| println!("Error while running core loop"))
+        .map_err(|_| println!("Unspecified error while running core loop"))
         .unwrap();
 }
 
@@ -164,7 +163,7 @@ where
 {
     handle.spawn(
         f.map_err(move |e| println!("Error in {}: '{:?}'", desc, e))
-            .map(move |_| ()),
+            .map(move |_| println!("Finished: {}", desc)),
     );
 }
 
@@ -173,13 +172,25 @@ fn process_message<F>(id: Id, msg: &OwnedMessage, engine: &Engine, cb: Arc<F>)
 where
     F: Fn(&Engine, &Msg) + Send + 'static,
 {
-    if let OwnedMessage::Text(ref content) = *msg {
-        let msg = Msg {
-            id,
-            content: content.clone(),
-        };
-        cb(engine, &msg);
-    }
+    match *msg {
+        OwnedMessage::Text(ref content) => {
+            let msg = Msg {
+                id,
+                content: content.clone(),
+            };
+            cb(engine, &msg);
+        }
+        OwnedMessage::Close(_) => {
+            engine
+                .connections
+                .write()
+                .unwrap()
+                .remove(&id)
+                .and_then(|_| Some(println!("Client with id {} disconnected", id)))
+                .expect("Tried to remove id that was not in list");
+        }
+        _ => {}
+    };
 }
 
 

@@ -12,7 +12,7 @@ tokio-core = "0.1"
 futures = "0.1"
 futures-cpupool = "0.1"
 
-websocket = "0.20"
+websocket = {version = "0.20", features = ["nightly"]}
 
 specs = "0.9"
 chrono = "0.4"

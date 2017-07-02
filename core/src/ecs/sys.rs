@@ -65,11 +65,7 @@ fn bounce(pos: &mut Pos, vel: &mut Vel, max: &Pos, overflowing_axis: &Axis) {
 
 pub struct Send;
 impl<'a> System<'a> for Send {
-    type SystemData = (
-        Fetch<'a, TimeProgress>,
-        Fetch<'a, Engine>,
-        ReadStorage<'a, Pos>,
-    );
+    type SystemData = (Fetch<'a, TimeProgress>, Fetch<'a, Engine>, ReadStorage<'a, Pos>);
 
     fn run(&mut self, data: Self::SystemData) {
         let (progress, engine, pos) = data;
