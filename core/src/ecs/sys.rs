@@ -7,7 +7,7 @@ use super::comp::{Pos, Vel};
 use super::res::TimeProgress;
 use std::ops::Deref;
 use std::sync::{Arc, RwLock};
-use engine::{Engine, spawn_future};
+use engine::Engine;
 use model::{ClientState, Axis};
 
 use self::futures::{Future, Sink};

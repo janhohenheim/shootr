@@ -80,7 +80,6 @@ where
             let connections_inner = connections_inner.clone();
             println!("Got a connection from: {}", addr);
             let channel = receive_channel_out.clone();
-            let handle_inner = handle.clone();
             let conn_id = conn_id.clone();
             let f = upgrade
                 .accept()
@@ -90,8 +89,7 @@ where
                         .next()
                         .expect("maximum amount of ids reached");
                     let (sink, stream) = framed.split();
-                    let f = channel.send((id, stream));
-                    spawn_future(f, "Send stream to connection pool", &handle_inner);
+                    channel.send((id, stream)).wait().unwrap();
                     connections_inner.write().unwrap().insert(id, sink);
                     Ok(())
                 });
