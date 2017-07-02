@@ -10,7 +10,7 @@ use std::sync::{Arc, RwLock};
 use engine::{Engine, spawn_future};
 use model::{ClientState, Axis};
 
-use self::futures::Sink;
+use self::futures::{Future, Sink};
 
 pub struct Physics;
 impl<'a> System<'a> for Physics {
@@ -26,8 +26,6 @@ impl<'a> System<'a> for Physics {
 }
 
 fn handle_movement(pos: &mut Pos, vel: &mut Vel, min: &Pos, max: &Pos) {
-
-
     let new_x = pos.x + vel.x;
     let new_y = pos.y + vel.y;
     if new_x > max.x {
@@ -84,14 +82,8 @@ impl<'a> System<'a> for Send {
 
 fn send(engine: &Engine, state: ClientState) {
     let state = Arc::new(RwLock::new(state));
-    let engine_inner = engine.clone();
-    engine.remote.spawn(move |handle| {
-        let engine = engine_inner;
-        for (id, _) in engine.connections.read().unwrap().iter() {
-            let channel = engine.send_channel.clone();
-            let f = channel.send((*id, state.clone()));
-            spawn_future(f, "Send message to write handler", handle);
-        }
-        Ok(())
-    });
+    for (id, _) in engine.connections.read().unwrap().iter() {
+        let channel = engine.send_channel.clone();
+        channel.send((*id, state.clone())).wait().unwrap();
+    }
 }
