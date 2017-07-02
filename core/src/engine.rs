@@ -25,11 +25,19 @@ use std::cell::RefCell;
 
 use model::ClientState;
 
-type Id = u32;
+pub type Id = u32;
 
-pub fn execute<F>(function: F)
+
+#[derive(Serialize, Debug)]
+pub struct Msg {
+    pub id: Id,
+    pub content: String,
+}
+
+pub fn execute<Fm, Fi>(main_cb: Fm, message_cb: Fi)
 where
-    F: FnOnce(Engine) + Send + 'static,
+    Fm: FnOnce(Engine) + Send + 'static,
+    Fi: Fn(Engine, Msg) + Sync + Send + 'static,
 {
     let mut core = Core::new().expect("Failed to create Tokio event loop");
     let handle = core.handle();
@@ -39,6 +47,13 @@ where
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let state = Arc::new(RwLock::new(State::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
+    let (send_channel_out, send_channel_in) = mpsc::unbounded();
+    let engine = Engine {
+        connections: connections.clone(),
+        channel: send_channel_out.clone(),
+        remote: remote.clone(),
+        pool: pool.clone(),
+    };
 
     let conn_id = Rc::new(RefCell::new(Counter::new()));
     let connections_inner = connections.clone();
@@ -48,7 +63,7 @@ where
         .map_err(|InvalidConnection { error, .. }| error)
         .for_each(move |(upgrade, addr)| {
             let connections_inner = connections_inner.clone();
-            println!("Got a connection from: {}", addr);
+            //println!("Got a connection from: {}", addr);
             let channel = receive_channel_out.clone();
             let handle_inner = handle.clone();
             let conn_id = conn_id.clone();
@@ -73,14 +88,20 @@ where
 
     // Handle receiving messages from a client
     let state_read = state.clone();
-    let remote_inner = remote.clone();
+    let remote_inner = remote.clone(); 
+    let engine_inner = engine.clone();
+    let message_cb = Arc::new(message_cb);
     let receive_handler = pool.read().unwrap().spawn_fn(|| {
         receive_channel_in.for_each(move |(id, stream)| {
             let state_read = state_read.clone();
+            let engine = engine_inner.clone();
+            let message_cb = message_cb.clone();
             remote_inner.spawn(move |_| {
+                let engine = engine.clone();
+                let message_cb = message_cb.clone();;
                 stream
                     .for_each(move |msg| {
-                        process_message(id, &msg, &mut state_read.write().unwrap());
+                        process_message(id, &msg, engine.clone(), message_cb.clone());
                         Ok(())
                     })
                     .map_err(|_| ())
@@ -89,8 +110,7 @@ where
         })
     });
 
-    let (send_channel_out, send_channel_in) = mpsc::unbounded();
-
+   
     // Handle sending messages to a client
     let connections_inner = connections.clone();
     let send_handler = pool.read().unwrap().spawn_fn(move || {
@@ -102,7 +122,7 @@ where
                     "Tried to send to invalid client id",
                 );
                 let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
-                println!("Sending message: {}", msg);
+                //println!("Sending message: {}", msg);
                 sink.start_send(OwnedMessage::Text(msg)).expect(
                     "Failed to start sending message",
                 );
@@ -112,14 +132,8 @@ where
             .map_err(|_| ())
     });
 
-    let engine = Engine {
-        connections: connections,
-        channel: send_channel_out,
-        remote: remote,
-        pool: pool.clone(),
-    };
     let function = pool.read().unwrap().spawn_fn(move || {
-        function(engine);
+        main_cb(engine);
         Ok::<(), ()>(())
     });
     let handlers = function.select2(connection_handler.select2(
@@ -137,15 +151,16 @@ where
 {
     handle.spawn(
         f.map_err(move |e| println!("Error in {}: '{:?}'", desc, e))
-            .map(move |_| println!("{}: Finished.", desc)),
+            .map(move |_| ()),
     );
 }
 
 
-fn process_message(_: u32, msg: &OwnedMessage, _: &mut State) {
-    if let OwnedMessage::Text(ref txt) = *msg {
-        println!("Received message: {}", txt);
-        //state.msg = txt.clone();
+fn process_message<F>(id: Id, msg: &OwnedMessage, engine: Engine, cb: Arc<F>)
+where F: Fn(Engine, Msg) + Send + 'static {
+    if let OwnedMessage::Text(ref content) = *msg {
+        let msg = Msg { id, content: content.clone() };
+        cb(engine, msg);
     }
 }
 

@@ -6,16 +6,16 @@ extern crate chrono;
 use self::specs::{DispatcherBuilder, World};
 use self::chrono::prelude::*;
 
-use shootr::engine;
+use shootr::engine::{self, Msg, Engine};
 use shootr::ecs::{comp, sys, res};
 
 fn main() {
-    shootr::engine::execute(main_loop);
+    shootr::engine::execute(main_loop, handle_message);
 }
 
 
 
-fn main_loop(engine: engine::Engine) {
+fn main_loop(engine: Engine) {
     let mut world = World::new();
     world.register::<comp::Pos>();
     world.register::<comp::Vel>();
@@ -54,9 +54,13 @@ fn main_loop(engine: engine::Engine) {
     }
 }
 
+fn handle_message(engine: Engine, msg: Msg) {
+    println!("Received message: {}", msg.content);
+}
+
 
 fn elapsed_time(from: chrono::DateTime<Utc>, to: chrono::DateTime<Utc>) -> i64 {
-    to.signed_duration_since(from).num_microseconds().expect(
-        "Too much time passed between DateTimes",
-    )
+    to.signed_duration_since(from)
+        .num_microseconds()
+        .expect("Too much time passed between DateTimes")
 }
