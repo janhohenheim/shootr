@@ -15,11 +15,11 @@ fn main() {
 
 
 
-fn main_loop(engine: Engine) {
+fn main_loop(engine: &Engine) {
     let mut world = World::new();
     world.register::<comp::Pos>();
     world.register::<comp::Vel>();
-    world.add_resource(engine);
+    world.add_resource(engine.clone());
     for _ in 0..1 {
         world
             .create_entity()

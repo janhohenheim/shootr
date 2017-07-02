@@ -50,7 +50,7 @@ pub struct Msg {
 
 pub fn execute<Fm, Fi>(main_cb: Fm, message_cb: Fi)
 where
-    Fm: FnOnce(Engine) + Send + 'static,
+    Fm: FnOnce(&Engine) + Send + 'static,
     Fi: Fn(&Engine, &Msg) + Sync + Send + 'static,
 {
     let mut core = Core::new().expect("Failed to create Tokio event loop");
@@ -61,12 +61,12 @@ where
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
     let (send_channel_out, send_channel_in) = mpsc::unbounded();
-    let engine = Engine {
+    let engine = Arc::new(RwLock::new(Engine {
         connections: connections.clone(),
         channel: send_channel_out.clone(),
         remote: remote.clone(),
         pool: pool.clone(),
-    };
+    }));
 
     let conn_id = Rc::new(RefCell::new(Counter::new()));
     let connections_inner = connections.clone();
@@ -112,7 +112,7 @@ where
                 let message_cb = message_cb.clone();
                 stream
                     .for_each(move |msg| {
-                        process_message(id, &msg, &engine.clone(), message_cb.clone());
+                        process_message(id, &msg, &*engine.read().unwrap(), message_cb.clone());
                         Ok(())
                     })
                     .map_err(|_| ())
@@ -144,7 +144,7 @@ where
     });
 
     let function = pool.read().unwrap().spawn_fn(move || {
-        main_cb(engine);
+        main_cb(&*engine.read().unwrap());
         Ok::<(), ()>(())
     });
     let handlers = function.select2(connection_handler.select2(
