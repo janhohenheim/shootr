@@ -2,15 +2,15 @@ extern crate specs;
 extern crate futures;
 
 use self::specs::{Join, ReadStorage, WriteStorage, Fetch, System};
+use self::futures::{Future, Sink};
+use std::ops::Deref;
+use std::sync::{Arc, RwLock};
 
 use super::comp::{Pos, Vel};
 use super::res::TimeProgress;
-use std::ops::Deref;
-use std::sync::{Arc, RwLock};
 use engine::Engine;
 use model::{ClientState, Axis};
 
-use self::futures::{Future, Sink};
 
 pub struct Physics;
 impl<'a> System<'a> for Physics {
@@ -65,7 +65,11 @@ fn bounce(pos: &mut Pos, vel: &mut Vel, max: &Pos, overflowing_axis: &Axis) {
 
 pub struct Send;
 impl<'a> System<'a> for Send {
-    type SystemData = (Fetch<'a, TimeProgress>, Fetch<'a, Engine>, ReadStorage<'a, Pos>);
+    type SystemData = (
+        Fetch<'a, TimeProgress>,
+        Fetch<'a, Engine>,
+        ReadStorage<'a, Pos>,
+    );
 
     fn run(&mut self, data: Self::SystemData) {
         let (progress, engine, pos) = data;

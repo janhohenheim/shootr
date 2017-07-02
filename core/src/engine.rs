@@ -23,7 +23,7 @@ use std::ops::Deref;
 use std::collections::HashMap;
 use std::cell::RefCell;
 
-use model::ClientState;
+use ::model::ClientState;
 
 pub type Id = u32;
 
