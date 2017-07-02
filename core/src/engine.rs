@@ -82,7 +82,7 @@ where
             Ok(None)
         })
         .for_each(move |conn| {
-            if let None = conn {
+            if conn.is_none() {
                 return Ok(());
             }
             let (upgrade, addr) = conn.unwrap();
