@@ -35,12 +35,9 @@ type SplitSink = futures::stream::SplitSink<SinkContent>;
 
 #[derive(Clone)]
 pub struct Engine {
-    pub connections: Arc<RwLock<HashMap<Id, SplitSink>>>,
     pub send_channel: mpsc::UnboundedSender<(Id, Arc<RwLock<ClientState>>)>,
     pub remote: Remote,
-    pub pool: Arc<RwLock<CpuPool>>,
 }
-
 
 #[derive(Serialize, Debug)]
 pub struct Msg {
@@ -48,11 +45,17 @@ pub struct Msg {
     pub content: String,
 }
 
-// Todo: Accept a trait parameter instead
-pub fn execute<Fm, Fi>(main_cb: Fm, message_cb: Fi)
+pub trait EventHandler {
+    fn new(engine: Engine) -> Self;
+    fn main_loop(&self);
+    fn message(&self, msg: &Msg);
+    fn connect(&self, id: Id) -> bool;
+    fn disconnect(&self, id: Id);
+}
+
+pub fn execute<T>()
 where
-    Fm: FnOnce(&Engine) + Send + 'static,
-    Fi: Fn(&Engine, &Msg) + Sync + Send + 'static,
+    T: EventHandler + Send + Sync + 'static,
 {
     let mut core = Core::new().expect("Failed to create Tokio event loop");
     let handle = core.handle();
@@ -64,15 +67,15 @@ where
     let (send_channel_out, send_channel_in) = mpsc::unbounded();
 
     let engine = Engine {
-        connections: connections.clone(),
         send_channel: send_channel_out.clone(),
         remote: remote.clone(),
-        pool: pool.clone(),
     };
-    let engine = Arc::new(RwLock::new(engine));
+    let event_handler = T::new(engine);
+    let event_handler = Arc::new(event_handler);
 
     let conn_id = Rc::new(RefCell::new(Counter::new()));
     let connections_inner = connections.clone();
+    let event_handler_inner = event_handler.clone();
     // Handle new connection
     let connection_handler = server
         .incoming()
@@ -86,6 +89,7 @@ where
                 return Ok(());
             }
             let (upgrade, addr) = conn.unwrap();
+            let event_handler = event_handler_inner.clone();
             let connections_inner = connections_inner.clone();
             println!("Got a connection from: {}", addr);
             let channel = receive_channel_out.clone();
@@ -94,6 +98,9 @@ where
                 let id = conn_id.borrow_mut().next().expect(
                     "maximum amount of ids reached",
                 );
+                if !event_handler.connect(id) {
+                    return Ok(());
+                }
                 let (sink, stream) = framed.split();
                 channel.send((id, stream)).wait().unwrap();
                 connections_inner.write().unwrap().insert(id, sink);
@@ -107,21 +114,20 @@ where
 
     // Handle receiving messages from a client
     let remote_inner = remote.clone();
-    let engine_inner = engine.clone();
-    let message_cb = Arc::new(message_cb);
+    let connections_inner = connections.clone();
+    let event_handler_inner = event_handler.clone();
     let receive_handler = pool.read()
         .unwrap()
         .spawn_fn(|| {
             receive_channel_in.for_each(move |(id, stream)| {
-                let engine = engine_inner.clone();
-                let message_cb = message_cb.clone();
+                let connections = connections_inner.clone();
+                let event_handler = event_handler_inner.clone();
                 remote_inner.spawn(move |_| {
-                    let engine = engine.clone();
-                    let message_cb = message_cb.clone();
+                    let connections = connections.clone();
+                    let event_handler = event_handler.clone();
                     stream
                         .for_each(move |msg| {
-                            let engine = engine.read().unwrap();
-                            process_message(id, &msg, &*engine, message_cb.clone());
+                            process_message(id, &msg, &*event_handler, connections.clone());
                             Ok(())
                         })
                         .map_err(|e| println!("Error while receiving messages: {}", e))
@@ -154,11 +160,11 @@ where
         })
         .map_err(|e| println!("Error while sending messages: {:?}", e));
 
+    // Run maIn loop
     let main_fn = pool.read()
         .unwrap()
         .spawn_fn(move || {
-            let engine = engine.read().unwrap();
-            main_cb(&*engine);
+            event_handler.main_loop();
             Ok::<(), ()>(())
         })
         .map_err(|e| println!("Error in main callback function: {:?}", e));
@@ -182,9 +188,13 @@ where
 }
 
 
-fn process_message<F>(id: Id, msg: &OwnedMessage, engine: &Engine, cb: Arc<F>)
-where
-    F: Fn(&Engine, &Msg) + Send + 'static,
+fn process_message<T>(
+    id: Id,
+    msg: &OwnedMessage,
+    event_handler: &T,
+    connections: Arc<RwLock<HashMap<Id, SplitSink>>>,
+) where
+    T: EventHandler,
 {
     match *msg {
         OwnedMessage::Text(ref content) => {
@@ -192,16 +202,16 @@ where
                 id,
                 content: content.clone(),
             };
-            cb(engine, &msg);
+            event_handler.message(&msg);
         }
         OwnedMessage::Close(_) => {
-            engine
-                .connections
+            connections
                 .write()
                 .unwrap()
                 .remove(&id)
                 .and_then(|_| Some(println!("Client with id {} disconnected", id)))
                 .expect("Tried to remove id that was not in list");
+            event_handler.disconnect(id);
         }
         _ => {}
     };

@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 
 use super::comp::{Pos, Vel};
-use super::res::TimeProgress;
+use super::res::{TimeProgress, Ids};
 use engine::Engine;
 use model::{ClientState, Axis};
 
@@ -65,24 +65,28 @@ fn bounce(pos: &mut Pos, vel: &mut Vel, max: &Pos, overflowing_axis: &Axis) {
 
 pub struct Send;
 impl<'a> System<'a> for Send {
-    type SystemData = (Fetch<'a, TimeProgress>, Fetch<'a, Engine>, ReadStorage<'a, Pos>);
+    type SystemData = (Fetch<'a, TimeProgress>,
+     Fetch<'a, Ids>,
+     Fetch<'a, Engine>,
+     ReadStorage<'a, Pos>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (progress, engine, pos) = data;
+        let (progress, ids, engine, pos) = data;
         let progress = progress.deref();
+        let ids = ids.deref();
         let engine = engine.deref();
 
         let state = ClientState {
             pos: pos.join().take(1).next().unwrap().clone(),
             progress: progress.clone(),
         };
-        send(engine, state);
+        send(engine, ids, state);
     }
 }
 
-fn send(engine: &Engine, state: ClientState) {
+fn send(engine: &Engine, ids: &Ids, state: ClientState) {
     let state = Arc::new(RwLock::new(state));
-    for (id, _) in engine.connections.read().unwrap().iter() {
+    for id in ids.read().unwrap().iter() {
         let channel = engine.send_channel.clone();
         channel.send((*id, state.clone())).wait().unwrap();
     }
