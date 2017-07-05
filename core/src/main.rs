@@ -8,6 +8,7 @@ use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::ecs::{comp, sys, res};
+use shootr::util::read_env_var;
 use res::Ids;
 use std::sync::{Arc, RwLock};
 
@@ -48,18 +49,20 @@ impl EventHandler for Handler {
 
         let mut lag: i64 = 0;
         let mut previous = Utc::now();
-        const MS_PER_UPDATE: i64 = 6000;
+        let ms_per_update = read_env_var("CORE_MS_PER_UPDATE").parse::<i64>().expect(
+            "Failed to parse environmental variable as integer",
+        );
 
         loop {
             let current = Utc::now();
             let elapsed = elapsed_time(previous, current);
             previous = current;
             lag += elapsed;
-            while lag >= MS_PER_UPDATE {
+            while lag >= ms_per_update {
                 physics.dispatch(&mut world.res);
-                lag -= MS_PER_UPDATE;
+                lag -= ms_per_update;
             }
-            let progress = lag as f64 / MS_PER_UPDATE as f64;
+            let progress = lag as f64 / ms_per_update as f64;
             world.add_resource(res::TimeProgress(progress));
             renderer.dispatch(&mut world.res);
         }

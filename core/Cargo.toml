@@ -16,3 +16,4 @@ websocket = {version = "0.20", features = ["nightly"]}
 
 specs = "0.9"
 chrono = "0.4"
+dotenv = "0.10"

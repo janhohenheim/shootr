@@ -4,7 +4,9 @@ extern crate futures_cpupool;
 extern crate tokio_core;
 extern crate serde;
 extern crate serde_json;
+extern crate dotenv;
 
+use self::dotenv::dotenv;
 
 use self::websocket::message::OwnedMessage;
 use self::websocket::server::InvalidConnection;
@@ -24,6 +26,7 @@ use std::collections::HashMap;
 use std::cell::RefCell;
 
 use model::ClientState;
+use util::read_env_var;
 
 pub type Id = u32;
 
@@ -57,10 +60,16 @@ pub fn execute<T>()
 where
     T: EventHandler + Send + Sync + 'static,
 {
+    dotenv().ok();
+
     let mut core = Core::new().expect("Failed to create Tokio event loop");
     let handle = core.handle();
     let remote = core.remote();
-    let server = Server::bind("localhost:8081", &handle).expect("Failed to create server");
+
+    let server = {
+        let address = format!("localhost:{}", read_env_var("CORE_PORT"));
+        Server::bind(address, &handle).expect("Failed to create server")
+    };
     let pool = Arc::new(RwLock::new(CpuPool::new_num_cpus()));
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
