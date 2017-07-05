@@ -74,7 +74,13 @@ impl EventHandler for Handler {
         self.ids.write().unwrap().push(id);
         true
     }
-    fn disconnect(&self, id: Id) {}
+    fn disconnect(&self, id: Id) {
+        let mut ids = self.ids.write().unwrap();
+        let pos = ids.iter().position(|&x| x == id).expect(
+            "Tried to remove id that was not added in the first place",
+        );
+        ids.remove(pos);
+    }
 }
 
 
