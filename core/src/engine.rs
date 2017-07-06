@@ -5,22 +5,21 @@ extern crate tokio_core;
 extern crate serde;
 extern crate serde_json;
 extern crate dotenv;
-extern crate native_tls;
 
 use self::dotenv::dotenv;
 
 use self::websocket::message::OwnedMessage;
 use self::websocket::server::{WsServer, InvalidConnection};
-use self::websocket::async::Server;
+use self::websocket::async::{Server, MessageCodec};
+use self::websocket::client::async::Framed;
+use self::websocket::server::NoTlsAcceptor;
 
 use self::tokio_core::reactor::{Handle, Remote, Core};
-use self::tokio_core::net::TcpListener;
+use self::tokio_core::net::{TcpStream, TcpListener};
 
 use self::futures::{Future, Sink, Stream};
 use self::futures::sync::mpsc;
 use self::futures_cpupool::CpuPool;
-
-use self::native_tls::{Pkcs12, TlsAcceptor};
 
 use std::sync::{RwLock, Arc};
 use std::rc::Rc;
@@ -28,18 +27,13 @@ use std::fmt::Debug;
 use std::ops::Deref;
 use std::collections::HashMap;
 use std::cell::RefCell;
-use std::fs::File;
-use std::io::Read;
 
 use model::ClientState;
 use util::read_env_var;
 
 pub type Id = u32;
 
-type SinkContent = websocket::client::async::Framed<
-    websocket::client::async::TlsStream<tokio_core::net::TcpStream>,
-    websocket::async::MessageCodec<OwnedMessage>,
->;
+type SinkContent = Framed<TcpStream, MessageCodec<OwnedMessage>>;
 type SplitSink = futures::stream::SplitSink<SinkContent>;
 
 #[derive(Clone)]
@@ -199,19 +193,10 @@ where
     );
 }
 
-fn build_server(handle: &Handle) -> WsServer<TlsAcceptor, TcpListener> {
-    let mut file = File::open(&read_env_var("CERT_FILE")).expect("Failed to open certificate file");
-    let mut pkcs12 = vec![];
-    file.read_to_end(&mut pkcs12).unwrap();
-    let pkcs12 = Pkcs12::from_der(&pkcs12, &read_env_var("CERT_PW")).expect(
-        "Failed to open certificate file with given password",
-    );
-
+fn build_server(handle: &Handle) -> WsServer<NoTlsAcceptor, TcpListener>
+{
     let address = format!("localhost:{}", read_env_var("CORE_PORT"));
-    let acceptor = TlsAcceptor::builder(pkcs12).unwrap().build().expect(
-        "Failed to build TLS acceptor",
-    );
-    Server::bind_secure(address, acceptor, &handle).expect("Failed to create server")
+    Server::bind(address, handle).expect("Failed to create server")
 }
 
 fn process_message<T>(
