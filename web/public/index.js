@@ -62,7 +62,7 @@ const app = new Application(
         resolution: 1,
     },
 )
-start_websocket('wss://localhost:8081')
+start_websocket('wss://beta.jnferner.com/socket')
 document.body.appendChild(app.view)
 
 loader
