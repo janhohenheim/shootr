@@ -200,13 +200,17 @@ where
 }
 
 fn build_server(handle: &Handle) -> WsServer<TlsAcceptor, TcpListener> {
-    let mut file = File::open(&read_env_var("CERT_FILE")).unwrap();
+    let mut file = File::open(&read_env_var("CERT_FILE")).expect("Failed to open certificate file");
     let mut pkcs12 = vec![];
     file.read_to_end(&mut pkcs12).unwrap();
-    let pkcs12 = Pkcs12::from_der(&pkcs12, &read_env_var("CERT_PW")).unwrap();
+    let pkcs12 = Pkcs12::from_der(&pkcs12, &read_env_var("CERT_PW")).expect(
+        "Failed to open certificate file with given password",
+    );
 
     let address = format!("localhost:{}", read_env_var("CORE_PORT"));
-    let acceptor = TlsAcceptor::builder(pkcs12).unwrap().build().unwrap();
+    let acceptor = TlsAcceptor::builder(pkcs12).unwrap().build().expect(
+        "Failed to build TLS acceptor",
+    );
     Server::bind_secure(address, acceptor, &handle).expect("Failed to create server")
 }
 
