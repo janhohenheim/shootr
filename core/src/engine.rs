@@ -5,6 +5,7 @@ extern crate tokio_core;
 extern crate serde;
 extern crate serde_json;
 extern crate dotenv;
+extern crate native_tls;
 
 use self::dotenv::dotenv;
 
@@ -18,12 +19,16 @@ use self::futures::{Future, Sink, Stream};
 use self::futures::sync::mpsc;
 use self::futures_cpupool::CpuPool;
 
+use self::native_tls::{Pkcs12, TlsAcceptor};
+
 use std::sync::{RwLock, Arc};
 use std::rc::Rc;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::collections::HashMap;
 use std::cell::RefCell;
+use std::fs::File;
+use std::io::Read;
 
 use model::ClientState;
 use util::read_env_var;
@@ -31,7 +36,7 @@ use util::read_env_var;
 pub type Id = u32;
 
 type SinkContent = websocket::client::async::Framed<
-    tokio_core::net::TcpStream,
+    websocket::client::async::TlsStream<tokio_core::net::TcpStream>,
     websocket::async::MessageCodec<OwnedMessage>,
 >;
 type SplitSink = futures::stream::SplitSink<SinkContent>;
@@ -67,8 +72,14 @@ where
     let remote = core.remote();
 
     let server = {
+        let mut file = File::open(&read_env_var("CERT_FILE")).unwrap();
+        let mut pkcs12 = vec![];
+        file.read_to_end(&mut pkcs12).unwrap();
+        let pkcs12 = Pkcs12::from_der(&pkcs12, &read_env_var("CERT_PW")).unwrap();
+
         let address = format!("localhost:{}", read_env_var("CORE_PORT"));
-        Server::bind(address, &handle).expect("Failed to create server")
+        let acceptor = TlsAcceptor::builder(pkcs12).unwrap().build().unwrap();
+        Server::bind_secure(address, acceptor, &handle).expect("Failed to create server")
     };
     let pool = Arc::new(RwLock::new(CpuPool::new_num_cpus()));
     let connections = Arc::new(RwLock::new(HashMap::new()));
