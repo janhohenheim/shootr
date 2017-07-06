@@ -62,7 +62,9 @@ const app = new Application(
         resolution: 1,
     },
 )
-start_websocket('wss://beta.jnferner.com/socket')
+
+const addr = window.location.hostname === 'localhost' ? 'ws://localhost:8081' : 'wss://beta.jnferner.com/socket'
+start_websocket(addr)
 document.body.appendChild(app.view)
 
 loader
