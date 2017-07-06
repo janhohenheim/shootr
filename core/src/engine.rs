@@ -10,10 +10,11 @@ extern crate native_tls;
 use self::dotenv::dotenv;
 
 use self::websocket::message::OwnedMessage;
-use self::websocket::server::InvalidConnection;
+use self::websocket::server::{WsServer, InvalidConnection};
 use self::websocket::async::Server;
 
 use self::tokio_core::reactor::{Handle, Remote, Core};
+use self::tokio_core::net::TcpListener;
 
 use self::futures::{Future, Sink, Stream};
 use self::futures::sync::mpsc;
@@ -71,16 +72,7 @@ where
     let handle = core.handle();
     let remote = core.remote();
 
-    let server = {
-        let mut file = File::open(&read_env_var("CERT_FILE")).unwrap();
-        let mut pkcs12 = vec![];
-        file.read_to_end(&mut pkcs12).unwrap();
-        let pkcs12 = Pkcs12::from_der(&pkcs12, &read_env_var("CERT_PW")).unwrap();
-
-        let address = format!("localhost:{}", read_env_var("CORE_PORT"));
-        let acceptor = TlsAcceptor::builder(pkcs12).unwrap().build().unwrap();
-        Server::bind_secure(address, acceptor, &handle).expect("Failed to create server")
-    };
+    let server = build_server(&handle);
     let pool = Arc::new(RwLock::new(CpuPool::new_num_cpus()));
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
@@ -207,6 +199,16 @@ where
     );
 }
 
+fn build_server(handle: &Handle) -> WsServer<TlsAcceptor, TcpListener> {
+    let mut file = File::open(&read_env_var("CERT_FILE")).unwrap();
+    let mut pkcs12 = vec![];
+    file.read_to_end(&mut pkcs12).unwrap();
+    let pkcs12 = Pkcs12::from_der(&pkcs12, &read_env_var("CERT_PW")).unwrap();
+
+    let address = format!("localhost:{}", read_env_var("CORE_PORT"));
+    let acceptor = TlsAcceptor::builder(pkcs12).unwrap().build().unwrap();
+    Server::bind_secure(address, acceptor, &handle).expect("Failed to create server")
+}
 
 fn process_message<T>(
     id: Id,
