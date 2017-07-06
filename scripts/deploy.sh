@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "Compiling release binaries"
+(cd core/ && cargo build --release);
+
 echo "stopping services..."
 ssh jnf service shootr stop;
 ssh jnf service pixi stop;

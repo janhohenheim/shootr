@@ -67,7 +67,7 @@ where
     let remote = core.remote();
 
     let server = build_server(&handle);
-    let pool = Arc::new(RwLock::new(CpuPool::new_num_cpus()));
+    let pool = Arc::new(RwLock::new(CpuPool::new(3)));
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
     let (send_channel_out, send_channel_in) = mpsc::unbounded();
