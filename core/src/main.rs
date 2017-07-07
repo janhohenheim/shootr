@@ -10,7 +10,10 @@ use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::ecs::{comp, sys, res};
 use shootr::util::read_env_var;
 use res::Ids;
+
 use std::sync::{Arc, RwLock};
+use std::thread::sleep;
+use std::time::Duration;
 
 fn main() {
     shootr::engine::execute::<Handler>();
@@ -47,9 +50,9 @@ impl EventHandler for Handler {
         let mut renderer = DispatcherBuilder::new().add(sys::Send, "send", &[]).build();
         physics.dispatch(&mut world.res);
 
-        let mut lag: i64 = 0;
+        let mut lag: u64 = 0;
         let mut previous = Utc::now();
-        let ms_per_update = read_env_var("CORE_MS_PER_UPDATE").parse::<i64>().expect(
+        let ms_per_update = read_env_var("CORE_MS_PER_UPDATE").parse::<u64>().expect(
             "Failed to parse environmental variable as integer",
         );
 
@@ -65,6 +68,7 @@ impl EventHandler for Handler {
             let progress = lag as f64 / ms_per_update as f64;
             world.add_resource(res::TimeProgress(progress));
             renderer.dispatch(&mut world.res);
+            sleep(Duration::from_millis(ms_per_update - lag));
         }
     }
     fn message(&self, msg: &Msg) {
@@ -79,14 +83,13 @@ impl EventHandler for Handler {
         let pos = ids.iter().position(|&x| x == id).expect(
             "Tried to remove id that was not added in the first place",
         );
+        
         ids.remove(pos);
     }
 }
 
 
 
-fn elapsed_time(from: chrono::DateTime<Utc>, to: chrono::DateTime<Utc>) -> i64 {
-    to.signed_duration_since(from).num_microseconds().expect(
-        "Too much time passed between DateTimes",
-    )
+fn elapsed_time(from: chrono::DateTime<Utc>, to: chrono::DateTime<Utc>) -> u64 {
+    to.signed_duration_since(from).num_milliseconds() as u64
 }
