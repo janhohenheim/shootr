@@ -7,7 +7,7 @@ Good: `Fix style error in readme`
 Aditionally, for organizatory purposes, it would be appreciated if you prefixed your commits to show which part of the project you've worked on. 
 
 For example, if you fixed a typo in the readme file, the commit message should look like this:   
-`Repo: Fix typo`
+`Repo: Fix typo in readme`
 
 If you fixed a physics bug, a possible commit message would be:  
 `Core: Fix character getting stuck in walls`
