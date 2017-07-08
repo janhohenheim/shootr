@@ -1,52 +1,66 @@
 'use strict'
 
 let io = null
-let reconnectingID = null
+let reconnectingText = null
+let lastMessage = null
+const MIN_WAIT = 100
+let wait = MIN_WAIT
 
-function start_websocket(wsLocation) {
-    io = new WebSocket(wsLocation)
-    io.onopen = (event) => {
-        if (!reconnectingID)
-            return;
-        window.clearInterval(reconnectingID)
-        reconnectingID = 0
+function resetWait() {
+    wait = MIN_WAIT
+}
+
+function incrementWait() {
+    const MAX_WAIT = 2000
+    if (wait < MAX_WAIT)
+        wait *= 1.25
+    else
+        wait = MAX_WAIT
+}
+
+function connect(address) {
+    io = new WebSocket(address)
+    io.onopen = () => {
+        resetWait()
         if (reconnectingText) {
             app.stage.removeChild(reconnectingText)
             reconnectingText = null
         }
-    }
+    };
 
     io.onmessage = (msg) => {
         lastMessage = msg.data
     }
 
     io.onclose = () => {
-        if (reconnectingID)
-            return;
-        reconnectingText = new PIXI.Text('Reconnecting...')
-        reconnectingText.anchor.set(0.5)
-        reconnectingText.x = 400
-        reconnectingText.y = 500
-
-        app.stage.addChild(reconnectingText)
-
+        if (!reconnectingText && app) {
+            reconnectingText = new PIXI.Text('Reconnecting...')
+            reconnectingText.anchor.set(0.5)
+            reconnectingText.y = 500
+            reconnectingText.x = 400
+            app.stage.addChild(reconnectingText)
+        }
         io = null
-        reconnectingID = setInterval(() => {
-            start_websocket(wsLocation)
-        }, 1000)
-    }
+        setTimeout(() => {
+            incrementWait()
+            connect(address);
+        }, wait)
+    };
+
+    io.onerror = (err) => {
+        console.error('Socket encountered error: ', err.message, 'Closing socket')
+        io.close()
+        io = null
+    };
 }
 
 
-let lastMessage = undefined
-let reconnectingText = undefined;
-
 
 function send(data) {
-    if (!io || !reconnectingID)
-        return;
-    console.log('sending data: ', data)
-    io.send(data)
+    if (io && io.readyState === 1) {
+        console.log('sending data: ', data)
+        io.send(data)
+    }
 }
 
 const Application = PIXI.Application,
@@ -64,7 +78,7 @@ const app = new Application(
 )
 
 const addr = window.location.hostname === 'localhost' ? 'ws://localhost:8081' : 'wss://beta.jnferner.com/socket'
-start_websocket(addr)
+connect(addr)
 document.body.appendChild(app.view)
 
 loader
