@@ -143,18 +143,25 @@ where
 
     // Handle sending messages to a client
     let connections_inner = connections.clone();
+    let event_handler_inner = event_handler.clone();
     let send_handler = pool.spawn_fn(move || {
         let connections = connections_inner.clone();
+        let event_handler = event_handler_inner.clone();
         send_channel_in.for_each(move |(id, state): (Id, Arc<RwLock<ClientState>>)| {
-            let mut sink_guard = connections.write().unwrap();
+            let mut conn = connections.write().unwrap();
             // Todo: don't even send invalid ids
-            if let Some(mut sink) = sink_guard.get_mut(&id) {
+            let mut is_ok = true;
+            if let Some(mut sink) = conn.get_mut(&id) {
                 let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
                 //println!("Sending message: {}", msg);
                 sink.start_send(OwnedMessage::Text(msg)).expect(
                     "Failed to start sending message",
                 );
-                sink.poll_complete().expect("Failed to send message");
+                let result = sink.poll_complete();
+                is_ok = result.is_ok();
+            }
+            if !is_ok {
+                kick(&mut conn, id, &*event_handler);
             }
             Ok(())
         })
@@ -206,16 +213,22 @@ fn process_message<T>(
             event_handler.message(&msg);
         }
         OwnedMessage::Close(_) => {
-            connections
-                .write()
-                .unwrap()
-                .remove(&id)
-                .and_then(|_| Some(println!("Client with id {} disconnected", id)))
-                .expect("Tried to remove id that was not in list");
-            event_handler.disconnect(id);
+            let mut conn = connections.write().unwrap();
+            kick(&mut conn, id, event_handler);
         }
         _ => {}
     };
+}
+
+fn kick<T>(connections: &mut HashMap<Id, SplitSink>, id: Id, event_handler: &T)
+where
+    T: EventHandler,
+{
+    connections
+        .remove(&id)
+        .and_then(|_| Some(println!("Client with id {} disconnected", id)))
+        .expect("Tried to remove id that was not in list");
+    event_handler.disconnect(id);
 }
 
 
