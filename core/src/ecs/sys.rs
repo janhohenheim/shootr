@@ -9,7 +9,7 @@ use std::sync::{Arc, RwLock};
 use super::comp::{Pos, Vel};
 use super::res::{TimeProgress, Ids};
 use engine::Engine;
-use model::{ClientState, Axis};
+use model::ClientState;
 
 
 pub struct Physics;
@@ -26,42 +26,26 @@ impl<'a> System<'a> for Physics {
 }
 
 fn handle_movement(pos: &mut Pos, vel: &mut Vel, min: &Pos, max: &Pos) {
-    let new_x = pos.x + vel.x;
-    let new_y = pos.y + vel.y;
-    if new_x > max.x {
-        bounce(pos, vel, max, &Axis::X);
-    } else if new_x < 0 {
-        bounce(pos, vel, min, &Axis::X);
-    } else if new_y > max.y {
-        bounce(pos, vel, max, &Axis::Y);
-    } else if new_y < 0 {
-        bounce(pos, vel, min, &Axis::Y);
-    } else {
-        pos.x = new_x;
-        pos.y = new_y;
+    pos.x += vel.x;
+    pos.y += vel.y;
+    if pos.x > max.x {
+        vel.x = -vel.x;
+        pos.x = max.x;
+    }
+    if pos.y > max.y {
+        vel.y = -vel.y;
+        pos.y = max.y;
+    }
+    if pos.x < min.x {
+        vel.x = -vel.x;
+        pos.x = min.x;
+    }
+    if pos.y < min.y {
+        vel.y = -vel.y;
+        pos.y = min.y;
     }
 }
 
-fn bounce(pos: &mut Pos, vel: &mut Vel, max: &Pos, overflowing_axis: &Axis) {
-    let (pos_overflow, pos_other) = match *overflowing_axis {
-        Axis::X => (&mut pos.x, &mut pos.y),
-        Axis::Y => (&mut pos.y, &mut pos.x),
-    };
-    let (vel_overflow, vel_other) = match *overflowing_axis {
-        Axis::X => (&mut vel.x, &mut vel.y),
-        Axis::Y => (&mut vel.y, &mut vel.x),
-    };
-    let (max_overflow, _) = match *overflowing_axis {
-        Axis::X => (max.x, max.y),
-        Axis::Y => (max.y, max.x),
-    };
-
-    let delta = (*pos_overflow + *vel_overflow) - max_overflow;
-    let coefficient = *vel_overflow as f64 / delta as f64;
-    *pos_overflow = max_overflow;
-    *pos_other += (*vel_other as f64 * coefficient) as i32;
-    *vel_overflow = -*vel_overflow;
-}
 
 pub struct Send;
 impl<'a> System<'a> for Send {
