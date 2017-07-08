@@ -83,7 +83,7 @@ impl EventHandler for Handler {
         let pos = ids.iter().position(|&x| x == id).expect(
             "Tried to remove id that was not added in the first place",
         );
-        
+
         ids.remove(pos);
     }
 }

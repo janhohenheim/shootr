@@ -67,7 +67,7 @@ where
     let remote = core.remote();
 
     let server = build_server(&handle);
-    let pool = Arc::new(RwLock::new(CpuPool::new(3)));
+    let pool = CpuPool::new(3);
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
     let (send_channel_out, send_channel_in) = mpsc::unbounded();
@@ -122,58 +122,49 @@ where
     let remote_inner = remote.clone();
     let connections_inner = connections.clone();
     let event_handler_inner = event_handler.clone();
-    let receive_handler = pool.read()
-        .unwrap()
-        .spawn_fn(|| {
-            receive_channel_in.for_each(move |(id, stream)| {
-                let connections = connections_inner.clone();
-                let event_handler = event_handler_inner.clone();
-                remote_inner.spawn(move |_| {
-                    let connections = connections.clone();
-                    let event_handler = event_handler.clone();
-                    stream
-                        .for_each(move |msg| {
-                            process_message(id, &msg, &*event_handler, connections.clone());
-                            Ok(())
-                        })
-                        .map_err(|e| println!("Error while receiving messages: {}", e))
-                });
-                Ok(())
-            })
+    let receive_handler = pool.spawn_fn(|| {
+        receive_channel_in.for_each(move |(id, stream)| {
+            let connections = connections_inner.clone();
+            let event_handler = event_handler_inner.clone();
+            remote_inner.spawn(move |_| {
+                let connections = connections.clone();
+                let event_handler = event_handler.clone();
+                stream
+                    .for_each(move |msg| {
+                        process_message(id, &msg, &*event_handler, connections.clone());
+                        Ok(())
+                    })
+                    .map_err(|e| println!("Error while receiving messages: {}", e))
+            });
+            Ok(())
         })
-        .map_err(|e| println!("Error while receiving messages: {:?}", e));
+    }).map_err(|e| println!("Error while receiving messages: {:?}", e));
 
 
     // Handle sending messages to a client
     let connections_inner = connections.clone();
-    let send_handler = pool.read()
-        .unwrap()
-        .spawn_fn(move || {
-            let connections = connections_inner.clone();
-            send_channel_in.for_each(move |(id, state): (Id, Arc<RwLock<ClientState>>)| {
-                let mut sink_guard = connections.write().unwrap();
-                // Todo: don't even send invalid ids
-                if let Some(mut sink) = sink_guard.get_mut(&id) {
-                    let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
-                    //println!("Sending message: {}", msg);
-                    sink.start_send(OwnedMessage::Text(msg)).expect(
-                        "Failed to start sending message",
-                    );
-                    sink.poll_complete().expect("Failed to send message");
-                }
-                Ok(())
-            })
+    let send_handler = pool.spawn_fn(move || {
+        let connections = connections_inner.clone();
+        send_channel_in.for_each(move |(id, state): (Id, Arc<RwLock<ClientState>>)| {
+            let mut sink_guard = connections.write().unwrap();
+            // Todo: don't even send invalid ids
+            if let Some(mut sink) = sink_guard.get_mut(&id) {
+                let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
+                //println!("Sending message: {}", msg);
+                sink.start_send(OwnedMessage::Text(msg)).expect(
+                    "Failed to start sending message",
+                );
+                sink.poll_complete().expect("Failed to send message");
+            }
+            Ok(())
         })
-        .map_err(|e| println!("Error while sending messages: {:?}", e));
+    }).map_err(|e| println!("Error while sending messages: {:?}", e));
 
     // Run maIn loop
-    let main_fn = pool.read()
-        .unwrap()
-        .spawn_fn(move || {
-            event_handler.main_loop();
-            Ok::<(), ()>(())
-        })
-        .map_err(|e| println!("Error in main callback function: {:?}", e));
+    let main_fn = pool.spawn_fn(move || {
+        event_handler.main_loop();
+        Ok::<(), ()>(())
+    }).map_err(|e| println!("Error in main callback function: {:?}", e));
     let handlers = main_fn.select2(connection_handler.select2(
         receive_handler.select(send_handler),
     ));
@@ -193,8 +184,7 @@ where
     );
 }
 
-fn build_server(handle: &Handle) -> WsServer<NoTlsAcceptor, TcpListener>
-{
+fn build_server(handle: &Handle) -> WsServer<NoTlsAcceptor, TcpListener> {
     let address = format!("localhost:{}", read_env_var("CORE_PORT"));
     Server::bind(address, handle).expect("Failed to create server")
 }
