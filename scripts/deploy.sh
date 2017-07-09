@@ -10,7 +10,7 @@ ssh jnf service pixi stop;
 SHOOTR_LOCATION=jnf:/usr/local/src/pixi;
 echo "copying files to $SHOOTR_LOCATION..."
 scp target/release/shootr $SHOOTR_LOCATION;
-scp -r web/public web/app.js web/yarn.lock web/package.js web/package-lock.json $SHOOTR_LOCATION;
+scp -r web/public web/app.js web/yarn.lock web/package.json web/package-lock.json $SHOOTR_LOCATION;
 scp .env $SHOOTR_LOCATION;
 
 echo "Updating npm depencies..."
