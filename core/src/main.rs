@@ -65,8 +65,6 @@ impl EventHandler for Handler {
                 physics.dispatch(&mut world.res);
                 lag -= ms_per_update;
             }
-            let progress = lag as f64 / ms_per_update as f64;
-            world.add_resource(res::TimeProgress(progress));
             renderer.dispatch(&mut world.res);
             sleep(Duration::from_millis(ms_per_update - lag));
         }

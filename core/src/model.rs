@@ -1,10 +1,9 @@
-use ecs::comp::Pos;
-use ecs::res::TimeProgress;
+use ecs::comp::{Pos, Vel};
 
 #[derive(Serialize)]
 pub struct ClientState {
     pub pos: Pos,
-    pub progress: TimeProgress,
+    pub vel: Vel,
 }
 
 #[derive(Serialize, Debug)]

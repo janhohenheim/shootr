@@ -2,9 +2,6 @@ use engine::Id;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock};
 
-#[derive(Clone, Debug, Serialize)]
-pub struct TimeProgress(pub f64);
-
 type IdsType = Arc<RwLock<Vec<Id>>>;
 #[derive(Clone, Debug)]
 pub struct Ids(pub IdsType);

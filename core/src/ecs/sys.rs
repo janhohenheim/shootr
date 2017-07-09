@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 
 use super::comp::{Pos, Vel};
-use super::res::{TimeProgress, Ids};
+use super::res::Ids;
 use engine::Engine;
 use model::ClientState;
 
@@ -49,20 +49,17 @@ fn handle_movement(pos: &mut Pos, vel: &mut Vel, min: &Pos, max: &Pos) {
 
 pub struct Send;
 impl<'a> System<'a> for Send {
-    type SystemData = (Fetch<'a, TimeProgress>,
-     Fetch<'a, Ids>,
-     Fetch<'a, Engine>,
-     ReadStorage<'a, Pos>);
+    type SystemData = (Fetch<'a, Ids>, Fetch<'a, Engine>, ReadStorage<'a, Pos>, ReadStorage<'a, Vel>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (progress, ids, engine, pos) = data;
-        let progress = progress.deref();
+        let (ids, engine, pos, vel) = data;
         let ids = ids.deref();
         let engine = engine.deref();
 
+        let (pos, vel) = (&pos, &vel).join().take(1).next().unwrap();
         let state = ClientState {
-            pos: pos.join().take(1).next().unwrap().clone(),
-            progress: progress.clone(),
+            pos: pos.clone(),
+            vel: vel.clone(),
         };
         send(engine, ids, state);
     }
