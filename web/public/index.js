@@ -29,7 +29,7 @@ function connect(address) {
     };
 
     io.onmessage = (msg) => {
-        lastMessage = msg.data
+        states.push(JSON.parse(msg.data))
     }
 
     io.onclose = () => {
@@ -127,16 +127,10 @@ function gameLoop(delta) {
     state(delta)
 }
 
+let states = []
+
 function play(delta) {
-    if (!lastMessage)
-        return
-    const update = JSON.parse(lastMessage)
-    const now = +new Date();
-    const elapsed = now - update;
-    for (let blob of blobs) {
-        blob.x = update.pos.x
-        blob.y = update.pos.y
-    }
+    render(states)
 }
 
 function initObj(obj) {
@@ -147,4 +141,59 @@ function initObj(obj) {
     if (obj.vrotation === undefined)
         obj.vrotation = 0
     obj.anchor.set(0.5)
+}
+
+const INTERPOLATION_DELTA = 100
+
+function render(states) {
+    const res = getIndexOfRenderStateAndDelta(states)
+    if (res === null) {
+        return
+    }
+    const index = res[0]
+    const delta = res[1]
+    states.splice(0, index)
+    let interpolatedState = getInterpolatedState(states[0], states[1], delta)
+    setWorld(interpolatedState)
+}
+
+function getInterpolatedState(from, to, delta) {
+    if (delta === 0)
+        return from
+    const progress = delta / INTERPOLATION_DELTA
+    let state = from
+    state.vel.x += (to.vel.x - from.vel.x) * progress
+    state.vel.y += (to.vel.y - from.vel.y) * progress
+    state.pos.x += (to.pos.x - from.pos.x) * progress
+    state.pos.y += (to.pos.y - from.pos.y) * progress
+    state.timestamp += delta
+    return state
+}
+
+function getIndexOfRenderStateAndDelta(states) {
+    const now = timestamp()
+    let found = -1
+    let delta
+    for (let i = 0; i < states.length; i++) {
+        delta = now - states[i].timestamp
+        if (delta < INTERPOLATION_DELTA) {
+            found = i - 1
+            break
+        } else if (delta === INTERPOLATION_DELTA) {
+            found = i
+            break
+        }
+    }
+    return found === -1 ? null : [found, delta]
+}
+
+function timestamp() {
+    return +new Date()
+}
+
+function setWorld(state) {
+    for (let blob of blobs) {
+        blob.x = state.pos.x
+        blob.y = state.pos.y
+    }
 }
