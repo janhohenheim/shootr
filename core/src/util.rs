@@ -1,3 +1,6 @@
+extern crate chrono;
+
+use self::chrono::{DateTime, Utc};
 use std::env;
 
 pub fn read_env_var(var: &str) -> String {
@@ -9,4 +12,9 @@ pub fn read_env_var(var: &str) -> String {
         ))
         .into_string()
         .expect(&format!("{} does not contain a valid UTF8 string", var))
+}
+
+
+pub fn elapsed_time(from: DateTime<Utc>, to: DateTime<Utc>) -> u64 {
+    to.signed_duration_since(from).num_milliseconds() as u64
 }

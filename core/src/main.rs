@@ -8,7 +8,7 @@ use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::ecs::{comp, sys, res};
-use shootr::util::read_env_var;
+use shootr::util::{read_env_var, elapsed_time};
 use res::Ids;
 
 use std::sync::{Arc, RwLock};
@@ -84,10 +84,4 @@ impl EventHandler for Handler {
 
         ids.remove(pos);
     }
-}
-
-
-
-fn elapsed_time(from: chrono::DateTime<Utc>, to: chrono::DateTime<Utc>) -> u64 {
-    to.signed_duration_since(from).num_milliseconds() as u64
 }
