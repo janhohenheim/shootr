@@ -131,6 +131,8 @@ function play(delta) {
     if (!lastMessage)
         return
     const update = JSON.parse(lastMessage)
+    const now = +new Date();
+    const elapsed = now - update;
     for (let blob of blobs) {
         blob.x = update.pos.x
         blob.y = update.pos.y
