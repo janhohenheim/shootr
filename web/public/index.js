@@ -1,10 +1,12 @@
 'use strict'
 
 let io = null
+
 let reconnectingText = null
-let lastMessage = null
 const MIN_WAIT = 100
 let wait = MIN_WAIT
+
+let states = []
 
 function resetWait() {
     wait = MIN_WAIT
@@ -97,9 +99,6 @@ document.addEventListener("keydown", (event) => {
 document.addEventListener("keyup", (event) => {
     send('keyup:' + event.key)
 })
-document.addEventListener("mousemove", (event) => {
-    //send('mousemove:' + event.clientX + ' ' + event.clientY)
-})
 
 function loadProgressHandler(loader, resource) {
     console.log('loading: ' + resource.name + ' (' + resource.url + ')')
@@ -108,17 +107,12 @@ function loadProgressHandler(loader, resource) {
         console.error(resource.error)
 }
 
-let blobs = []
+let blob
 
 function setup() {
-    for (let i = 0; i < 1; i++) {
-        const blob = new Sprite(resources.dungeonAtlas.textures['blob.png'])
-        app.stage.addChild(blob)
-        blobs.push(blob)
-    }
-
-    for (let obj of app.stage.children)
-        initObj(obj)
+    blob = new Sprite(resources.dungeonAtlas.textures['blob.png'])
+    blob.anchor.set(0.5)
+    app.stage.addChild(blob)
 }
 
 let state = play
@@ -127,26 +121,14 @@ function gameLoop(delta) {
     state(delta)
 }
 
-let states = []
-
 function play(delta) {
     render(states)
-}
-
-function initObj(obj) {
-    if (obj.vx === undefined)
-        obj.vx = 0
-    if (obj.vy === undefined)
-        obj.vy = 0
-    if (obj.vrotation === undefined)
-        obj.vrotation = 0
-    obj.anchor.set(0.5)
 }
 
 const INTERPOLATION_DELTA = 100
 
 function render(states) {
-    const now = timestamp()
+    const now = new Date().getTime()
     const renderTime = now - INTERPOLATION_DELTA
     const index = getIndexOfRenderState(states, renderTime)
     if (index === null)
@@ -183,13 +165,8 @@ function getInterpolatedState(from, to, renderTime) {
     return state
 }
 
-function timestamp() {
-    return new Date().getTime()
-}
 
 function setWorld(state) {
-    for (let blob of blobs) {
-        blob.x = state.pos.x
-        blob.y = state.pos.y
-    }
+    blob.x = state.pos.x
+    blob.y = state.pos.y
 }
