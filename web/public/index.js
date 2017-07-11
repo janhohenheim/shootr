@@ -138,15 +138,9 @@ function render(states) {
 }
 
 function getIndexOfRenderState(states, renderTime) {
-    let found = null
-    for (let i = 0; i < states.length; i++) {
-        if (states[i].timestamp >= renderTime) {
-            if (i !== 0)
-                found = i - 1
-            break
-        }
-    }
-    return found
+    const found = states.findIndex((state) => state.timestamp >= renderTime)
+
+    return found - 1
 }
 
 function getInterpolatedState(from, to, renderTime) {
