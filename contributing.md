@@ -20,4 +20,3 @@ The possible prefixes are:
  - **Repo**: Changes related to github, documentation, licensing, CI, etc.
  
  If you're uncertain what to pick: Don't worry, we will not deny your pull request if you used the wrong prefix :)
-
