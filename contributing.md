@@ -16,6 +16,7 @@ The possible prefixes are:
  - **Core**: Rust backend of the game
  - **Site**: Node backend of the site the game runs on
  - **Client**: Frontend of both the website and the game, e.g. rendering
+ - **Scripts**: Everything in the `scripts/` folder
  - **Repo**: Changes related to github, documentation, licensing, CI, etc.
  
  If you're uncertain what to pick: Don't worry, we will not deny your pull request if you used the wrong prefix :)
