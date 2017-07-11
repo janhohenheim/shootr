@@ -8,7 +8,7 @@ use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::ecs::{comp, sys, res};
-use shootr::util::{read_env_var, elapsed_time};
+use shootr::util::{read_env_var, elapsed_ms};
 use res::Ids;
 
 use std::sync::{Arc, RwLock};
@@ -58,7 +58,7 @@ impl EventHandler for Handler {
         let ms_per_update = 1000 / updates_per_sec;
         loop {
             let current = Utc::now();
-            let elapsed = elapsed_time(previous, current);
+            let elapsed = elapsed_ms(previous, current);
             previous = current;
             lag += elapsed;
             while lag >= ms_per_update {

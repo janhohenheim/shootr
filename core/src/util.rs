@@ -15,6 +15,6 @@ pub fn read_env_var(var: &str) -> String {
 }
 
 
-pub fn elapsed_time(from: DateTime<Utc>, to: DateTime<Utc>) -> u64 {
+pub fn elapsed_ms(from: DateTime<Utc>, to: DateTime<Utc>) -> u64 {
     to.signed_duration_since(from).num_milliseconds() as u64
 }

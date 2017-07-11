@@ -12,7 +12,7 @@ use super::comp::{Pos, Vel};
 use super::res::Ids;
 use engine::Engine;
 use model::ClientState;
-use util::elapsed_time;
+use util::elapsed_ms;
 
 pub struct Physics;
 impl<'a> System<'a> for Physics {
@@ -62,7 +62,7 @@ impl<'a> System<'a> for Send {
         let state = ClientState {
             pos: pos.clone(),
             vel: vel.clone(),
-            timestamp: elapsed_time(Utc.timestamp(0, 0), Utc::now()),
+            timestamp: elapsed_ms(Utc.timestamp(0, 0), Utc::now()),
         };
         send(engine, ids, state);
     }
