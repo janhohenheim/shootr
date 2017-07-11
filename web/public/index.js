@@ -146,49 +146,45 @@ function initObj(obj) {
 const INTERPOLATION_DELTA = 100
 
 function render(states) {
-    const res = getIndexOfRenderStateAndDelta(states)
-    if (res === null) {
+    const now = timestamp()
+    const renderTime = now - INTERPOLATION_DELTA
+    const index = getIndexOfRenderState(states, renderTime)
+    if (index === null)
         return
-    }
-    const index = res[0]
-    const delta = res[1]
     states.splice(0, index)
-    let interpolatedState = getInterpolatedState(states[0], states[1], delta)
+    let interpolatedState = getInterpolatedState(states[0], states[1], renderTime)
     setWorld(interpolatedState)
 }
 
-function getInterpolatedState(from, to, delta) {
-    if (delta === 0)
-        return from
-    const progress = delta / INTERPOLATION_DELTA
-    let state = from
-    state.vel.x += (to.vel.x - from.vel.x) * progress
-    state.vel.y += (to.vel.y - from.vel.y) * progress
-    state.pos.x += (to.pos.x - from.pos.x) * progress
-    state.pos.y += (to.pos.y - from.pos.y) * progress
-    state.timestamp += delta
-    return state
-}
-
-function getIndexOfRenderStateAndDelta(states) {
-    const now = timestamp()
-    let found = -1
-    let delta
+function getIndexOfRenderState(states, renderTime) {
+    let found = null
     for (let i = 0; i < states.length; i++) {
-        delta = now - states[i].timestamp
-        if (delta < INTERPOLATION_DELTA) {
-            found = i - 1
-            break
-        } else if (delta === INTERPOLATION_DELTA) {
-            found = i
+        if (states[i].timestamp >= renderTime) {
+            if (i !== 0)
+                found = i - 1
             break
         }
     }
-    return found === -1 ? null : [found, delta]
+    return found
+}
+
+function getInterpolatedState(from, to, renderTime) {
+    const total = to.timestamp - from.timestamp
+    const progress = renderTime - from.timestamp
+    if (total === 0 || progress === 0)
+        return from
+    const fraction = progress / total
+    let state = from
+    state.vel.x += (to.vel.x - from.vel.x) * fraction
+    state.vel.y += (to.vel.y - from.vel.y) * fraction
+    state.pos.x += (to.pos.x - from.pos.x) * fraction
+    state.pos.y += (to.pos.y - from.pos.y) * fraction
+    state.timestamp = renderTime
+    return state
 }
 
 function timestamp() {
-    return +new Date()
+    return new Date().getTime()
 }
 
 function setWorld(state) {
