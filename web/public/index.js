@@ -91,8 +91,6 @@ loader
     .on('progress', loadProgressHandler)
     .load(setup)
 
-app.ticker.add(gameLoop)
-
 document.addEventListener("keydown", (event) => {
     send('keydown:' + event.key)
 })
@@ -113,6 +111,7 @@ function setup() {
     blob = new Sprite(resources.dungeonAtlas.textures['blob.png'])
     blob.anchor.set(0.5)
     app.stage.addChild(blob)
+    app.ticker.add(gameLoop)
 }
 
 let state = play
