@@ -130,7 +130,7 @@ function render(states) {
     const now = new Date().getTime()
     const renderTime = now - INTERPOLATION_DELTA
     const index = getIndexOfRenderState(states, renderTime)
-    if (index === null)
+    if (index <= 0)
         return
     states.splice(0, index)
     let interpolatedState = getInterpolatedState(states[0], states[1], renderTime)
@@ -139,7 +139,6 @@ function render(states) {
 
 function getIndexOfRenderState(states, renderTime) {
     const found = states.findIndex((state) => state.timestamp >= renderTime)
-
     return found - 1
 }
 
