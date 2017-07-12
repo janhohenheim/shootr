@@ -38,7 +38,7 @@ impl EventHandler for Handler {
         for _ in 0..1 {
             world
                 .create_entity()
-                .with(Vel { x: 8, y: 6 })
+                .with(Vel { x: 60, y: 40 })
                 .with(Pos { x: 500, y: 500 })
                 .build();
         }
