@@ -113,10 +113,9 @@ function setup() {
     connectionInfo = new PIXI.Text('')
     connectionInfo.style.fill = 0xe3e3ed
     connectionInfo.style.dropShadow = true
-    connectionInfo.style.dropShadowAlpha = 0.8
-    connectionInfo.anchor.set(0.5)
+    connectionInfo.style.dropShadowAlpha = 0.7
     connectionInfo.y = 30
-    connectionInfo.x = 120
+    connectionInfo.x = 40
     app.stage.addChild(connectionInfo)
 
     ball = new Sprite(resources.pong.textures['fancy-ball.png'])
