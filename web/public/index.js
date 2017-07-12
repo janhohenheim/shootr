@@ -132,7 +132,7 @@ function connecting() {
 
     const renderTime = getRenderTime()
     const index = getIndexOfRenderState(states, renderTime)
-    if (index > 0) {
+    if (index >= 0) {
         app.stage.removeChild(connectingText)
         state = play
     }
@@ -147,7 +147,7 @@ const INTERPOLATION_DELTA = 100
 function render(states) {
     const renderTime = getRenderTime()
     const index = getIndexOfRenderState(states, renderTime)
-    if (index <= 0)
+    if (index < 0)
         return
     states.splice(0, index)
     let interpolatedState = getInterpolatedState(states[0], states[1], renderTime)
