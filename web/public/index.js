@@ -114,27 +114,49 @@ function setup() {
     app.ticker.add(gameLoop)
 }
 
-let state = play
+let state = connecting
 
 function gameLoop(delta) {
-    state(delta)
+    state()
 }
 
-function play(delta) {
+let connectingText
+function connecting() {
+    if (!connectingText) {
+        connectingText = new PIXI.Text('Connecting...')
+        connectingText.anchor.set(0.5)
+        connectingText.y = 500
+        connectingText.x = 400
+        app.stage.addChild(connectingText)
+    }
+
+    const renderTime = getRenderTime()
+    const index = getIndexOfRenderState(states, renderTime)
+    if (index > 0) {
+        app.stage.removeChild(connectingText)
+        state = play
+    }
+}
+
+function play() {
     render(states)
 }
 
 const INTERPOLATION_DELTA = 100
 
 function render(states) {
-    const now = new Date().getTime()
-    const renderTime = now - INTERPOLATION_DELTA
+    const renderTime = getRenderTime()
     const index = getIndexOfRenderState(states, renderTime)
     if (index <= 0)
         return
     states.splice(0, index)
     let interpolatedState = getInterpolatedState(states[0], states[1], renderTime)
     setWorld(interpolatedState)
+}
+
+function getRenderTime() {
+    const now = new Date().getTime()
+    return now - INTERPOLATION_DELTA
 }
 
 function getIndexOfRenderState(states, renderTime) {
