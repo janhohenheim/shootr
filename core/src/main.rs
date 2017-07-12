@@ -7,9 +7,9 @@ use self::specs::{DispatcherBuilder, World};
 use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
-use shootr::ecs::{comp, sys, res};
 use shootr::util::{read_env_var, elapsed_ms};
-use res::Ids;
+use shootr::model::{Vel, Pos, Ids};
+use shootr::system::{Physics, Sending};
 
 use std::sync::{Arc, RwLock};
 use std::thread::sleep;
@@ -31,23 +31,23 @@ impl EventHandler for Handler {
     }
     fn main_loop(&self) {
         let mut world = World::new();
-        world.register::<comp::Pos>();
-        world.register::<comp::Vel>();
+        world.register::<Pos>();
+        world.register::<Vel>();
         world.add_resource(self.engine.clone());
         world.add_resource(self.ids.clone());
         for _ in 0..1 {
             world
                 .create_entity()
-                .with(comp::Vel { x: 8, y: 6 })
-                .with(comp::Pos { x: 500, y: 500 })
+                .with(Vel { x: 8, y: 6 })
+                .with(Pos { x: 500, y: 500 })
                 .build();
         }
 
 
         let mut physics = DispatcherBuilder::new()
-            .add(sys::Physics, "physics", &[])
+            .add(Physics, "physics", &[])
             .build();
-        let mut renderer = DispatcherBuilder::new().add(sys::Send, "send", &[]).build();
+        let mut renderer = DispatcherBuilder::new().add(Sending, "send", &[]).build();
         physics.dispatch(&mut world.res);
 
         let mut lag: u64 = 0;
