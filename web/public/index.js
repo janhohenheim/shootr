@@ -105,16 +105,16 @@ function loadProgressHandler(loader, resource) {
 let ball
 
 function setup() {
+    const background = new Sprite(resources.pong.textures['fancy-court.png'])
+    background.width = 1000
+    background.height = 1000
+    app.stage.addChild(background)
+
     connectionInfo = new PIXI.Text('')
     connectionInfo.anchor.set(0.5)
     connectionInfo.y = 20
     connectionInfo.x = 120
     app.stage.addChild(connectionInfo)
-
-    const background = new Sprite(resources.pong.textures['fancy-court.png'])
-    background.width = 1000
-    background.height = 1000
-    app.stage.addChild(background)
 
     ball = new Sprite(resources.pong.textures['fancy-ball.png'])
     ball.anchor.set(0.5)
