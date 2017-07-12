@@ -2,7 +2,8 @@
 
 let io = null
 
-let reconnectingText = null
+let connectionInfo
+
 const MIN_WAIT = 100
 let wait = MIN_WAIT
 
@@ -24,9 +25,8 @@ function connect(address) {
     io = new WebSocket(address)
     io.onopen = () => {
         resetWait()
-        if (reconnectingText) {
-            app.stage.removeChild(reconnectingText)
-            reconnectingText = null
+        if (connectionInfo) {
+            connectionInfo.visible = false
         }
     };
 
@@ -35,12 +35,9 @@ function connect(address) {
     }
 
     io.onclose = () => {
-        if (!reconnectingText && app) {
-            reconnectingText = new PIXI.Text('Reconnecting...')
-            reconnectingText.anchor.set(0.5)
-            reconnectingText.y = 500
-            reconnectingText.x = 400
-            app.stage.addChild(reconnectingText)
+        if (connectionInfo) {
+            connectionInfo.text = 'Reconnecting...'
+            connectionInfo.visible = true
         }
         io = null
         setTimeout(() => {
@@ -108,9 +105,16 @@ function loadProgressHandler(loader, resource) {
 let blob
 
 function setup() {
+    connectionInfo = new PIXI.Text('')
+    connectionInfo.anchor.set(0.5)
+    connectionInfo.y = 20
+    connectionInfo.x = 120
+    app.stage.addChild(connectionInfo)
+
     blob = new Sprite(resources.dungeonAtlas.textures['blob.png'])
     blob.anchor.set(0.5)
     app.stage.addChild(blob)
+
     app.ticker.add(gameLoop)
 }
 
@@ -120,20 +124,16 @@ function gameLoop(delta) {
     state()
 }
 
-let connectingText
 function connecting() {
-    if (!connectingText) {
-        connectingText = new PIXI.Text('Connecting...')
-        connectingText.anchor.set(0.5)
-        connectingText.y = 500
-        connectingText.x = 400
-        app.stage.addChild(connectingText)
+    if (connectionInfo) {
+        connectionInfo.text = 'Connecting...'
+        connectionInfo.visible = true
     }
 
     const renderTime = getRenderTime()
     const index = getIndexOfRenderState(states, renderTime)
     if (index >= 0) {
-        app.stage.removeChild(connectingText)
+        connectionInfo.visible = false
         state = play
     }
 }
@@ -142,7 +142,6 @@ function play() {
     render(states)
 }
 
-const INTERPOLATION_DELTA = 100
 
 function render(states) {
     const renderTime = getRenderTime()
@@ -156,6 +155,7 @@ function render(states) {
 
 function getRenderTime() {
     const now = new Date().getTime()
+    const INTERPOLATION_DELTA = 100
     return now - INTERPOLATION_DELTA
 }
 
