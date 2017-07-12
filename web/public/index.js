@@ -161,7 +161,7 @@ function render(states) {
 
 function getRenderTime() {
     const now = new Date().getTime()
-    const INTERPOLATION_DELTA = 100
+    const INTERPOLATION_DELTA = 300
     return now - INTERPOLATION_DELTA
 }
 
