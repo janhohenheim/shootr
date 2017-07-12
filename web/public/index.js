@@ -111,8 +111,11 @@ function setup() {
     app.stage.addChild(background)
 
     connectionInfo = new PIXI.Text('')
+    connectionInfo.style.fill = 0xe3e3ed
+    connectionInfo.style.dropShadow = true
+    connectionInfo.style.dropShadowAlpha = 0.8
     connectionInfo.anchor.set(0.5)
-    connectionInfo.y = 20
+    connectionInfo.y = 30
     connectionInfo.x = 120
     app.stage.addChild(connectionInfo)
 
