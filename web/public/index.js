@@ -125,10 +125,8 @@ function gameLoop(delta) {
 }
 
 function connecting() {
-    if (connectionInfo) {
-        connectionInfo.text = 'Connecting...'
-        connectionInfo.visible = true
-    }
+    connectionInfo.text = 'Connecting...'
+    connectionInfo.visible = true
 
     const renderTime = getRenderTime()
     const index = getIndexOfRenderState(states, renderTime)
