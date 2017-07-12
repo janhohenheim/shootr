@@ -69,7 +69,7 @@ const Application = PIXI.Application,
 
 const app = new Application(
     1000, 1000, {
-        backgroundColor: 0x1099bb,
+        backgroundColor: 0xFFFFFF,
         autoResize: true,
         antialias: true,
         resolution: 1,
