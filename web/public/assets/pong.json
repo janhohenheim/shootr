@@ -1,0 +1,57 @@
+{"frames": {
+
+"fancy-ball.png":
+{
+	"frame": {"x":802,"y":390,"w":32,"h":32},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":32,"h":32},
+	"sourceSize": {"w":32,"h":32},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"fancy-court.png":
+{
+	"frame": {"x":0,"y":0,"w":800,"h":600},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":800,"h":600},
+	"sourceSize": {"w":800,"h":600},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"fancy-paddle-blue.png":
+{
+	"frame": {"x":802,"y":0,"w":32,"h":128},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":32,"h":128},
+	"sourceSize": {"w":32,"h":128},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"fancy-paddle-green.png":
+{
+	"frame": {"x":802,"y":130,"w":32,"h":128},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":32,"h":128},
+	"sourceSize": {"w":32,"h":128},
+	"pivot": {"x":0.5,"y":0.5}
+},
+"fancy-paddle-grey.png":
+{
+	"frame": {"x":802,"y":260,"w":32,"h":128},
+	"rotated": false,
+	"trimmed": false,
+	"spriteSourceSize": {"x":0,"y":0,"w":32,"h":128},
+	"sourceSize": {"w":32,"h":128},
+	"pivot": {"x":0.5,"y":0.5}
+}},
+"meta": {
+	"app": "http://www.codeandweb.com/texturepacker",
+	"version": "1.0",
+	"image": "pong.png",
+	"format": "RGBA8888",
+	"size": {"w":834,"h":600},
+	"scale": "1",
+	"smartupdate": "$TexturePacker:SmartUpdate:d75c34197aadf5c7805931fbb709f0f1:c03ad421297140982468e0e1662f5498:2c58d7ddc98fbf1124a5cee203a4e94e$"
+}
+}

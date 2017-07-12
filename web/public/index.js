@@ -82,8 +82,8 @@ document.body.appendChild(app.view)
 
 loader
     .add([{
-        name: 'dungeonAtlas',
-        url: 'assets/dungeon.json'
+        name: 'pong',
+        url: 'assets/pong.json'
     }, ])
     .on('progress', loadProgressHandler)
     .load(setup)
@@ -102,7 +102,7 @@ function loadProgressHandler(loader, resource) {
         console.error(resource.error)
 }
 
-let blob
+let ball
 
 function setup() {
     connectionInfo = new PIXI.Text('')
@@ -111,9 +111,14 @@ function setup() {
     connectionInfo.x = 120
     app.stage.addChild(connectionInfo)
 
-    blob = new Sprite(resources.dungeonAtlas.textures['blob.png'])
-    blob.anchor.set(0.5)
-    app.stage.addChild(blob)
+    const background = new Sprite(resources.pong.textures['fancy-court.png'])
+    background.width = 1000
+    background.height = 1000
+    app.stage.addChild(background)
+
+    ball = new Sprite(resources.pong.textures['fancy-ball.png'])
+    ball.anchor.set(0.5)
+    app.stage.addChild(ball)
 
     app.ticker.add(gameLoop)
 }
@@ -179,6 +184,6 @@ function getInterpolatedState(from, to, renderTime) {
 
 
 function setWorld(state) {
-    blob.x = state.pos.x
-    blob.y = state.pos.y
+    ball.x = state.pos.x
+    ball.y = state.pos.y
 }
