@@ -86,12 +86,30 @@ loader
     .on('progress', loadProgressHandler)
     .load(setup)
 
+let validKeys = ["ArrowLeft", "ArrowRight"]
+let keyPressed = {
+    ArrowLeft: false,
+    ArrowRight: false
+}
 document.addEventListener("keydown", (event) => {
-    send('keydown:' + event.key)
+    sendKeyWithVal(event.key, true)
 })
 document.addEventListener("keyup", (event) => {
-    send('keyup:' + event.key)
+    sendKeyWithVal(event.key, false)
 })
+
+function sendKeyWithVal(key, val){
+    if (validKeys.indexOf(key) > -1) { 
+        sendIfNew(key, val)
+    }
+}
+
+function sendIfNew(key, val){
+    if (keyPressed[key] !== val) {
+        keyPressed[key] = val
+        send(key + ":" + val)
+    }
+}
 
 function loadProgressHandler(loader, resource) {
     console.log('loading: ' + resource.name + ' (' + resource.url + ')')
