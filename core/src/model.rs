@@ -5,7 +5,7 @@ use self::specs::{Component, VecStorage};
 use engine::Id;
 use std::ops::{Deref, DerefMut};
 use std::sync::{Arc, RwLock};
-
+use std::collections::HashMap;
 
 #[derive(Serialize)]
 pub struct ClientState {
@@ -31,6 +31,16 @@ impl DerefMut for Ids {
 }
 
 #[derive(Debug, Clone, Serialize)]
+pub struct Acc {
+    pub x: i32,
+    pub y: i32,
+}
+impl Component for Acc {
+    type Storage = VecStorage<Self>;
+}
+
+
+#[derive(Debug, Clone, Serialize)]
 pub struct Vel {
     pub x: i32,
     pub y: i32,
@@ -49,15 +59,37 @@ impl Component for Pos {
     type Storage = VecStorage<Self>;
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub enum Key {
-    ArrowLeft,
-    ArrowRight,
+    ArrowUp,
+    ArrowDown,
 }
 
+
 #[derive(Debug, Clone, Deserialize)]
-pub struct Input {
+pub struct InputMsg {
     pub id: i64,
     pub key: Key,
-    pub state: bool
+    pub pressed: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct KeyState {
+    pub pressed: bool,
+    pub fired: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PlayerInput {
+    pub key_states: HashMap<Key, KeyState>,
+}
+impl Component for PlayerInput {
+    type Storage = VecStorage<Self>;
+}
+
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BallAiInput {}
+impl Component for BallAiInput {
+    type Storage = VecStorage<Self>;
 }

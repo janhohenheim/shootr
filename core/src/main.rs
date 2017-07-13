@@ -3,18 +3,21 @@ extern crate shootr;
 extern crate specs;
 extern crate chrono;
 extern crate serde_json;
+#[macro_use]
+extern crate maplit;
 
 use self::specs::{DispatcherBuilder, World};
 use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::{Vel, Pos, Ids, Input};
+use shootr::model::{Acc, Vel, Pos, Ids, InputMsg, PlayerInput, KeyState, BallAiInput};
 use shootr::system::{Physics, Sending, InputHandler};
 
 use std::sync::{Arc, RwLock};
 use std::thread::sleep;
 use std::time::Duration;
+use std::collections::HashMap;
 
 fn main() {
     shootr::engine::execute::<Handler>();
@@ -22,46 +25,63 @@ fn main() {
 struct Handler {
     engine: Engine,
     ids: Ids,
-    inputs: RwLock<Vec<Input>>
+    inputs: Arc<RwLock<HashMap<Id, PlayerInput>>>,
 }
+
+impl Handler {
+    fn prepare_world(&self, world: &mut World) {
+        world.register::<Pos>();
+        world.register::<Vel>();
+        world.register::<Acc>();
+        world.register::<PlayerInput>();
+        world.register::<BallAiInput>();
+
+        world.add_resource(self.engine.clone());
+        world.add_resource(self.ids.clone());
+        world.add_resource(self.inputs.clone());
+
+        world
+            .create_entity()
+            .with(Vel { x: 8, y: 6 })
+            .with(Pos { x: 500, y: 500 })
+            .with(BallAiInput {})
+            .build();
+
+        world
+            .create_entity()
+            .with(Acc { x: 0, y: 0 })
+            .with(Vel { x: 0, y: 0 })
+            .with(Pos { x: 10, y: 500 })
+            .with(PlayerInput { key_states: HashMap::new() })
+            .build();
+    }
+}
+
 impl EventHandler for Handler {
     fn new(engine: Engine) -> Self {
         Handler {
             engine,
             ids: Ids(Arc::new(RwLock::new(Vec::new()))),
-            inputs: RwLock::new(Vec::new())
+            inputs: Arc::new(RwLock::new(HashMap::new())),
         }
     }
     fn main_loop(&self) {
         let mut world = World::new();
-        world.register::<Pos>();
-        world.register::<Vel>();
-        world.add_resource(self.engine.clone());
-        world.add_resource(self.ids.clone());
-        for _ in 0..1 {
-            world
-                .create_entity()
-                .with(Vel { x: 8, y: 6 })
-                .with(Pos { x: 500, y: 500 })
-                .build();
-        }
+        self.prepare_world(&mut world);
 
-        let mut input_handler = DispatcherBuilder::new()
+        let mut updater = DispatcherBuilder::new()
             .add(InputHandler, "input_handler", &[])
+            .add(Physics, "physics", &["input_handler"])
             .build();
-        let mut physics = DispatcherBuilder::new()
-            .add(Physics, "physics", &[])
-            .build();
-        let mut renderer = DispatcherBuilder::new()
+        let mut sender = DispatcherBuilder::new()
             .add(Sending, "sending", &[])
             .build();
-        physics.dispatch(&mut world.res);
 
         let mut lag: u64 = 0;
         let mut previous = Utc::now();
-        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC").parse::<u64>().expect(
-            "Failed to parse environmental variable as integer",
-        );
+        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC")
+            .parse::<u64>()
+            .expect("Failed to parse environmental variable as integer");
         let ms_per_update = 1000 / updates_per_sec;
         loop {
             let current = Utc::now();
@@ -69,19 +89,40 @@ impl EventHandler for Handler {
             previous = current;
             lag += elapsed;
 
-            input_handler.dispatch(&mut world.res);
             while lag >= ms_per_update {
-                physics.dispatch(&mut world.res);
+                updater.dispatch(&mut world.res);
                 lag -= ms_per_update;
             }
-            renderer.dispatch(&mut world.res);
+            sender.dispatch(&mut world.res);
             sleep(Duration::from_millis(ms_per_update - lag));
         }
     }
+
     fn message(&self, msg: &Msg) {
-        if let Ok(input) = serde_json::from_str::<Input>(&msg.content) {
-            println!("[{}] Client #{}:\tkey {:?} is pressed:\t{}", input.id, msg.id, input.key, input.state);
-            self.inputs.write().unwrap().push(input);
+        if let Ok(input) = serde_json::from_str::<InputMsg>(&msg.content) {
+            println!(
+                "[{}] Client #{}:\tkey {:?} is pressed:\t{}",
+                input.id,
+                msg.id,
+                input.key,
+                input.pressed
+            );
+            let mut inputs = self.inputs.write().unwrap();
+            let mut key_state = KeyState {
+                pressed: input.pressed,
+                fired: false,
+            };
+
+            if inputs.contains_key(&msg.id) {
+                let ref mut key_states = inputs.get_mut(&msg.id).unwrap().key_states;
+                if let Some(last) = key_states.get_mut(&input.key) {
+                    key_state.fired = last.pressed == true && key_state.pressed == false;
+                }
+                key_states.insert(input.key, key_state);
+            } else {
+                let key_states = PlayerInput { key_states: hashmap![input.key => key_state] };
+                inputs.insert(msg.id, key_states);
+            }
         } else {
             println!("Client #{}:\tinvalid message ({})", msg.id, msg.content);
         }
@@ -92,9 +133,9 @@ impl EventHandler for Handler {
     }
     fn disconnect(&self, id: Id) {
         let mut ids = self.ids.write().unwrap();
-        let pos = ids.iter().position(|&x| x == id).expect(
-            "Tried to remove id that was not added in the first place",
-        );
+        let pos = ids.iter()
+            .position(|&x| x == id)
+            .expect("Tried to remove id that was not added in the first place");
 
         ids.remove(pos);
     }
