@@ -54,11 +54,10 @@ function connect(address) {
 }
 
 
-
 function send(data) {
     if (io && io.readyState === 1) {
         console.log('sending data: ', data)
-        io.send(data)
+        io.send(JSON.stringify(data))
     }
 }
 
@@ -104,10 +103,17 @@ function sendKeyWithVal(key, val){
     }
 }
 
+let msgId = 0
 function sendIfNew(key, val){
     if (keyPressed[key] !== val) {
         keyPressed[key] = val
-        send(key + ":" + val)
+        let msg = {
+            id: msgId,
+            key: key,
+            state: val
+        }
+        msgId++
+        send(msg)
     }
 }
 
