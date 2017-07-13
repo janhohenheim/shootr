@@ -85,7 +85,7 @@ loader
     .on('progress', loadProgressHandler)
     .load(setup)
 
-let validKeys = ["ArrowLeft", "ArrowRight"]
+let validKeys = ["ArrowUp", "ArrowDown"]
 let keyPressed = {
     ArrowLeft: false,
     ArrowRight: false
@@ -97,20 +97,21 @@ document.addEventListener("keyup", (event) => {
     sendKeyWithVal(event.key, false)
 })
 
-function sendKeyWithVal(key, val){
-    if (validKeys.indexOf(key) > -1) { 
+function sendKeyWithVal(key, val) {
+    if (validKeys.indexOf(key) > -1) {
         sendIfNew(key, val)
     }
 }
 
 let msgId = 0
-function sendIfNew(key, val){
+
+function sendIfNew(key, val) {
     if (keyPressed[key] !== val) {
         keyPressed[key] = val
         let msg = {
             id: msgId,
             key: key,
-            state: val
+            pressed: val
         }
         msgId++
         send(msg)
@@ -212,7 +213,7 @@ function setWorld(state) {
     ball.y = state.pos.y
 
     const maxVel = Math.max(state.vel.x, state.vel.y)
-    const strength = Math.pow(Math.atan(Math.pow((maxVel/10), 1.5)), 2) - 0.2
+    const strength = Math.pow(Math.atan(Math.pow((maxVel / 10), 1.5)), 2) - 0.2
     if (strength > 0) {
         const blurFilter = new PIXI.filters.BlurFilter(strength, 1, 1)
         ball.filters = [blurFilter]
