@@ -10,7 +10,7 @@ use self::chrono::prelude::*;
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::util::{read_env_var, elapsed_ms};
 use shootr::model::{Vel, Pos, Ids, Input};
-use shootr::system::{Physics, Sending};
+use shootr::system::{Physics, Sending, InputHandler};
 
 use std::sync::{Arc, RwLock};
 use std::thread::sleep;
@@ -46,11 +46,15 @@ impl EventHandler for Handler {
                 .build();
         }
 
-
+        let mut input_handler = DispatcherBuilder::new()
+            .add(InputHandler, "input_handler", &[])
+            .build();
         let mut physics = DispatcherBuilder::new()
             .add(Physics, "physics", &[])
             .build();
-        let mut renderer = DispatcherBuilder::new().add(Sending, "send", &[]).build();
+        let mut renderer = DispatcherBuilder::new()
+            .add(Sending, "sending", &[])
+            .build();
         physics.dispatch(&mut world.res);
 
         let mut lag: u64 = 0;
@@ -64,6 +68,8 @@ impl EventHandler for Handler {
             let elapsed = elapsed_ms(previous, current);
             previous = current;
             lag += elapsed;
+
+            input_handler.dispatch(&mut world.res);
             while lag >= ms_per_update {
                 physics.dispatch(&mut world.res);
                 lag -= ms_per_update;
