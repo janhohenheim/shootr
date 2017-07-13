@@ -30,7 +30,7 @@ impl DerefMut for Ids {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Add, AddAssign)]
 pub struct Acc {
     pub x: i32,
     pub y: i32,
@@ -40,7 +40,7 @@ impl Component for Acc {
 }
 
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Add, AddAssign)]
 pub struct Vel {
     pub x: i32,
     pub y: i32,
@@ -50,11 +50,12 @@ impl Component for Vel {
 }
 
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Add, AddAssign)]
 pub struct Pos {
     pub x: i32,
     pub y: i32,
 }
+
 impl Component for Pos {
     type Storage = VecStorage<Self>;
 }
@@ -89,7 +90,7 @@ impl Component for PlayerInput {
 
 
 #[derive(Debug, Clone, Serialize)]
-pub struct BallAiInput {}
-impl Component for BallAiInput {
+pub struct Bounciness {}
+impl Component for Bounciness {
     type Storage = VecStorage<Self>;
 }

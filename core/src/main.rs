@@ -11,8 +11,8 @@ use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::{Acc, Vel, Pos, Ids, InputMsg, PlayerInput, KeyState, BallAiInput};
-use shootr::system::{Physics, Sending, InputHandler};
+use shootr::model::{Acc, Vel, Pos, Ids, InputMsg, PlayerInput, KeyState, Bounciness};
+use shootr::system::{Physics, Sending, InputHandler, Bounce};
 
 use std::sync::{Arc, RwLock};
 use std::thread::sleep;
@@ -34,19 +34,21 @@ impl Handler {
         world.register::<Vel>();
         world.register::<Acc>();
         world.register::<PlayerInput>();
-        world.register::<BallAiInput>();
+        world.register::<Bounciness>();
 
         world.add_resource(self.engine.clone());
         world.add_resource(self.ids.clone());
         world.add_resource(self.inputs.clone());
 
+        // Ball
         world
             .create_entity()
-            .with(Vel { x: 8, y: 6 })
+            .with(Vel { x: 70, y: 50 })
             .with(Pos { x: 500, y: 500 })
-            .with(BallAiInput {})
+            .with(Bounciness {})
             .build();
 
+        // Player
         world
             .create_entity()
             .with(Acc { x: 0, y: 0 })
@@ -72,6 +74,7 @@ impl EventHandler for Handler {
         let mut updater = DispatcherBuilder::new()
             .add(InputHandler, "input_handler", &[])
             .add(Physics, "physics", &["input_handler"])
+            .add(Bounce, "bounce", &["physics"])
             .build();
         let mut sender = DispatcherBuilder::new()
             .add(Sending, "sending", &[])
@@ -94,6 +97,7 @@ impl EventHandler for Handler {
                 lag -= ms_per_update;
             }
             sender.dispatch(&mut world.res);
+            world.maintain();
             sleep(Duration::from_millis(ms_per_update - lag));
         }
     }
