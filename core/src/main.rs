@@ -2,13 +2,14 @@ extern crate shootr;
 
 extern crate specs;
 extern crate chrono;
+extern crate serde_json;
 
 use self::specs::{DispatcherBuilder, World};
 use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::{Vel, Pos, Ids};
+use shootr::model::{Vel, Pos, Ids, Input};
 use shootr::system::{Physics, Sending};
 
 use std::sync::{Arc, RwLock};
@@ -21,12 +22,14 @@ fn main() {
 struct Handler {
     engine: Engine,
     ids: Ids,
+    inputs: RwLock<Vec<Input>>
 }
 impl EventHandler for Handler {
     fn new(engine: Engine) -> Self {
         Handler {
             engine,
             ids: Ids(Arc::new(RwLock::new(Vec::new()))),
+            inputs: RwLock::new(Vec::new())
         }
     }
     fn main_loop(&self) {
@@ -70,7 +73,12 @@ impl EventHandler for Handler {
         }
     }
     fn message(&self, msg: &Msg) {
-        println!("Received message: {}", msg.content);
+        if let Ok(input) = serde_json::from_str::<Input>(&msg.content) {
+            println!("[{}] Client #{}:\tkey {:?} is pressed:\t{}", input.id, msg.id, input.key, input.state);
+            self.inputs.write().unwrap().push(input);
+        } else {
+            println!("Client #{}:\tinvalid message ({})", msg.id, msg.content);
+        }
     }
     fn connect(&self, id: Id) -> bool {
         self.ids.write().unwrap().push(id);

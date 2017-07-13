@@ -49,3 +49,15 @@ impl Component for Pos {
     type Storage = VecStorage<Self>;
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub enum Key {
+    ArrowLeft,
+    ArrowRight,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Input {
+    pub id: i64,
+    pub key: Key,
+    pub state: bool
+}
