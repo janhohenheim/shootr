@@ -70,9 +70,7 @@ const Application = PIXI.Application,
 const app = new Application(
     1000, 1000, {
         backgroundColor: 0xFFFFFF,
-        autoResize: true,
         antialias: true,
-        resolution: 1,
     },
 )
 
@@ -188,4 +186,11 @@ function getInterpolatedState(from, to, renderTime) {
 function setWorld(state) {
     ball.x = state.pos.x
     ball.y = state.pos.y
+
+    const maxVel = Math.max(state.vel.x, state.vel.y)
+    const strength = Math.pow(Math.atan(Math.pow((maxVel/10), 1.5)), 2) - 0.2
+    if (strength > 0) {
+        const blurFilter = new PIXI.filters.BlurFilter(strength, 1, 1)
+        ball.filters = [blurFilter]
+    }
 }
