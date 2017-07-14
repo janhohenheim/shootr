@@ -118,9 +118,9 @@ impl EventHandler for Handler {
             };
 
             if inputs.contains_key(&msg.id) {
-                let ref mut key_states = inputs.get_mut(&msg.id).unwrap().key_states;
+                let key_states = &mut inputs.get_mut(&msg.id).unwrap().key_states;
                 if let Some(last) = key_states.get_mut(&input.key) {
-                    key_state.fired = last.pressed == true && key_state.pressed == false;
+                    key_state.fired = last.pressed && !key_state.pressed;
                 }
                 key_states.insert(input.key, key_state);
             } else {

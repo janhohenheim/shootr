@@ -13,10 +13,12 @@ use engine::{Id, Engine};
 use model::ClientState;
 use util::elapsed_ms;
 
+type Ids = Arc<RwLock<Vec<Id>>>;
+
 pub struct Sending;
 impl<'a> System<'a> for Sending {
     type SystemData = (
-        Fetch<'a, Arc<RwLock<Vec<Id>>>>, 
+        Fetch<'a, Ids>, 
         Fetch<'a, Engine>, 
         ReadStorage<'a, Pos>, 
         ReadStorage<'a, Vel>
@@ -37,7 +39,7 @@ impl<'a> System<'a> for Sending {
     }
 }
 
-fn send(engine: &Engine, ids: &Arc<RwLock<Vec<Id>>>, state: ClientState) {
+fn send(engine: &Engine, ids: &Ids, state: ClientState) {
     let state = Arc::new(RwLock::new(state));
     for id in ids.read().unwrap().iter() {
         let channel = engine.send_channel.clone();

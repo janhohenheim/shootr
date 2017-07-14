@@ -10,7 +10,7 @@ impl<'a> System<'a> for InputHandler {
 
     fn run(&mut self, (mut player_input, mut acc): Self::SystemData) {
         for (mut player_input, mut acc) in (&mut player_input, &mut acc).join() {
-            let ref mut key_states = player_input.key_states;
+            let key_states = &mut player_input.key_states;
             if let Some(state) = key_states.get_mut(&Key::ArrowUp) {
                 state.fired = false;
                 if state.pressed {

@@ -2,9 +2,6 @@ extern crate specs;
 
 use self::specs::{Component, VecStorage};
 
-use engine::Id;
-use std::ops::{Deref, DerefMut};
-use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 
 #[derive(Serialize)]
@@ -41,7 +38,7 @@ pub struct Pos {
     pub x: i32,
     pub y: i32,
 }
-
+ 
 impl Component for Pos {
     type Storage = VecStorage<Self>;
 }
