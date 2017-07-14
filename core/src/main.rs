@@ -11,7 +11,9 @@ use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::{Acc, Vel, Pos, InputMsg, PlayerInput, KeyState, Bounciness};
+use shootr::model::comp::{Acc, Vel, Pos, PlayerInput, Bounciness};
+use shootr::model::client::InputMsg;
+use shootr::model::game::KeyState;
 use shootr::system::{Physics, Sending, InputHandler, Bounce};
 use shootr::bootstrap;
 

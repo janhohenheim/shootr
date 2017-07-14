@@ -8,9 +8,9 @@ use self::chrono::{TimeZone, Utc};
 use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 
-use ::model::{Pos, Vel};
+use model::comp::{Pos, Vel};
+use model::client::ClientState;
 use engine::{Id, Engine};
-use model::ClientState;
 use util::elapsed_ms;
 
 type Ids = Arc<RwLock<Vec<Id>>>;
@@ -18,10 +18,10 @@ type Ids = Arc<RwLock<Vec<Id>>>;
 pub struct Sending;
 impl<'a> System<'a> for Sending {
     type SystemData = (
-        Fetch<'a, Ids>, 
-        Fetch<'a, Engine>, 
-        ReadStorage<'a, Pos>, 
-        ReadStorage<'a, Vel>
+        Fetch<'a, Ids>,
+        Fetch<'a, Engine>,
+        ReadStorage<'a, Pos>,
+        ReadStorage<'a, Vel>,
     );
 
     fn run(&mut self, data: Self::SystemData) {

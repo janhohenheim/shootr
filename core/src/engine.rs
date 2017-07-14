@@ -28,7 +28,7 @@ use std::ops::Deref;
 use std::collections::HashMap;
 use std::cell::RefCell;
 
-use model::ClientState;
+use model::client::ClientState;
 use util::read_env_var;
 
 pub type Id = u32;

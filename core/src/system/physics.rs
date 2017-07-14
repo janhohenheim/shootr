@@ -2,7 +2,8 @@ extern crate specs;
 
 use self::specs::{Join, WriteStorage, ReadStorage, System, Fetch};
 
-use model::{Bounds, Pos, Vel, Acc};
+use model::comp::{Pos, Vel, Acc};
+use model::game::Bounds;
 use util::clamp;
 
 pub struct Physics;
@@ -12,7 +13,7 @@ impl<'a> System<'a> for Physics {
         WriteStorage<'a, Vel>,
         ReadStorage<'a, Acc>,
         Fetch<'a, Bounds<Vel>>,
-        Fetch<'a, Bounds<Pos>>
+        Fetch<'a, Bounds<Pos>>,
     );
 
     fn run(&mut self, (mut pos, mut vel, acc, vel_bounds, pos_bounds): Self::SystemData) {

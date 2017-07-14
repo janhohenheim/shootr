@@ -1,7 +1,8 @@
 extern crate specs;
 
 use self::specs::World;
-use ::model::{Pos, Vel, Acc, PlayerInput, Bounciness, Bounds};
+use model::comp::{Pos, Vel, Acc, PlayerInput, Bounciness};
+use model::game::Bounds;
 
 pub fn prepare_world(world: &mut World) {
     register_components(world);
@@ -18,33 +19,15 @@ fn register_components(world: &mut World) {
 
 fn add_constraints(world: &mut World) {
     world.add_resource(Bounds {
-        min: Acc {
-            x: -5,
-            y: -5,
-        },
-        max: Acc {
-            x: 5,
-            y: 5,
-        },
+        min: Acc { x: -5, y: -5 },
+        max: Acc { x: 5, y: 5 },
     });
     world.add_resource(Bounds {
-        min: Vel {
-            x: -50,
-            y: -50,
-        },
-        max: Vel {
-            x: 50,
-            y: 50,
-        },
+        min: Vel { x: -50, y: -50 },
+        max: Vel { x: 50, y: 50 },
     });
     world.add_resource(Bounds {
-        min: Pos {
-            x: 0,
-            y: 0,
-        },
-        max: Pos {
-            x: 1000,
-            y: 1000,
-        },
+        min: Pos { x: 0, y: 0 },
+        max: Pos { x: 1000, y: 1000 },
     });
 }

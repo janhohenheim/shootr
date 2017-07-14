@@ -2,7 +2,8 @@ extern crate specs;
 
 use self::specs::{Join, WriteStorage, System};
 
-use model::{Acc, PlayerInput, Key};
+use model::comp::{Acc, PlayerInput};
+use model::client::Key;
 
 pub struct InputHandler;
 impl<'a> System<'a> for InputHandler {
