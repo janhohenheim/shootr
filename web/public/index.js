@@ -31,7 +31,7 @@ function connect(address) {
     };
 
     io.onmessage = (msg) => {
-        states.push(JSON.parse(msg.data))
+        states.push(JSON.parse(msg.data, (key, value) => value === "" ? 0 : value))
     }
 
     io.onclose = () => {
@@ -126,6 +126,7 @@ function loadProgressHandler(loader, resource) {
 }
 
 let ball
+let player
 
 function setup() {
     const background = new Sprite(resources.pong.textures['fancy-court.png'])
@@ -144,6 +145,11 @@ function setup() {
     ball = new Sprite(resources.pong.textures['fancy-ball.png'])
     ball.anchor.set(0.5)
     app.stage.addChild(ball)
+
+    player = new Sprite(resources.pong.textures['fancy-paddle-green.png'])
+    player.anchor.set(0.5)
+    app.stage.addChild(player)
+
 
     app.ticker.add(gameLoop)
 }
@@ -199,20 +205,32 @@ function getInterpolatedState(from, to, renderTime) {
         return from
     const fraction = progress / total
     let state = from
-    state.vel.x += (to.vel.x - from.vel.x) * fraction
-    state.vel.y += (to.vel.y - from.vel.y) * fraction
-    state.pos.x += (to.pos.x - from.pos.x) * fraction
-    state.pos.y += (to.pos.y - from.pos.y) * fraction
+
+    state.ball.vel.x += (to.ball.vel.x - from.ball.vel.x) * fraction
+    state.ball.vel.y += (to.ball.vel.y - from.ball.vel.y) * fraction
+    state.ball.pos.x += (to.ball.pos.x - from.ball.pos.x) * fraction
+    state.ball.pos.y += (to.ball.pos.y - from.ball.pos.y) * fraction
+
+    state.player.acc.x += (to.player.acc.x - from.player.acc.x) * fraction
+    state.player.acc.y += (to.player.acc.y - from.player.acc.y) * fraction
+    state.player.vel.x += (to.player.vel.x - from.player.vel.x) * fraction
+    state.player.vel.y += (to.player.vel.y - from.player.vel.y) * fraction
+    state.player.pos.x += (to.player.pos.x - from.player.pos.x) * fraction
+    state.player.pos.y += (to.player.pos.y - from.player.pos.y) * fraction
+
     state.timestamp = renderTime
     return state
 }
 
 
 function setWorld(state) {
-    ball.x = state.pos.x
-    ball.y = state.pos.y
+    ball.x = state.ball.pos.x
+    ball.y = state.ball.pos.y
 
-    const maxVel = Math.max(state.vel.x, state.vel.y)
+    player.x = state.player.pos.x
+    player.y = state.player.pos.y
+
+    const maxVel = Math.max(state.ball.vel.x, state.ball.vel.y)
     const strength = Math.pow(Math.atan(Math.pow((maxVel / 10), 1.5)), 2) - 0.2
     if (strength > 0) {
         const blurFilter = new PIXI.filters.BlurFilter(strength, 1, 1)
