@@ -4,7 +4,7 @@ use self::specs::{Component, VecStorage};
 
 use std::collections::HashMap;
 
-#[derive(Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ClientState {
     pub pos: Pos,
     pub vel: Vel,
@@ -12,6 +12,11 @@ pub struct ClientState {
     pub timestamp: u64,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub struct Bounds<T> {
+    pub max: T,
+    pub min: T,
+}
 
 #[derive(Debug, Clone, Serialize, Add, AddAssign)]
 pub struct Acc {

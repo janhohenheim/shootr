@@ -11,7 +11,7 @@ use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::{Acc, Vel, Pos, InputMsg, PlayerInput, KeyState, Bounciness};
+use shootr::model::{Bounds, Acc, Vel, Pos, InputMsg, PlayerInput, KeyState, Bounciness};
 use shootr::system::{Physics, Sending, InputHandler, Bounce};
 
 use std::sync::{Arc, RwLock};
@@ -39,6 +39,37 @@ impl Handler {
         world.add_resource(self.engine.clone());
         world.add_resource(self.ids.clone());
         world.add_resource(self.inputs.clone());
+        world.add_resource(Bounds {
+            min: Acc {
+                x: -5,
+                y: -5,
+            },
+            max: Acc {
+                x: 5,
+                y: 5,
+            },
+        });
+        world.add_resource(Bounds {
+            min: Vel {
+                x: -50,
+                y: -50,
+            },
+            max: Vel {
+                x: 50,
+                y: 50,
+            },
+        });
+        world.add_resource(Bounds {
+            min: Pos {
+                x: 0,
+                y: 0,
+            },
+            max: Pos {
+                x: 1000,
+                y: 1000,
+            },
+        });
+
 
         // Ball
         world
