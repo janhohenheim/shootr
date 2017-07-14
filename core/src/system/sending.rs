@@ -8,7 +8,7 @@ use self::chrono::{TimeZone, Utc};
 use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 
-use model::comp::{Pos, Vel, Acc, PlayerInput, Bounciness};
+use model::comp::{Pos, Vel, Acc, PlayerId, Bounciness};
 use model::client::{ClientState, Ball, Player};
 use engine::{Id, Engine};
 use util::elapsed_ms;
@@ -23,12 +23,12 @@ impl<'a> System<'a> for Sending {
         ReadStorage<'a, Pos>,
         ReadStorage<'a, Vel>,
         ReadStorage<'a, Acc>,
-        ReadStorage<'a, PlayerInput>,
+        ReadStorage<'a, PlayerId>,
         ReadStorage<'a, Bounciness>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (ids, engine, pos, vel, acc, player_input, bounciness) = data;
+        let (ids, engine, pos, vel, acc, id, bounciness) = data;
 
         let ids = ids.deref();
         let engine = engine.deref();
@@ -38,11 +38,15 @@ impl<'a> System<'a> for Sending {
             pos: ball_pos.clone(),
             vel: ball_vel.clone(),
         };
-        let (player_pos, player_vel, player_acc, _) = (&pos, &vel, &acc, &player_input)
+        let def_pos = Pos{x: 0, y: 0};
+        let def_vel = Vel{x: 0, y: 0};
+        let def_acc = Acc{x:0, y:0};
+        let def_id = PlayerId(0);
+        let (player_pos, player_vel, player_acc, _) = (&pos, &vel, &acc, &id)
             .join()
             .take(1)
             .next()
-            .unwrap();
+            .unwrap_or((&def_pos, &def_vel, &def_acc, &def_id));
         let player = Player {
             pos: player_pos.clone(),
             vel: player_vel.clone(),

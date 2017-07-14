@@ -3,17 +3,15 @@ extern crate shootr;
 extern crate specs;
 extern crate chrono;
 extern crate serde_json;
-#[macro_use]
-extern crate maplit;
 
-use self::specs::{DispatcherBuilder, World};
+use self::specs::{DispatcherBuilder, World, Entity};
 use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::comp::{Acc, Vel, Pos, PlayerInput, Bounciness};
+use shootr::model::comp::{Acc, Vel, Pos, PlayerInputMap, PlayerInput, Bounciness, PlayerId};
 use shootr::model::client::InputMsg;
-use shootr::model::game::KeyState;
+use shootr::model::game::{KeyState, Spawnable};
 use shootr::system::{Physics, Sending, InputHandler, Bounce};
 use shootr::bootstrap;
 
@@ -22,13 +20,18 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::collections::HashMap;
 
+
 fn main() {
     shootr::engine::execute::<Handler>();
 }
+
 struct Handler {
     engine: Engine,
     ids: Arc<RwLock<Vec<Id>>>,
-    inputs: Arc<RwLock<HashMap<Id, PlayerInput>>>,
+    inputs: PlayerInputMap,
+    id_entities: RwLock<HashMap<Id, Entity>>,
+    spawn_list: RwLock<Vec<Spawnable>>,
+    despawn_list: RwLock<Vec<Entity>>
 }
 
 impl Handler {
@@ -46,15 +49,31 @@ impl Handler {
             .with(Pos { x: 500, y: 500 })
             .with(Bounciness {})
             .build();
+    }
 
-        // Player
-        world
-            .create_entity()
-            .with(Acc { x: 0, y: 0 })
-            .with(Vel { x: 0, y: 0 })
-            .with(Pos { x: 20, y: 500 })
-            .with(PlayerInput { key_states: HashMap::new() })
-            .build();
+    fn despawn(&self, world: &mut World) {
+        let mut despawn_list = self.despawn_list.write().unwrap();
+        for to_despawn in despawn_list.drain(..) {
+            world.delete_entity(to_despawn);
+        };
+    }
+
+    fn spawn(&self, world: &mut World) {
+        let mut spawn_list = self.spawn_list.write().unwrap();
+        for to_spawn in spawn_list.drain(..) {
+            match to_spawn {
+                Spawnable::Player(id) => {
+                    let entity = world
+                        .create_entity()
+                        .with(Acc { x: 0, y: 0 })
+                        .with(Vel { x: 0, y: 0 })
+                        .with(Pos { x: 20, y: 500 })
+                        .with(PlayerId(id.clone()))
+                        .build();
+                    self.id_entities.write().unwrap().insert(id, entity);
+                }
+            };
+        };
     }
 }
 
@@ -64,6 +83,9 @@ impl EventHandler for Handler {
             engine,
             ids: Arc::new(RwLock::new(Vec::new())),
             inputs: Arc::new(RwLock::new(HashMap::new())),
+            id_entities: RwLock::new(HashMap::new()),
+            spawn_list: RwLock::new(Vec::new()),
+            despawn_list: RwLock::new(Vec::new()),
         }
     }
     fn main_loop(&self) {
@@ -90,6 +112,8 @@ impl EventHandler for Handler {
             let elapsed = elapsed_ms(previous, current);
             previous = current;
             lag += elapsed;
+            self.despawn(&mut world);
+            self.spawn(&mut world);
 
             while lag >= ms_per_update {
                 updater.dispatch(&mut world.res);
@@ -102,30 +126,32 @@ impl EventHandler for Handler {
     }
 
     fn message(&self, msg: &Msg) {
-        if let Ok(input) = serde_json::from_str::<InputMsg>(&msg.content) {
-            let mut inputs = self.inputs.write().unwrap();
-            let mut key_state = KeyState {
-                pressed: input.pressed,
-                fired: false,
-            };
-
-            use std::ops::Deref;
-            if inputs.contains_key(&msg.id) {
-                let key_states = &mut inputs.get_mut(&msg.id).unwrap().key_states;
-                if let Some(last) = key_states.get_mut(&input.key) {
-                    key_state.fired = last.pressed && !key_state.pressed;
-                }
-                key_states.insert(input.key, key_state);
-            } else {
-                let key_states = PlayerInput { key_states: hashmap![input.key => key_state] };
-                inputs.insert(msg.id, key_states);
-            }
-        } else {
+        let input = serde_json::from_str::<InputMsg>(&msg.content);
+        if input.is_err() {
             println!("Client #{}:\tinvalid message ({})", msg.id, msg.content);
+            return;
         }
+        let input = input.unwrap();
+
+        let mut key_state = KeyState {
+            pressed: input.pressed,
+            fired: false,
+        };
+
+        let inputs = self.inputs.read().unwrap();
+        // guaranteed to contain key as connect() had to be called before
+        let key_states = &mut inputs.get(&msg.id).unwrap().write().unwrap().key_states;
+
+        if let Some(last) = key_states.get_mut(&input.key) {
+            key_state.fired = last.pressed && !key_state.pressed;
+        }
+        key_states.insert(input.key, key_state);
     }
     fn connect(&self, id: Id) -> bool {
         self.ids.write().unwrap().push(id);
+        let id_state = RwLock::new(PlayerInput {key_states: HashMap::new()});
+        self.spawn_list.write().unwrap().push(Spawnable::Player(id.clone()));
+        self.inputs.write().unwrap().insert(id, id_state);
         true
     }
     fn disconnect(&self, id: Id) {
@@ -133,7 +159,9 @@ impl EventHandler for Handler {
         let pos = ids.iter()
             .position(|&x| x == id)
             .expect("Tried to remove id that was not added in the first place");
-
-        ids.remove(pos);
+        let id = ids.remove(pos);
+        if let Some(entity) = self.id_entities.write().unwrap().remove(&id) {
+            self.despawn_list.write().unwrap().push(entity);
+        }
     }
 }

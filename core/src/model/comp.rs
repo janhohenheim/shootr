@@ -1,8 +1,13 @@
 extern crate specs;
 use self::specs::{Component, VecStorage};
+
 use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+use std::ops::Deref;
+
 use super::game::KeyState;
 use super::client::Key;
+use engine::Id;
 
 
 #[derive(Debug, Clone, Serialize, Add, AddAssign)]
@@ -35,6 +40,7 @@ impl Component for Pos {
 }
 
 
+pub type PlayerInputMap = Arc<RwLock<HashMap<Id, RwLock<PlayerInput>>>>;
 #[derive(Debug, Clone, Serialize)]
 pub struct PlayerInput {
     pub key_states: HashMap<Key, KeyState>,
@@ -48,4 +54,18 @@ impl Component for PlayerInput {
 pub struct Bounciness {}
 impl Component for Bounciness {
     type Storage = VecStorage<Self>;
+}
+
+
+#[derive(Debug, Clone, Serialize)]
+pub struct PlayerId(pub Id);
+impl Component for PlayerId {
+    type Storage = VecStorage<Self>;
+}
+impl Deref for PlayerId {
+    type Target = Id;
+
+    fn deref(&self) -> &Id {
+        &self.0
+    }
 }

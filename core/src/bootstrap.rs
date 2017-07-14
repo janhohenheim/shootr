@@ -1,7 +1,7 @@
 extern crate specs;
 
 use self::specs::World;
-use model::comp::{Pos, Vel, Acc, PlayerInput, Bounciness};
+use model::comp::*;
 use model::game::Bounds;
 
 pub fn prepare_world(world: &mut World) {
@@ -15,6 +15,7 @@ fn register_components(world: &mut World) {
     world.register::<Acc>();
     world.register::<PlayerInput>();
     world.register::<Bounciness>();
+    world.register::<PlayerId>();
 }
 
 fn add_constraints(world: &mut World) {
