@@ -234,18 +234,22 @@ function setWorld(state) {
     ball.x = state.ball.pos.x
     ball.y = state.ball.pos.y
 
+    addBlur(ball, state.ball.vel)
     for (let i = 0; i < players.length; i++) {
         if (!state.players[i])
             continue;
         players[i].x = state.players[i].pos.x
         players[i].y = state.players[i].pos.y
-    }    
+        addBlur(players[i], state.players[i].vel)
+    }   
+}
 
-    const maxVel = Math.max(state.ball.vel.x, state.ball.vel.y)
+function addBlur(obj, vel) {
+    const maxVel = Math.max(vel.x, vel.y)
     const strength = Math.pow(Math.atan(Math.pow((maxVel / 10), 1.5)), 2) - 0.2
     if (strength > 0) {
         const blurFilter = new PIXI.filters.BlurFilter(strength, 1, 1)
-        ball.filters = [blurFilter]
+        obj.filters = [blurFilter]
     }
 }
 
