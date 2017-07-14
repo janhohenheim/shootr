@@ -8,8 +8,8 @@ use self::chrono::{TimeZone, Utc};
 use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 
-use model::comp::{Pos, Vel};
-use model::client::ClientState;
+use model::comp::{Pos, Vel, Acc, PlayerInput, Bounciness};
+use model::client::{ClientState, Ball, Player};
 use engine::{Id, Engine};
 use util::elapsed_ms;
 
@@ -22,17 +22,35 @@ impl<'a> System<'a> for Sending {
         Fetch<'a, Engine>,
         ReadStorage<'a, Pos>,
         ReadStorage<'a, Vel>,
+        ReadStorage<'a, Acc>,
+        ReadStorage<'a, PlayerInput>,
+        ReadStorage<'a, Bounciness>,
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (ids, engine, pos, vel) = data;
+        let (ids, engine, pos, vel, acc, player_input, bounciness) = data;
+
         let ids = ids.deref();
         let engine = engine.deref();
 
-        let (pos, vel) = (&pos, &vel).join().take(1).next().unwrap();
+        let (ball_pos, ball_vel, _) = (&pos, &vel, &bounciness).join().take(1).next().unwrap();
+        let ball = Ball {
+            pos: ball_pos.clone(),
+            vel: ball_vel.clone(),
+        };
+        let (player_pos, player_vel, player_acc, _) = (&pos, &vel, &acc, &player_input)
+            .join()
+            .take(1)
+            .next()
+            .unwrap();
+        let player = Player {
+            pos: player_pos.clone(),
+            vel: player_vel.clone(),
+            acc: player_acc.clone(),
+        };
         let state = ClientState {
-            pos: pos.clone(),
-            vel: vel.clone(),
+            ball,
+            player,
             timestamp: elapsed_ms(Utc.timestamp(0, 0), Utc::now()),
         };
         send(engine, ids, state);

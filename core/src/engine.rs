@@ -153,7 +153,7 @@ where
             let mut is_ok = true;
             if let Some(mut sink) = conn.get_mut(&id) {
                 let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
-                //println!("Sending message: {}", msg);
+                // println!("Sending message: {}", msg);
                 sink.start_send(OwnedMessage::Text(msg)).expect(
                     "Failed to start sending message",
                 );

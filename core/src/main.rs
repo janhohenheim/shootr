@@ -52,7 +52,7 @@ impl Handler {
             .create_entity()
             .with(Acc { x: 0, y: 0 })
             .with(Vel { x: 0, y: 0 })
-            .with(Pos { x: 10, y: 500 })
+            .with(Pos { x: 20, y: 500 })
             .with(PlayerInput { key_states: HashMap::new() })
             .build();
     }
@@ -103,19 +103,13 @@ impl EventHandler for Handler {
 
     fn message(&self, msg: &Msg) {
         if let Ok(input) = serde_json::from_str::<InputMsg>(&msg.content) {
-            println!(
-                "[{}] Client #{}:\tkey {:?} is pressed:\t{}",
-                input.id,
-                msg.id,
-                input.key,
-                input.pressed
-            );
             let mut inputs = self.inputs.write().unwrap();
             let mut key_state = KeyState {
                 pressed: input.pressed,
                 fired: false,
             };
 
+            use std::ops::Deref;
             if inputs.contains_key(&msg.id) {
                 let key_states = &mut inputs.get_mut(&msg.id).unwrap().key_states;
                 if let Some(last) = key_states.get_mut(&input.key) {
