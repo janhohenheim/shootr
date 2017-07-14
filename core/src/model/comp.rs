@@ -69,3 +69,16 @@ impl Deref for PlayerId {
         &self.0
     }
 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Friction(pub i32);
+impl Component for Friction {
+    type Storage = VecStorage<Self>;
+}
+impl Deref for Friction {
+    type Target = i32;
+
+    fn deref(&self) -> &i32 {
+        &self.0
+    }
+}

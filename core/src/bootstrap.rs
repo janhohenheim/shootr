@@ -16,6 +16,7 @@ fn register_components(world: &mut World) {
     world.register::<PlayerInput>();
     world.register::<Bounciness>();
     world.register::<PlayerId>();
+    world.register::<Friction>();
 }
 
 fn add_constraints(world: &mut World) {

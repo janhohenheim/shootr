@@ -9,7 +9,7 @@ use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::comp::{Acc, Vel, Pos, PlayerInputMap, PlayerInput, Bounciness, PlayerId};
+use shootr::model::comp::{Acc, Vel, Pos, PlayerInputMap, PlayerInput, Bounciness, PlayerId, Friction};
 use shootr::model::client::InputMsg;
 use shootr::model::game::{KeyState, Spawnable};
 use shootr::system::{Physics, Sending, InputHandler, Bounce};
@@ -69,7 +69,8 @@ impl Handler {
                         .with(Acc { x: 0, y: 0 })
                         .with(Vel { x: 0, y: 0 })
                         .with(Pos { x, y: 500 })
-                        .with(PlayerId(id.clone()))
+                        .with(Friction(2))
+                        .with(PlayerId(id))
                         .build();
                     self.id_entities.write().unwrap().insert(id, entity);
                 }
@@ -151,7 +152,7 @@ impl EventHandler for Handler {
     fn connect(&self, id: Id) -> bool {
         self.ids.write().unwrap().push(id);
         let id_state = RwLock::new(PlayerInput {key_states: HashMap::new()});
-        self.spawn_list.write().unwrap().push(Spawnable::Player(id.clone()));
+        self.spawn_list.write().unwrap().push(Spawnable::Player(id));
         self.inputs.write().unwrap().insert(id, id_state);
         true
     }
