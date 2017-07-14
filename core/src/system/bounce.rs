@@ -15,7 +15,7 @@ impl<'a> System<'a> for Bounce {
 
     fn run(&mut self, (pos, mut vel, bounciness, pos_bounds): Self::SystemData) {
         for (pos, mut vel, _) in (&pos, &mut vel, &bounciness).join() {
-            handle_movement(&pos, &mut vel, &pos_bounds);
+            handle_movement(pos, &mut vel, &pos_bounds);
         }
     }
 }
@@ -23,15 +23,11 @@ impl<'a> System<'a> for Bounce {
 fn handle_movement(pos: &Pos, vel: &mut Vel, bounds: &Bounds<Pos>) {
     let next_x = pos.x + vel.x;
     let next_y = pos.y + vel.y;
-    if next_x > bounds.max.x {
+    if next_x > bounds.max.x || next_x < bounds.min.x {
         vel.x = -vel.x;
-    } else if next_x < bounds.min.x {
-        vel.x = -vel.x;
-    }
+    } 
 
-    if next_y > bounds.max.y {
+    if next_y > bounds.max.y || next_y < bounds.min.y {
         vel.y = -vel.y;
-    } else if next_y < bounds.min.y {
-        vel.y = -vel.y;
-    }
+    } 
 }
