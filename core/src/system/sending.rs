@@ -8,14 +8,19 @@ use self::chrono::{TimeZone, Utc};
 use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 
-use ::model::{Pos, Vel, Ids};
-use engine::Engine;
+use ::model::{Pos, Vel};
+use engine::{Id, Engine};
 use model::ClientState;
 use util::elapsed_ms;
 
 pub struct Sending;
 impl<'a> System<'a> for Sending {
-    type SystemData = (Fetch<'a, Ids>, Fetch<'a, Engine>, ReadStorage<'a, Pos>, ReadStorage<'a, Vel>);
+    type SystemData = (
+        Fetch<'a, Arc<RwLock<Vec<Id>>>>, 
+        Fetch<'a, Engine>, 
+        ReadStorage<'a, Pos>, 
+        ReadStorage<'a, Vel>
+    );
 
     fn run(&mut self, data: Self::SystemData) {
         let (ids, engine, pos, vel) = data;
@@ -32,7 +37,7 @@ impl<'a> System<'a> for Sending {
     }
 }
 
-fn send(engine: &Engine, ids: &Ids, state: ClientState) {
+fn send(engine: &Engine, ids: &Arc<RwLock<Vec<Id>>>, state: ClientState) {
     let state = Arc::new(RwLock::new(state));
     for id in ids.read().unwrap().iter() {
         let channel = engine.send_channel.clone();

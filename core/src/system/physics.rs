@@ -16,9 +16,9 @@ impl<'a> System<'a> for Physics {
     fn run(&mut self, (mut pos, mut vel, acc): Self::SystemData) {
         for (mut vel, acc) in (&mut vel, &acc).join() {
             vel.x += acc.x;
-            clamp(&mut vel.x, -15, 15);
+            clamp(&mut vel.x, -50, 50);
             vel.y += acc.y;
-            clamp(&mut vel.y, -15, 15);
+            clamp(&mut vel.y, -50, 50);
         }
         for (mut pos, vel) in (&mut pos, &vel).join() {
             pos.x += vel.x;

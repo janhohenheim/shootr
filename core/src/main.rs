@@ -11,7 +11,7 @@ use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::{Acc, Vel, Pos, Ids, InputMsg, PlayerInput, KeyState, Bounciness};
+use shootr::model::{Acc, Vel, Pos, InputMsg, PlayerInput, KeyState, Bounciness};
 use shootr::system::{Physics, Sending, InputHandler, Bounce};
 
 use std::sync::{Arc, RwLock};
@@ -24,7 +24,7 @@ fn main() {
 }
 struct Handler {
     engine: Engine,
-    ids: Ids,
+    ids: Arc<RwLock<Vec<Id>>>,
     inputs: Arc<RwLock<HashMap<Id, PlayerInput>>>,
 }
 
@@ -43,7 +43,7 @@ impl Handler {
         // Ball
         world
             .create_entity()
-            .with(Vel { x: 70, y: 50 })
+            .with(Vel { x: 15, y: 10 })
             .with(Pos { x: 500, y: 500 })
             .with(Bounciness {})
             .build();
@@ -63,7 +63,7 @@ impl EventHandler for Handler {
     fn new(engine: Engine) -> Self {
         Handler {
             engine,
-            ids: Ids(Arc::new(RwLock::new(Vec::new()))),
+            ids: Arc::new(RwLock::new(Vec::new())),
             inputs: Arc::new(RwLock::new(HashMap::new())),
         }
     }
