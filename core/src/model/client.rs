@@ -1,9 +1,10 @@
 use super::comp::{Pos, Vel, Acc};
+use engine::Id;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ClientState {
     pub ball: Ball,
-    pub player: Player,
+    pub players: Vec<Player>,
     // UTC timestamp in ms
     pub timestamp: u64,
 }
@@ -16,6 +17,7 @@ pub struct Ball {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Player {
+    pub id: Id,
     pub pos: Pos,
     pub vel: Vel,
     pub acc: Acc,

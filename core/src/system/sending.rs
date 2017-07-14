@@ -39,23 +39,18 @@ impl<'a> System<'a> for Sending {
             vel: ball_vel.clone(),
         };
 
-        let def_pos = Pos{x: 0, y: 0};
-        let def_vel = Vel{x: 0, y: 0};
-        let def_acc = Acc{x:0, y:0};
-        let def_id = PlayerId(0);
-        let (player_pos, player_vel, player_acc, _) = (&pos, &vel, &acc, &id)
-            .join()
-            .take(1)
-            .next()
-            .unwrap_or((&def_pos, &def_vel, &def_acc, &def_id));
-        let player = Player {
-            pos: player_pos.clone(),
-            vel: player_vel.clone(),
-            acc: player_acc.clone(),
-        };
+        let mut players = Vec::new();
+        for (pos, vel, acc, id) in (&pos, &vel, &acc, &id).join() {
+            players.push(Player{
+                id: *id.deref(),
+                pos: pos.clone(),
+                vel: vel.clone(),
+                acc: acc.clone(),
+            })
+        }
         let state = ClientState {
             ball,
-            player,
+            players,
             timestamp: elapsed_ms(Utc.timestamp(0, 0), Utc::now()),
         };
         send(engine, ids, state);
