@@ -38,6 +38,7 @@ impl<'a> System<'a> for Sending {
             pos: ball_pos.clone(),
             vel: ball_vel.clone(),
         };
+
         let def_pos = Pos{x: 0, y: 0};
         let def_vel = Vel{x: 0, y: 0};
         let def_acc = Acc{x:0, y:0};

@@ -18,16 +18,21 @@ impl<'a> System<'a> for InputHandler {
         for (id, mut acc) in (&id, &mut acc).join() {
             let mut player_input = player_input_map.get(&id).unwrap().write().unwrap();
             let mut key_states = &mut player_input.key_states;
+            
             if let Some(state) = key_states.get_mut(&Key::ArrowUp) {
                 state.fired = false;
                 if state.pressed {
-                    acc.y = 5
+                    acc.y = -5
+                } else if acc.y < 0 {
+                    acc.y = 0
                 }
             }
             if let Some(state) = key_states.get_mut(&Key::ArrowDown) {
                 state.fired = false;
                 if state.pressed {
-                    acc.y = -5
+                    acc.y = 5
+                } else if acc.y > 0 {
+                    acc.y = 0
                 }
             }
         }

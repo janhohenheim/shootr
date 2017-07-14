@@ -21,7 +21,7 @@ impl<'a> System<'a> for Physics {
             vel.x += acc.x;
             clamp(&mut vel.x, vel_bounds.min.x, vel_bounds.max.x);
             vel.y += acc.y;
-            clamp(&mut vel.y, vel_bounds.min.y, vel_bounds.min.y);
+            clamp(&mut vel.y, vel_bounds.min.y, vel_bounds.max.y);
         }
         for (mut pos, vel) in (&mut pos, &vel).join() {
             pos.x += vel.x;

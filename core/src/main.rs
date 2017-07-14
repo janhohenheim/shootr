@@ -63,11 +63,12 @@ impl Handler {
         for to_spawn in spawn_list.drain(..) {
             match to_spawn {
                 Spawnable::Player(id) => {
+                    let x = if id % 2 == 0 { 20 } else { 980 };
                     let entity = world
                         .create_entity()
                         .with(Acc { x: 0, y: 0 })
                         .with(Vel { x: 0, y: 0 })
-                        .with(Pos { x: 20, y: 500 })
+                        .with(Pos { x, y: 500 })
                         .with(PlayerId(id.clone()))
                         .build();
                     self.id_entities.write().unwrap().insert(id, entity);
