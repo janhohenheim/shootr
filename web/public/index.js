@@ -254,7 +254,7 @@ function addBlur(obj, vel) {
 }
 
 function spawnPlayer() {
-    if (!app)
+    if (!app || !resources.pong.textures)
         return
     const player = new Sprite(resources.pong.textures['fancy-paddle-green.png'])
     player.anchor.set(0.5)
