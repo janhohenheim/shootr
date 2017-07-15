@@ -135,7 +135,7 @@ function loadProgressHandler(loader, resource) {
 
 let ball
 let players = []
-
+let texturesReady = false
 function setup() {
     const background = new Sprite(resources.pong.textures['fancy-court.png'])
     background.width = 1000
@@ -154,6 +154,7 @@ function setup() {
     ball.anchor.set(0.5)
     app.stage.addChild(ball)
 
+    texturesReady = true
     app.ticker.add(gameLoop)
 }
 
@@ -192,7 +193,7 @@ function render(states) {
 
 function getRenderTime() {
     const now = new Date().getTime()
-    const INTERPOLATION_DELTA = 200
+    const INTERPOLATION_DELTA = 100
     return now - INTERPOLATION_DELTA
 }
 
@@ -215,7 +216,7 @@ function getInterpolatedState(from, to, renderTime) {
     state.ball.pos.y += (to.ball.pos.y - from.ball.pos.y) * fraction
 
     for (let i = 0; i < players.length; i++) {
-        if (i > to.players.length)
+        if (i >= state.players.length || i >= to.players.length)
             continue;
         state.players[i].acc.x += (to.players[i].acc.x - from.players[i].acc.x) * fraction
         state.players[i].acc.y += (to.players[i].acc.y - from.players[i].acc.y) * fraction
@@ -236,7 +237,7 @@ function setWorld(state) {
 
     addBlur(ball, state.ball.vel)
     for (let i = 0; i < players.length; i++) {
-        if (i > state.players.length)
+        if (i >= state.players.length)
             continue;
         players[i].x = state.players[i].pos.x
         players[i].y = state.players[i].pos.y
@@ -254,7 +255,7 @@ function addBlur(obj, vel) {
 }
 
 function spawnPlayer() {
-    if (!app || !resources.pong.textures)
+    if (!texturesReady)
         return
     const player = new Sprite(resources.pong.textures['fancy-paddle-green.png'])
     player.anchor.set(0.5)
