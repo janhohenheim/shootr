@@ -215,7 +215,7 @@ function getInterpolatedState(from, to, renderTime) {
     state.ball.pos.y += (to.ball.pos.y - from.ball.pos.y) * fraction
 
     for (let i = 0; i < players.length; i++) {
-        if (!to.players[i])
+        if (i > to.players.length)
             continue;
         state.players[i].acc.x += (to.players[i].acc.x - from.players[i].acc.x) * fraction
         state.players[i].acc.y += (to.players[i].acc.y - from.players[i].acc.y) * fraction
@@ -236,7 +236,7 @@ function setWorld(state) {
 
     addBlur(ball, state.ball.vel)
     for (let i = 0; i < players.length; i++) {
-        if (!state.players[i])
+        if (i > state.players.length)
             continue;
         players[i].x = state.players[i].pos.x
         players[i].y = state.players[i].pos.y
