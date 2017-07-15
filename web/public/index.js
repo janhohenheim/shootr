@@ -254,6 +254,8 @@ function addBlur(obj, vel) {
 }
 
 function spawnPlayer() {
+    if (!app)
+        return
     const player = new Sprite(resources.pong.textures['fancy-paddle-green.png'])
     player.anchor.set(0.5)
     app.stage.addChild(player)
@@ -261,6 +263,8 @@ function spawnPlayer() {
 }
 
 function removePlayer() {
+    if (!app)
+        return
     const player = players[players.length - 1]
     app.stage.removeChild(player)
     players.pop()
