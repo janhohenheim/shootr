@@ -1,52 +1,35 @@
 'use strict'
 
 let io = null
-
 let connectionInfo
-
-const MIN_WAIT = 100
-let wait = MIN_WAIT
-
 let states = []
-
-function resetWait() {
-    wait = MIN_WAIT
-}
-
-function incrementWait() {
-    const MAX_WAIT = 2000
-    if (wait < MAX_WAIT)
-        wait *= 1.25
-    else
-        wait = MAX_WAIT
-}
-
 function connect(address) {
     io = new WebSocket(address)
     io.onopen = () => {
         resetWait()
-        if (connectionInfo) {
-            connectionInfo.visible = false
-        }
+        connectionInfo.visible = false
     };
 
     io.onmessage = (msg) => {
         states.push(JSON.parse(msg.data, (key, value) => value === "" ? 0 : value))
         const state = states[states.length - 1]
-        while (players.length < state.players.length) {
-            spawnPlayer()
+        const currPlayers = {}
+        for (let player of state.players) {
+            currPlayers[player.id] = player
         }
-
-        while (players.length > state.players.length) {
-            removePlayer()
-        }
+        const lastIds = Object.keys(players)
+        const currIds = Object.keys(currPlayers)
+        for (let id of currIds)
+            if (lastIds.indexOf(id) === -1)
+                spawnPlayer(id)
+        for (let id of lastIds)
+            if (currIds.indexOf(id) === -1)
+                removePlayer(id)
     }
 
     io.onclose = () => {
-        if (connectionInfo) {
-            connectionInfo.text = 'Reconnecting...'
-            connectionInfo.visible = true
-        }
+        connectionInfo.text = 'Reconnecting...'
+        connectionInfo.visible = true
         io = null
         setTimeout(() => {
             incrementWait()
@@ -61,6 +44,18 @@ function connect(address) {
     };
 }
 
+const MIN_WAIT = 100
+let wait = MIN_WAIT
+function resetWait() {
+    wait = MIN_WAIT
+}
+function incrementWait() {
+    const MAX_WAIT = 2000
+    if (wait < MAX_WAIT)
+        wait *= 1.25
+    else
+        wait = MAX_WAIT
+}
 
 function send(data) {
     if (io && io.readyState === 1) {
@@ -68,6 +63,8 @@ function send(data) {
         io.send(JSON.stringify(data))
     }
 }
+
+
 
 const Application = PIXI.Application,
     loader = PIXI.loader,
@@ -81,8 +78,6 @@ const app = new Application(
     },
 )
 
-const addr = window.location.hostname === 'localhost' ? 'ws://localhost:8081' : 'wss://beta.jnferner.com/socket'
-connect(addr)
 document.body.appendChild(app.view)
 
 loader
@@ -134,8 +129,7 @@ function loadProgressHandler(loader, resource) {
 }
 
 let ball
-let players = []
-let texturesReady = false
+let players = {}
 function setup() {
     const background = new Sprite(resources.pong.textures['fancy-court.png'])
     background.width = 1000
@@ -154,7 +148,9 @@ function setup() {
     ball.anchor.set(0.5)
     app.stage.addChild(ball)
 
-    texturesReady = true
+
+    const addr = window.location.hostname === 'localhost' ? 'ws://localhost:8081' : 'wss://beta.jnferner.com/socket'
+    connect(addr)
     app.ticker.add(gameLoop)
 }
 
@@ -215,15 +211,13 @@ function getInterpolatedState(from, to, renderTime) {
     state.ball.pos.x += (to.ball.pos.x - from.ball.pos.x) * fraction
     state.ball.pos.y += (to.ball.pos.y - from.ball.pos.y) * fraction
 
-    for (let i = 0; i < players.length; i++) {
-        if (i >= state.players.length || i >= to.players.length)
-            continue;
-        state.players[i].acc.x += (to.players[i].acc.x - from.players[i].acc.x) * fraction
-        state.players[i].acc.y += (to.players[i].acc.y - from.players[i].acc.y) * fraction
-        state.players[i].vel.x += (to.players[i].vel.x - from.players[i].vel.x) * fraction
-        state.players[i].vel.y += (to.players[i].vel.y - from.players[i].vel.y) * fraction
-        state.players[i].pos.x += (to.players[i].pos.x - from.players[i].pos.x) * fraction
-        state.players[i].pos.y += (to.players[i].pos.y - from.players[i].pos.y) * fraction
+    for (let id of Object.keys(state.players)) {
+        if (!to.players[id] || !from.players[id])
+            continue
+        state.players[id].vel.x += (to.players[id].vel.x - from.players[id].vel.x) * fraction
+        state.players[id].vel.y += (to.players[id].vel.y - from.players[id].vel.y) * fraction
+        state.players[id].pos.x += (to.players[id].pos.x - from.players[id].pos.x) * fraction
+        state.players[id].pos.y += (to.players[id].pos.y - from.players[id].pos.y) * fraction
     }
 
     state.timestamp = renderTime
@@ -236,12 +230,12 @@ function setWorld(state) {
     ball.y = state.ball.pos.y
 
     addBlur(ball, state.ball.vel)
-    for (let i = 0; i < players.length; i++) {
-        if (i >= state.players.length)
+    for (let id of Object.keys(players)) {
+        if (!state.players[id])
             continue;
-        players[i].x = state.players[i].pos.x
-        players[i].y = state.players[i].pos.y
-        addBlur(players[i], state.players[i].vel)
+        players[id].x = state.players[id].pos.x
+        players[id].y = state.players[id].pos.y
+        addBlur(players[id], state.players[id].vel)
     }   
 }
 
@@ -254,19 +248,15 @@ function addBlur(obj, vel) {
     }
 }
 
-function spawnPlayer() {
-    if (!texturesReady)
-        return
+function spawnPlayer(id) {
     const player = new Sprite(resources.pong.textures['fancy-paddle-green.png'])
     player.anchor.set(0.5)
     app.stage.addChild(player)
-    players.push(player)
+    players[id] = player
 }
 
-function removePlayer() {
-    if (!app)
-        return
-    const player = players[players.length - 1]
+function removePlayer(id) {
+    const player = players[id]
     app.stage.removeChild(player)
-    players.pop()
+    delete players[id]
 }
