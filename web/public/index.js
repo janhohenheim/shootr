@@ -15,6 +15,7 @@ function connect(address) {
         const state = states[states.length - 1]
         const lastIds = Object.keys(players)
         const currIds = Object.keys(state.players)
+        // Todo: Optimize this algorithm
         for (let id of currIds)
             if (lastIds.indexOf(id) === -1)
                 spawnPlayer(id)
