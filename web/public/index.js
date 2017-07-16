@@ -13,12 +13,8 @@ function connect(address) {
     io.onmessage = (msg) => {
         states.push(JSON.parse(msg.data, (key, value) => value === "" ? 0 : value))
         const state = states[states.length - 1]
-        const currPlayers = {}
-        for (let player of state.players) {
-            currPlayers[player.id] = player
-        }
         const lastIds = Object.keys(players)
-        const currIds = Object.keys(currPlayers)
+        const currIds = Object.keys(state.players)
         for (let id of currIds)
             if (lastIds.indexOf(id) === -1)
                 spawnPlayer(id)
