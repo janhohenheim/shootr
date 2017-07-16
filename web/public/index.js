@@ -110,6 +110,7 @@ const app = new Application(
     1000, 1000, {
         backgroundColor: 0xFFFFFF,
         antialias: true,
+        resolution: window.devicePixelRatio
     },
 )
 
