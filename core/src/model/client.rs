@@ -1,10 +1,11 @@
 use super::comp::{Pos, Vel, Acc};
 use engine::Id;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ClientState {
     pub ball: Ball,
-    pub players: Vec<Player>,
+    pub players: HashMap<Id, Player>,
     // UTC timestamp in ms
     pub timestamp: u64,
 }
@@ -17,7 +18,6 @@ pub struct Ball {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Player {
-    pub id: Id,
     pub pos: Pos,
     pub vel: Vel,
     pub acc: Acc,

@@ -7,6 +7,7 @@ use self::futures::{Future, Sink};
 use self::chrono::{TimeZone, Utc};
 use std::ops::Deref;
 use std::sync::{Arc, RwLock};
+use std::collections::HashMap;
 
 use model::comp::{Pos, Vel, Acc, PlayerId, Bounciness};
 use model::client::{ClientState, Ball, Player};
@@ -39,14 +40,13 @@ impl<'a> System<'a> for Sending {
             vel: ball_vel.clone(),
         };
 
-        let mut players = Vec::new();
+        let mut players = HashMap::new();
         for (pos, vel, acc, id) in (&pos, &vel, &acc, &id).join() {
-            players.push(Player{
-                id: *id.deref(),
+            players.insert(*id.deref(), Player{
                 pos: pos.clone(),
                 vel: vel.clone(),
                 acc: acc.clone(),
-            })
+            });
         }
         let state = ClientState {
             ball,
