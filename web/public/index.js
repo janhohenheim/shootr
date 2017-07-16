@@ -2,8 +2,46 @@
 
 let io = null
 let connectionInfo
+let pingInfo
 let states = []
-let pings = []
+
+let ping
+function setPingInfo(ping) {
+    pingInfo.text = 'Ping: ' + ping
+    let fill
+    if (ping < 100)
+        fill = 0x57fc20
+    else if (ping < 200)
+        fill = 0xfc9520
+    else
+        fill = 0xef1c2a
+    pingInfo.style.fill = fill
+}
+
+
+class Ping {
+    constructor() {
+        this.average = 0
+        this.pings = [0]
+        setInterval(() => this.calcAverage(), 1000)
+    }
+
+    add(origTimestamp) {
+        this.pings.push(Date.now() - origTimestamp)
+        const buffer = 200
+        if (this.pings.length > buffer)
+            this.pings.splice(0, this.pings.length - buffer)
+    }
+
+    calcAverage() {
+        if (!this.pings)
+            return
+        const sum = this.pings.reduce((a, b) => a + b, 0)
+        this.average = (sum / this.pings.length) | 0
+        setPingInfo(this.average)
+    }
+}
+
 function connect(address) {
     io = new WebSocket(address)
     io.onopen = () => {
@@ -14,7 +52,7 @@ function connect(address) {
     io.onmessage = (msg) => {
         states.push(JSON.parse(msg.data, (key, value) => value === "" ? 0 : value))
         const state = states[states.length - 1]
-        addPing(state.timestamp)
+        ping.add(state.timestamp)
         const lastIds = Object.keys(players)
         const currIds = Object.keys(state.players)
         // Todo: Optimize this algorithm
@@ -62,18 +100,6 @@ function send(data) {
         io.send(JSON.stringify(data))
     }
 }
-
-
-function addPing(origTimestamp) {
-    pings.push(Date.now() - origTimestamp)
-    pings.splice(0, pings.length - 200)
-}
-
-function getPing() {
-    const sum = pings.reduce((a,b) => a+b, 0)
-    return (sum / pings.length) | 0
-}
-
 
 const Application = PIXI.Application,
     loader = PIXI.loader,
@@ -150,8 +176,16 @@ function setup() {
     connectionInfo.style.dropShadow = true
     connectionInfo.style.dropShadowAlpha = 0.7
     connectionInfo.y = 30
-    connectionInfo.x = 40
+    connectionInfo.x = 900
     app.stage.addChild(connectionInfo)
+
+    pingInfo = new PIXI.Text('Ping: Calculating...')
+    pingInfo.style.fill = 0xe3e3ed
+    pingInfo.style.dropShadow = true
+    pingInfo.style.dropShadowAlpha = 0.7
+    pingInfo.y = 30
+    pingInfo.x = 40
+    app.stage.addChild(pingInfo)
 
     ball = new Sprite(resources.pong.textures['fancy-ball.png'])
     ball.anchor.set(0.5)
@@ -159,6 +193,7 @@ function setup() {
 
 
     const addr = window.location.hostname === 'localhost' ? 'ws://localhost:8081' : 'wss://beta.jnferner.com/socket'
+    ping = new Ping()
     connect(addr)
     app.ticker.add(gameLoop)
 }
@@ -198,9 +233,8 @@ function render(states) {
 
 function getRenderTime() {
     const now = new Date().getTime()
-    const ping = getPing()
     const buffer = 20
-    return now - ping - buffer
+    return now - ping.average - buffer
 }
 
 function getIndexOfRenderState(states, renderTime) {
