@@ -3,6 +3,7 @@
 let io = null
 let connectionInfo
 let states = []
+let pings = []
 function connect(address) {
     io = new WebSocket(address)
     io.onopen = () => {
@@ -13,6 +14,7 @@ function connect(address) {
     io.onmessage = (msg) => {
         states.push(JSON.parse(msg.data, (key, value) => value === "" ? 0 : value))
         const state = states[states.length - 1]
+        addPing(state.timestamp)
         const lastIds = Object.keys(players)
         const currIds = Object.keys(state.players)
         // Todo: Optimize this algorithm
@@ -61,6 +63,16 @@ function send(data) {
     }
 }
 
+
+function addPing(origTimestamp) {
+    pings.push(Date.now() - origTimestamp)
+    pings.splice(0, pings.length - 200)
+}
+
+function getPing() {
+    const sum = pings.reduce((a,b) => a+b, 0)
+    return (sum / pings.length) | 0
+}
 
 
 const Application = PIXI.Application,
@@ -186,8 +198,9 @@ function render(states) {
 
 function getRenderTime() {
     const now = new Date().getTime()
-    const INTERPOLATION_DELTA = 100
-    return now - INTERPOLATION_DELTA
+    const ping = getPing()
+    const buffer = 20
+    return now - ping - buffer
 }
 
 function getIndexOfRenderState(states, renderTime) {
