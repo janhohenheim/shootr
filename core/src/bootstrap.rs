@@ -2,7 +2,7 @@ extern crate specs;
 
 use self::specs::World;
 use model::comp::*;
-use model::game::{Bounds, Vector};
+use model::game::Vector;
 
 pub fn prepare_world(world: &mut World) {
     register_components(world);

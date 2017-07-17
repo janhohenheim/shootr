@@ -10,12 +10,6 @@ pub struct KeyState {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Bounds<T> {
-    pub max: T,
-    pub min: T,
-}
-
-#[derive(Debug, Clone, Serialize)]
 pub enum Spawnable {
     Player(Id),
 }

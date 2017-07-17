@@ -2,8 +2,7 @@ extern crate specs;
 
 use self::specs::{Fetch, Join, WriteStorage, ReadStorage, System};
 
-use model::comp::{Pos, Vel, Bounciness};
-use model::game::Bounds;
+use model::comp::{Pos, Vel, Bounciness, Bounds};
 
 pub struct Bounce;
 impl<'a> System<'a> for Bounce {

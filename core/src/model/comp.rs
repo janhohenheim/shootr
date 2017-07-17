@@ -64,3 +64,15 @@ impl Deref for Friction {
         &self.0
     }
 }
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Bounds<T> {
+    pub max: T,
+    pub min: T,
+}
+impl<T> Component for Bounds<T>
+where
+    T: Send + Sync + 'static,
+{
+    type Storage = VecStorage<Self>;
+}

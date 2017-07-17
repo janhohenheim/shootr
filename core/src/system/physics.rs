@@ -2,8 +2,7 @@ extern crate specs;
 
 use self::specs::{Join, WriteStorage, ReadStorage, System, Fetch};
 
-use model::comp::{Pos, Vel, Acc, Friction};
-use model::game::Bounds;
+use model::comp::{Pos, Vel, Acc, Bounds, Friction};
 use util::clamp;
 
 pub struct Physics;
