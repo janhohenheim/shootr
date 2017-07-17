@@ -11,7 +11,7 @@ use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::util::{read_env_var, elapsed_ms};
 use shootr::model::comp::{Acc, Vel, Pos, Bounciness, PlayerId, Friction};
 use shootr::model::client::InputMsg;
-use shootr::model::game::{KeyState, PlayerInputMap, PlayerInput, Spawnable};
+use shootr::model::game::{KeyState, PlayerInputMap, PlayerInput, Spawnable, Vector};
 use shootr::system::{Physics, Sending, InputHandler, Bounce};
 use shootr::bootstrap;
 
@@ -31,7 +31,7 @@ struct Handler {
     inputs: PlayerInputMap,
     id_entities: RwLock<HashMap<Id, Entity>>,
     spawn_list: RwLock<Vec<Spawnable>>,
-    despawn_list: RwLock<Vec<Entity>>
+    despawn_list: RwLock<Vec<Entity>>,
 }
 
 impl Handler {
@@ -45,8 +45,8 @@ impl Handler {
         // Ball
         world
             .create_entity()
-            .with(Vel { x: 15, y: 10 })
-            .with(Pos { x: 500, y: 500 })
+            .with(Vel::from(Vector { x: 15, y: 10 }))
+            .with(Pos::from(Vector { x: 500, y: 500 }))
             .with(Bounciness {})
             .build();
     }
@@ -55,7 +55,7 @@ impl Handler {
         let mut despawn_list = self.despawn_list.write().unwrap();
         for to_despawn in despawn_list.drain(..) {
             world.delete_entity(to_despawn);
-        };
+        }
     }
 
     fn spawn(&self, world: &mut World) {
@@ -66,16 +66,16 @@ impl Handler {
                     let x = if id % 2 == 0 { 20 } else { 980 };
                     let entity = world
                         .create_entity()
-                        .with(Acc { x: 0, y: 0 })
-                        .with(Vel { x: 0, y: 0 })
-                        .with(Pos { x, y: 500 })
+                        .with(Acc::from(Vector { x: 0, y: 0 }))
+                        .with(Vel::from(Vector { x: 0, y: 0 }))
+                        .with(Pos::from(Vector { x, y: 500 }))
                         .with(Friction(2))
                         .with(PlayerId(id))
                         .build();
                     self.id_entities.write().unwrap().insert(id, entity);
                 }
             };
-        };
+        }
     }
 }
 
@@ -105,9 +105,9 @@ impl EventHandler for Handler {
 
         let mut lag: u64 = 0;
         let mut previous = Utc::now();
-        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC")
-            .parse::<u64>()
-            .expect("Failed to parse environmental variable as integer");
+        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC").parse::<u64>().expect(
+            "Failed to parse environmental variable as integer",
+        );
         let ms_per_update = 1000 / updates_per_sec;
         loop {
             let current = Utc::now();
@@ -151,16 +151,16 @@ impl EventHandler for Handler {
     }
     fn connect(&self, id: Id) -> bool {
         self.ids.write().unwrap().push(id);
-        let id_state = RwLock::new(PlayerInput {key_states: HashMap::new()});
+        let id_state = RwLock::new(PlayerInput { key_states: HashMap::new() });
         self.spawn_list.write().unwrap().push(Spawnable::Player(id));
         self.inputs.write().unwrap().insert(id, id_state);
         true
     }
     fn disconnect(&self, id: Id) {
         let mut ids = self.ids.write().unwrap();
-        let pos = ids.iter()
-            .position(|&x| x == id)
-            .expect("Tried to remove id that was not added in the first place");
+        let pos = ids.iter().position(|&x| x == id).expect(
+            "Tried to remove id that was not added in the first place",
+        );
         let id = ids.remove(pos);
         if let Some(entity) = self.id_entities.write().unwrap().remove(&id) {
             self.despawn_list.write().unwrap().push(entity);

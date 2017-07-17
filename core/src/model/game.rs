@@ -17,11 +17,18 @@ pub struct Bounds<T> {
 
 #[derive(Debug, Clone, Serialize)]
 pub enum Spawnable {
-    Player(Id)
+    Player(Id),
 }
 
 pub type PlayerInputMap = Arc<RwLock<HashMap<Id, RwLock<PlayerInput>>>>;
 #[derive(Debug, Clone, Serialize)]
 pub struct PlayerInput {
     pub key_states: HashMap<Key, KeyState>,
+}
+
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Add, AddAssign)]
+pub struct Vector {
+    pub x: i32,
+    pub y: i32,
 }

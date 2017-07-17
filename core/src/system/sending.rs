@@ -18,15 +18,13 @@ type Ids = Arc<RwLock<Vec<Id>>>;
 
 pub struct Sending;
 impl<'a> System<'a> for Sending {
-    type SystemData = (
-        Fetch<'a, Ids>,
-        Fetch<'a, Engine>,
-        ReadStorage<'a, Pos>,
-        ReadStorage<'a, Vel>,
-        ReadStorage<'a, Acc>,
-        ReadStorage<'a, PlayerId>,
-        ReadStorage<'a, Bounciness>,
-    );
+    type SystemData = (Fetch<'a, Ids>,
+     Fetch<'a, Engine>,
+     ReadStorage<'a, Pos>,
+     ReadStorage<'a, Vel>,
+     ReadStorage<'a, Acc>,
+     ReadStorage<'a, PlayerId>,
+     ReadStorage<'a, Bounciness>);
 
     fn run(&mut self, data: Self::SystemData) {
         let (ids, engine, pos, vel, acc, id, bounciness) = data;
@@ -42,11 +40,14 @@ impl<'a> System<'a> for Sending {
 
         let mut players = HashMap::new();
         for (pos, vel, acc, id) in (&pos, &vel, &acc, &id).join() {
-            players.insert(*id.deref(), Player{
-                pos: pos.clone(),
-                vel: vel.clone(),
-                acc: acc.clone(),
-            });
+            players.insert(
+                *id.deref(),
+                Player {
+                    pos: pos.clone(),
+                    vel: vel.clone(),
+                    acc: acc.clone(),
+                },
+            );
         }
         let state = ClientState {
             ball,

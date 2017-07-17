@@ -7,12 +7,10 @@ use model::game::Bounds;
 
 pub struct Bounce;
 impl<'a> System<'a> for Bounce {
-    type SystemData = (
-        ReadStorage<'a, Pos>,
-        WriteStorage<'a, Vel>,
-        ReadStorage<'a, Bounciness>,
-        Fetch<'a, Bounds<Pos>>,
-    );
+    type SystemData = (ReadStorage<'a, Pos>,
+     WriteStorage<'a, Vel>,
+     ReadStorage<'a, Bounciness>,
+     Fetch<'a, Bounds<Pos>>);
 
     fn run(&mut self, (pos, mut vel, bounciness, pos_bounds): Self::SystemData) {
         for (pos, mut vel, _) in (&pos, &mut vel, &bounciness).join() {

@@ -8,14 +8,12 @@ use util::clamp;
 
 pub struct Physics;
 impl<'a> System<'a> for Physics {
-    type SystemData = (
-        WriteStorage<'a, Pos>,
-        WriteStorage<'a, Vel>,
-        ReadStorage<'a, Acc>,
-        ReadStorage<'a, Friction>,
-        Fetch<'a, Bounds<Vel>>,
-        Fetch<'a, Bounds<Pos>>,
-    );
+    type SystemData = (WriteStorage<'a, Pos>,
+     WriteStorage<'a, Vel>,
+     ReadStorage<'a, Acc>,
+     ReadStorage<'a, Friction>,
+     Fetch<'a, Bounds<Vel>>,
+     Fetch<'a, Bounds<Pos>>);
 
     fn run(&mut self, (mut pos, mut vel, acc, friction, vel_bounds, pos_bounds): Self::SystemData) {
         for (mut vel, acc) in (&mut vel, &acc).join() {
@@ -39,7 +37,7 @@ impl<'a> System<'a> for Physics {
                 new_vel
             }
         }
-        
+
         for (mut pos, vel) in (&mut pos, &vel).join() {
             pos.x += vel.x;
             clamp(&mut pos.x, pos_bounds.min.x, pos_bounds.max.x);
