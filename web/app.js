@@ -1,7 +1,10 @@
 'use strict'
+
 const express = require('express')
+require('dotenv').config({path: '../.env'})
+
 const app = express()
-const port = 3000
+const port = process.env.SITE_PORT
 
 app.use(express.static('public'))
 
@@ -10,5 +13,5 @@ app.get('/', (req, res) => {
 })
 
 app.listen(port, () => {
-    console.log('listening on ', port)
+    console.log('listening on port', port)
 })
