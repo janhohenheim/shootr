@@ -1,4 +1,7 @@
 use engine::Id;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
+use super::client::Key;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct KeyState {
@@ -15,4 +18,10 @@ pub struct Bounds<T> {
 #[derive(Debug, Clone, Serialize)]
 pub enum Spawnable {
     Player(Id)
+}
+
+pub type PlayerInputMap = Arc<RwLock<HashMap<Id, RwLock<PlayerInput>>>>;
+#[derive(Debug, Clone, Serialize)]
+pub struct PlayerInput {
+    pub key_states: HashMap<Key, KeyState>,
 }

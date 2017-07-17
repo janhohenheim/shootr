@@ -2,7 +2,8 @@ extern crate specs;
 
 use self::specs::{Fetch, Join, ReadStorage, WriteStorage, System};
 
-use model::comp::{Acc, PlayerInputMap, PlayerId};
+use model::comp::{Acc, PlayerId};
+use model::game::PlayerInputMap;
 use model::client::Key;
 
 pub struct InputHandler;

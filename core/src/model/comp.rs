@@ -1,12 +1,7 @@
 extern crate specs;
 use self::specs::{Component, VecStorage};
 
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
 use std::ops::Deref;
-
-use super::game::KeyState;
-use super::client::Key;
 use engine::Id;
 
 
@@ -36,16 +31,6 @@ pub struct Pos {
     pub y: i32,
 }
 impl Component for Pos {
-    type Storage = VecStorage<Self>;
-}
-
-
-pub type PlayerInputMap = Arc<RwLock<HashMap<Id, RwLock<PlayerInput>>>>;
-#[derive(Debug, Clone, Serialize)]
-pub struct PlayerInput {
-    pub key_states: HashMap<Key, KeyState>,
-}
-impl Component for PlayerInput {
     type Storage = VecStorage<Self>;
 }
 

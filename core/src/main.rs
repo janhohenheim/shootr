@@ -9,9 +9,9 @@ use self::chrono::prelude::*;
 
 use shootr::engine::{Msg, Engine, EventHandler, Id};
 use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::comp::{Acc, Vel, Pos, PlayerInputMap, PlayerInput, Bounciness, PlayerId, Friction};
+use shootr::model::comp::{Acc, Vel, Pos, Bounciness, PlayerId, Friction};
 use shootr::model::client::InputMsg;
-use shootr::model::game::{KeyState, Spawnable};
+use shootr::model::game::{KeyState, PlayerInputMap, PlayerInput, Spawnable};
 use shootr::system::{Physics, Sending, InputHandler, Bounce};
 use shootr::bootstrap;
 

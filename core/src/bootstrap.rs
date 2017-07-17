@@ -13,7 +13,6 @@ fn register_components(world: &mut World) {
     world.register::<Pos>();
     world.register::<Vel>();
     world.register::<Acc>();
-    world.register::<PlayerInput>();
     world.register::<Bounciness>();
     world.register::<PlayerId>();
     world.register::<Friction>();
