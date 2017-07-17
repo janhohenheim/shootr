@@ -1,7 +1,13 @@
 'use strict'
 
 const express = require('express')
-require('dotenv').config({path: '../.env'})
+const dotenv = require('dotenv')
+
+const result = dotenv.config()
+if (result.error)
+    dotenv.config({
+        path: '../.env'
+    })
 
 const app = express()
 const port = process.env.SITE_PORT
