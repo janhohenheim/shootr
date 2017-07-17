@@ -6,6 +6,7 @@ let pingInfo
 let states = []
 
 let ping
+
 function setPingInfo(ping) {
     pingInfo.text = 'Ping: ' + ping
     let fill
@@ -83,9 +84,11 @@ function connect(address) {
 
 const MIN_WAIT = 100
 let wait = MIN_WAIT
+
 function resetWait() {
     wait = MIN_WAIT
 }
+
 function incrementWait() {
     const MAX_WAIT = 2000
     if (wait < MAX_WAIT)
@@ -112,7 +115,6 @@ const app = new Application(
     screen.availWidth, screen.availHeight, {
         backgroundColor: 0xFFFFFF,
         antialias: true,
-        resolution: window.devicePixelRatio
     },
 )
 
@@ -203,6 +205,7 @@ function setup() {
     connect(addr)
     app.ticker.add(gameLoop)
 }
+
 function resize() {
     let ratio = window.innerWidth / GAME_WIDTH
     if (GAME_HEIGHT * ratio > window.innerHeight)
@@ -294,7 +297,7 @@ function setWorld(state) {
         players[id].x = state.players[id].pos.x
         players[id].y = state.players[id].pos.y
         addBlur(players[id], state.players[id].vel)
-    }   
+    }
 }
 
 function addBlur(obj, vel) {
