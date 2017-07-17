@@ -106,8 +106,10 @@ const Application = PIXI.Application,
     resources = PIXI.loader.resources,
     Sprite = PIXI.Sprite
 
+const GAME_WIDTH = 1000
+const GAME_HEIGHT = 1000
 const app = new Application(
-    1000, 1000, {
+    screen.availWidth, screen.availHeight, {
         backgroundColor: 0xFFFFFF,
         antialias: true,
         resolution: window.devicePixelRatio
@@ -166,10 +168,11 @@ function loadProgressHandler(loader, resource) {
 
 let ball
 let players = {}
+
 function setup() {
     const background = new Sprite(resources.pong.textures['fancy-court.png'])
-    background.width = 1000
-    background.height = 1000
+    background.width = GAME_WIDTH
+    background.height = GAME_HEIGHT
     app.stage.addChild(background)
 
     connectionInfo = new PIXI.Text('')
@@ -192,12 +195,22 @@ function setup() {
     ball.anchor.set(0.5)
     app.stage.addChild(ball)
 
+    resize()
+    window.addEventListener('resize', resize);
 
     const addr = window.location.hostname === 'localhost' ? 'ws://localhost:8081' : 'wss://beta.jnferner.com/socket'
     ping = new Ping()
     connect(addr)
     app.ticker.add(gameLoop)
 }
+function resize() {
+    let ratio = window.innerWidth / GAME_WIDTH
+    if (GAME_HEIGHT * ratio > window.innerHeight)
+        ratio = window.innerHeight / GAME_HEIGHT
+    app.width = app.stage.width = GAME_WIDTH * ratio
+    app.height = app.stage.height = GAME_HEIGHT * ratio
+}
+
 
 let state = connecting
 
