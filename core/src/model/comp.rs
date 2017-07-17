@@ -1,32 +1,79 @@
 extern crate specs;
 use self::specs::{Component, VecStorage};
 
-use std::ops::Deref;
 use engine::Id;
 use super::game::Vector;
+use std::ops::{Deref, DerefMut};
+use std::convert::From;
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Acc(Vector);
+impl Deref for Acc {
+    type Target = Vector;
 
-newtype!(
-    #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-    pub struct Acc(Vector): Deref, DerefMut, From, Into, Add
-);
+    fn deref(&self) -> &Vector {
+        &self.0
+    }
+}
+impl DerefMut for Acc {
+    fn deref_mut(&mut self) -> &mut Vector {
+        &mut self.0
+    }
+}
+impl From<Vector> for Acc {
+    fn from(vector: Vector) -> Self {
+        Acc(vector)
+    }
+}
 impl Component for Acc {
     type Storage = VecStorage<Self>;
 }
 
 
-newtype!(
-    #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-    pub struct Vel(Vector): Deref, DerefMut, From, Into, Add
-);
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Vel(Vector);
+impl Deref for Vel {
+    type Target = Vector;
+
+    fn deref(&self) -> &Vector {
+        &self.0
+    }
+}
+impl DerefMut for Vel {
+    fn deref_mut(&mut self) -> &mut Vector {
+        &mut self.0
+    }
+}
+impl From<Vector> for Vel {
+    fn from(vector: Vector) -> Self {
+        Vel(vector)
+    }
+}
+
 impl Component for Vel {
     type Storage = VecStorage<Self>;
 }
 
-newtype!(
-    #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-    pub struct Pos(Vector): Deref, DerefMut, From, Into, Add
-);
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Pos(Vector);
+impl Deref for Pos {
+    type Target = Vector;
+
+    fn deref(&self) -> &Vector {
+        &self.0
+    }
+}
+impl DerefMut for Pos {
+    fn deref_mut(&mut self) -> &mut Vector {
+        &mut self.0
+    }
+}
+impl From<Vector> for Pos {
+    fn from(vector: Vector) -> Self {
+        Pos(vector)
+    }
+}
+
 impl Component for Pos {
     type Storage = VecStorage<Self>;
 }

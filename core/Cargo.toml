@@ -18,4 +18,3 @@ specs = "0.9"
 chrono = "0.4"
 dotenv = "0.10"
 derive_more = "0.6.0"
-newtype_macros = { git = "https://github.com/arienmalec/newtype_macros.git"}
