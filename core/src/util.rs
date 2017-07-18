@@ -33,7 +33,45 @@ where
 
 
 #[test]
+fn read_string_envvar() {
+    env::set_var("TEST", "foo");
+    assert_eq!("foo", &read_env_var("TEST"));
+}
+
+#[test]
+#[should_panic]
+fn read_empty_envvar() {
+    env::remove_var("EMPTY");
+    read_env_var("EMPTY");
+}
+
+
+#[test]
 fn clamp_in_range() {
     let res = clamp(1, 0, 2);
     assert_eq!(1, res);
+}
+
+#[test]
+fn clamp_min() {
+    let res = clamp(-2, -2, 2);
+    assert_eq!(-2, res);
+}
+
+#[test]
+fn clamp_max() {
+    let res = clamp(0, -2, 0);
+    assert_eq!(0, res);
+}
+
+#[test]
+fn clamp_less_than_min() {
+    let res = clamp(-1, 0, 2);
+    assert_eq!(0, res);
+}
+
+#[test]
+fn clamp_more_than_max() {
+    let res = clamp(999, 9, 10);
+    assert_eq!(10, res);
 }
