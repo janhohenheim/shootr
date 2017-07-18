@@ -12,14 +12,14 @@ matrix:
 # Dependencies of kcov, used by coverage
 addons:
   apt:
-    packages:
+    packages: 
       - libcurl4-openssl-dev
       - libelf-dev
       - libdw-dev
-      - cmake
-      - gcc
       - binutils-dev
-      - zlib1g-dev
+      - cmake
+    sources: 
+      - kalakris-cmake
 
 cache: 
   cargo: true
@@ -31,6 +31,7 @@ before_script:
   - cargo install --list | grep clippy || cargo install clippy
   - cargo install --list | grep rustfmt || cargo install rustfmt
   - cargo install --list | grep cargo-update || cargo install cargo-update
+  - cargo install --list | grep cargo-travis || cargo install cargo-travis
   # Update all tools
   - cargo install-update -a || true # sometimes nightly breaks stuff, that's okay
   
@@ -55,4 +56,5 @@ before_script:
 
 after_success:
   - cd ..
+  - cargo coveralls
   - ./tools/usr/local/bin/kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo,/usr/lib target/cov target/debug/shootr-*
