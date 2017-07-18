@@ -28,7 +28,6 @@ before_script:
   - cargo install --list | grep clippy || cargo install clippy
   - cargo install --list | grep rustfmt || cargo install rustfmt
   - cargo install --list | grep cargo-update || cargo install cargo-update
-  - cargo uninstall cargo-travis
   # Update all tools
   - cargo install-update -a || true # sometimes nightly breaks stuff, that's okay
   # Lint
@@ -38,6 +37,7 @@ before_script:
 
 
 after_success:
+  - cd ..
   - wget https://github.com/SimonKagstrom/kcov/archive/master.zip &&
     unzip master.zip && mv kcov-master kcov && mkdir kcov/build && cd kcov/build &&
     cmake .. && make && make install DESTDIR=../built && cd ../.. &&
