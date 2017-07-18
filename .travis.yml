@@ -6,7 +6,7 @@ rust:
   - stable
 matrix:
   allow_failures:
-    - rust: nightly
+    - rust: stable
 
 
 addons:
@@ -18,8 +18,15 @@ addons:
 cache: cargo
 
 before_script:
-  - cargo install --list | grep cargo-update || cargo install cargo-update
-  - cargo install-update -a
+# Rust
+  # Install tools if not already installed
   - cargo install --list | grep clippy || cargo install clippy
   - cargo install --list | grep rustfmt || cargo install rustfmt
+  # Update all tools
+  - cargo install --list | grep cargo-update || cargo install cargo-update || true # sometimes nightly breaks stuff, that's okay
+  - cargo install-update -a
+  
+  # Lint
   - cd core
+  - cargo fmt -- --write-mode=diff
+  - cargo clippy -- -Z no-trans
