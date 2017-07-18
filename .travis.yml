@@ -9,12 +9,6 @@ matrix:
     - rust: stable
 
 
-addons:
-  apt:
-    packages:
-      - openssl
-      - libcurl4-openssl-dev
-
 cache: cargo
 
 before_script:
