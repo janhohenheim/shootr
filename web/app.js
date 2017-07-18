@@ -30,4 +30,5 @@ function read_env_var(envvar) {
     if (!val)
         throw envvar + " must be specified. \
 Did you forget to add it to your .env file?"
+    return val
 }
