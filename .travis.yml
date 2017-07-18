@@ -41,4 +41,4 @@ before_script:
 
 after_success:
   - cd ..
-  - cargo coveralls --all
+  - cargo coveralls --all --release
