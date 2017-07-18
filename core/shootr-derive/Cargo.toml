@@ -10,4 +10,3 @@ proc-macro = true
 quote = "0.3"
 syn = "0.11"
 specs = "0.9"
-derive_more = "0.6.0"

@@ -5,8 +5,6 @@ extern crate quote;
 extern crate specs;
 
 use proc_macro::TokenStream;
-use specs::{Component, VecStorage};
-
 
 
 #[proc_macro_derive(Component)]
@@ -24,6 +22,5 @@ fn impl_component(ast: &syn::MacroInput) -> quote::Tokens {
         impl Component for #name {
             type Storage = VecStorage<Self>;
         }
-
     }
 }
