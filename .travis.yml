@@ -13,7 +13,12 @@ matrix:
 addons:
   apt:
     packages:
-      - kcov
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - cmake
+      - gcc
+      - binutils-dev
 
 cache: cargo
 
@@ -32,4 +37,14 @@ before_script:
 
 after_success:
   - cd ..
-  - kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo,/usr/lib --verify target/cov target/debug/shootr-*
+  - wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
+    tar xzf master.tar.gz &&
+    cd kcov-master &&
+    mkdir build &&
+    cd build &&
+    cmake .. &&
+    make &&
+    sudo make install &&  
+    cd ../.. &&
+    rm -rf kcov-master &&
+    kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo,/usr/lib --verify target/cov target/debug/shootr-*
