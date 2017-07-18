@@ -17,8 +17,8 @@ impl<'a> System<'a> for Physics {
 
     fn run(&mut self, (mut pos, mut vel, acc, friction, vel_bounds, pos_bounds): Self::SystemData) {
         for (mut vel, acc) in (&mut vel, &acc).join() {
-            vel.x = *clamp(&(vel.x + acc.x), &vel_bounds.min.x, &vel_bounds.max.x);
-            vel.y = *clamp(&(vel.y + acc.y), &vel_bounds.min.y, &vel_bounds.max.y);
+            vel.x = clamp(vel.x + acc.x, vel_bounds.min.x, vel_bounds.max.x);
+            vel.y = clamp(vel.y + acc.y, vel_bounds.min.y, vel_bounds.max.y);
         }
 
         for (mut vel, friction) in (&mut vel, &friction).join() {
@@ -37,8 +37,8 @@ impl<'a> System<'a> for Physics {
         }
 
         for (mut pos, vel) in (&mut pos, &vel).join() {
-            pos.x = *clamp(&(pos.x + vel.x), &pos_bounds.min.x, &pos_bounds.max.x);
-            pos.y = *clamp(&(pos.y + vel.y), &pos_bounds.min.y, &pos_bounds.max.y);
+            pos.x = clamp(pos.x + vel.x, pos_bounds.min.x, git pos_bounds.max.x);
+            pos.y = clamp(pos.y + vel.y, pos_bounds.min.y, pos_bounds.max.y);
         }
     }
 }
