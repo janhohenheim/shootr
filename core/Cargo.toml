@@ -4,6 +4,8 @@ name = "shootr"
 version = "0.2.0"
 
 [dependencies]
+shootr-derive = { path = "shootr-derive" }
+
 serde = "1"
 serde_derive = "1"
 serde_json = "1"

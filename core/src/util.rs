@@ -32,6 +32,42 @@ where
     }
 }
 
+#[macro_export]
+macro_rules! newtype {
+    (  $name:ident($type:ty)  ) => {
+        pub struct $name($type);
+        add_impl!($name, $type);
+    };
+    (  $name:ident($type:ty) : $($derives:meta), + ) => {
+        #[derive(
+            $($derives,)+
+        )]
+        pub struct $name($type);
+        add_impl!($name, $type);
+    };
+}
+
+macro_rules! add_impl {
+     (  $name:ident, $type:ty ) => {
+         impl Deref for $name {
+            type Target = $type;
+
+            fn deref(&self) -> &$type {
+                &self.0
+            }
+        }
+        impl DerefMut for $name {
+            fn deref_mut(&mut self) -> &mut $type {
+                &mut self.0
+            }
+        }
+        impl From<$type> for $name {
+            fn from(t: $type) -> Self {
+                $name(t)
+            }
+        }
+     };
+}
 
 #[test]
 fn read_string_envvar() {

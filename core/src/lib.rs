@@ -4,9 +4,13 @@
 extern crate serde_derive;
 #[macro_use]
 extern crate derive_more;
+#[macro_use]
+extern crate shootr_derive;
+
+#[macro_use]
+pub mod util;
+pub mod model;
 
 pub mod system;
-pub mod model;
 pub mod engine;
-pub mod util;
 pub mod bootstrap;
