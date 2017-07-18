@@ -37,7 +37,7 @@ impl<'a> System<'a> for Physics {
         }
 
         for (mut pos, vel) in (&mut pos, &vel).join() {
-            pos.x = clamp(pos.x + vel.x, pos_bounds.min.x, git pos_bounds.max.x);
+            pos.x = clamp(pos.x + vel.x, pos_bounds.min.x, pos_bounds.max.x);
             pos.y = clamp(pos.y + vel.y, pos_bounds.min.y, pos_bounds.max.y);
         }
     }
