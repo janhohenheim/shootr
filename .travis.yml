@@ -20,7 +20,6 @@ addons:
       - gcc
       - binutils-dev
       - zlib1g-dev
-      - libbfd-dev
 
 cache: 
   cargo: true
@@ -56,4 +55,4 @@ before_script:
 
 after_success:
   - cd ..
-  - ./tools/usr/local/bin/kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo,/usr/lib --verify target/cov target/debug/shootr-*
+  - ./tools/usr/local/bin/kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo,/usr/lib target/cov target/debug/shootr-*
