@@ -6,56 +6,17 @@ use super::game::Vector;
 use std::ops::{Deref, DerefMut};
 use std::convert::From;
 
-macro_rules! vectype {
-    (  $name:ident ) => {
-        newtype!(
-            $name(Vector): Debug,
-            Clone,
-            PartialEq,
-            Eq,
-            Serialize,
-            Component
-        );
-    };
-}
-
 vectype!(Acc);
 vectype!(Vel);
 vectype!(Pos);
 
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Component)]
 pub struct Bounciness {}
-impl Component for Bounciness {
-    type Storage = VecStorage<Self>;
-}
 
+newtype!(PlayerId(Id): Debug, Clone, Serialize, Component);
+newtype!(Friction(i32): Debug, Clone, Serialize, Component);
 
-#[derive(Debug, Clone, Serialize)]
-pub struct PlayerId(pub Id);
-impl Component for PlayerId {
-    type Storage = VecStorage<Self>;
-}
-impl Deref for PlayerId {
-    type Target = Id;
-
-    fn deref(&self) -> &Id {
-        &self.0
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct Friction(pub i32);
-impl Component for Friction {
-    type Storage = VecStorage<Self>;
-}
-impl Deref for Friction {
-    type Target = i32;
-
-    fn deref(&self) -> &i32 {
-        &self.0
-    }
-}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Bounds<T> {

@@ -35,14 +35,14 @@ where
 #[macro_export]
 macro_rules! newtype {
     (  $name:ident($type:ty)  ) => {
-        pub struct $name($type);
+        pub struct $name(pub $type);
         add_impl!($name, $type);
     };
     (  $name:ident($type:ty) : $($derives:meta), + ) => {
         #[derive(
             $($derives,)+
         )]
-        pub struct $name($type);
+        pub struct $name(pub $type);
         add_impl!($name, $type);
     };
 }
