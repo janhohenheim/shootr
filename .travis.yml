@@ -20,7 +20,8 @@ addons:
       - gcc
       - binutils-dev
       - zlib1g-dev
-      
+      - libbfd-dev
+
 cache: 
   cargo: true
   directories:
@@ -33,14 +34,8 @@ before_script:
   - cargo install --list | grep cargo-update || cargo install cargo-update
   # Update all tools
   - cargo install-update -a || true # sometimes nightly breaks stuff, that's okay
-  # Lint
-  - cd core
-  - cargo fmt -- --write-mode=diff
-  - cargo clippy -- -Z no-trans -D clippy 
-
-
-after_success:
-  - cd ..
+  
+  # Install code coverage tool if not already installed
   - find tools/usr/local/bin/kcov || 
     wget https://github.com/SimonKagstrom/kcov/archive/master.tar.gz &&
     tar xzf master.tar.gz &&
@@ -52,5 +47,13 @@ after_success:
     make install DESTDIR=../../tools &&  
     cd ../.. &&
     rm -rf kcov-master
+  
+  # Lint
+  - cd core
+  - cargo fmt -- --write-mode=diff
+  - cargo clippy -- -Z no-trans -D clippy 
 
+
+after_success:
+  - cd ..
   - ./tools/usr/local/bin/kcov --coveralls-id=$TRAVIS_JOB_ID --exclude-pattern=/.cargo,/usr/lib --verify target/cov target/debug/shootr-*
