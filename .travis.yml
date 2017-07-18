@@ -29,4 +29,4 @@ before_script:
   # Lint
   - cd core
   - cargo fmt -- --write-mode=diff
-  - cargo clippy -- -Z no-trans
+  - cargo clippy -- -Z no-trans -D clippy
