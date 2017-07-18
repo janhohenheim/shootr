@@ -18,6 +18,7 @@ type Ids = Arc<RwLock<Vec<Id>>>;
 
 pub struct Sending;
 impl<'a> System<'a> for Sending {
+    #[allow(type_complexity)]
     type SystemData = (Fetch<'a, Ids>,
      Fetch<'a, Engine>,
      ReadStorage<'a, Pos>,

@@ -7,6 +7,7 @@ use util::clamp;
 
 pub struct Physics;
 impl<'a> System<'a> for Physics {
+    #[allow(type_complexity)]
     type SystemData = (WriteStorage<'a, Pos>,
      WriteStorage<'a, Vel>,
      ReadStorage<'a, Acc>,
