@@ -9,18 +9,33 @@ matrix:
     - rust: stable
 
 
+# Dependencies of kcov, used by coverage
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - binutils-dev
+      - cmake
+    sources:
+      - kalakris-cmake
+
 cache: cargo
 
 before_script:
-# Rust
   # Install tools if not already installed
   - cargo install --list | grep clippy || cargo install clippy
   - cargo install --list | grep rustfmt || cargo install rustfmt
+  - cargo install --list | grep cargo-update || cargo install cargo-update
+  - cargo install --list | grep argo-travis || cargo install cargo-travis
   # Update all tools
-  - cargo install --list | grep cargo-update || cargo install cargo-update || true # sometimes nightly breaks stuff, that's okay
-  - cargo install-update -a
-  
+  - cargo install-update -a || true # sometimes nightly breaks stuff, that's okay
   # Lint
   - cd core
   - cargo fmt -- --write-mode=diff
   - cargo clippy -- -Z no-trans -D clippy 
+
+
+after_success:
+  - cargo coveralls
