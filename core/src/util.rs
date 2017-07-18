@@ -22,12 +22,12 @@ pub fn elapsed_ms(from: DateTime<Utc>, to: DateTime<Utc>) -> u64 {
 
 pub fn clamp<'a, T>(val: &'a T, min: &'a T, max: &'a T) -> &'a T
 where
-    T: Ord
+    T: Ord,
 {
     match (*val < *min, *val > *max) {
         (true, _) => min,
         (_, true) => max,
-        _ => val
+        _ => val,
     }
 }
 
