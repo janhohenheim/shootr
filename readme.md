@@ -1,5 +1,5 @@
 # shootr
-[Live](https://beta.jnferner.com)  
+[![Build Status](https://travis-ci.org/SirRade/shootr.svg?branch=master)](https://travis-ci.org/SirRade/shootr) [Live](https://beta.jnferner.com)  
 An online game with a rust backend
 
 This is a work in progress and does not have any concept whatsoever yet.
