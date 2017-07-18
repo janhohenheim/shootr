@@ -20,13 +20,20 @@ pub fn elapsed_ms(from: DateTime<Utc>, to: DateTime<Utc>) -> u64 {
 }
 
 
-pub fn clamp<T>(val: &mut T, min: T, max: T)
+pub fn clamp<'a, T>(val: &'a T, min: &'a T, max: &'a T) -> &'a T
 where
-    T: Ord,
+    T: Ord
 {
-    if *val < min {
-        *val = min;
-    } else if *val > max {
-        *val = max;
+    match (*val < *min, *val > *max) {
+        (true, _) => min,
+        (_, true) => max,
+        _ => val
     }
+}
+
+
+#[test]
+fn clamp_in_range() {
+    let res = clamp(&1, &0, &2);
+    assert_eq!(&1, res);
 }
