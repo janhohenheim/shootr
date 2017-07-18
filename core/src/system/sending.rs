@@ -53,7 +53,7 @@ impl<'a> System<'a> for Sending {
         let state = ClientState {
             ball,
             players,
-            timestamp: elapsed_ms(Utc.timestamp(0, 0), Utc::now()),
+            timestamp: elapsed_ms(Utc.timestamp(0, 0), Utc::now()).expect("Time went backwards"),
         };
         send(engine, ids, state);
     }

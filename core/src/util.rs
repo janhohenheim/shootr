@@ -15,10 +15,9 @@ pub fn read_env_var(var: &str) -> String {
 }
 
 
-pub fn elapsed_ms(from: DateTime<Utc>, to: DateTime<Utc>) -> u64 {
+pub fn elapsed_ms(from: DateTime<Utc>, to: DateTime<Utc>) -> Result<u64, ()> {
     let ms = to.signed_duration_since(from).num_milliseconds();
-    assert!(ms >= 0);
-    ms as u64
+    if ms >= 0 { Ok(ms as u64) } else { Err(()) }
 }
 
 
@@ -55,29 +54,28 @@ use util::chrono::TimeZone;
 fn one_elapsed_ms() {
     let a = Utc.ymd(1970, 1, 1).and_hms_milli(0, 0, 0, 0);
     let b = Utc.ymd(1970, 1, 1).and_hms_milli(0, 0, 0, 1);
-    assert_eq!(1, elapsed_ms(a, b));
+    assert_eq!(1, elapsed_ms(a, b).unwrap());
 }
 
 #[test]
 fn one_elapsed_second() {
     let a = Utc.ymd(1970, 1, 1).and_hms_milli(0, 0, 0, 0);
     let b = Utc.ymd(1970, 1, 1).and_hms(0, 0, 1);
-    assert_eq!(1000, elapsed_ms(a, b));
+    assert_eq!(1000, elapsed_ms(a, b).unwrap());
 }
 
 #[test]
 fn no_elapsed_time() {
     let a = Utc.ymd(1970, 1, 1).and_hms(0, 0, 1);
-    assert_eq!(0, elapsed_ms(a, a));
+    assert_eq!(0, elapsed_ms(a, a).unwrap());
 }
 
 
 #[test]
-#[should_panic]
 fn negative_elapsed_time() {
     let a = Utc.ymd(1970, 1, 1).and_hms(0, 0, 1);
     let b = Utc.ymd(1970, 1, 1).and_hms(0, 0, 0);
-    elapsed_ms(a, b);
+    assert!(elapsed_ms(a, b).is_err());
 }
 
 #[test]

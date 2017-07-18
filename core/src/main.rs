@@ -111,7 +111,7 @@ impl EventHandler for Handler {
         let ms_per_update = 1000 / updates_per_sec;
         loop {
             let current = Utc::now();
-            let elapsed = elapsed_ms(previous, current);
+            let elapsed = elapsed_ms(previous, current).expect("Time went backwards");
             previous = current;
             lag += elapsed;
             self.despawn(&mut world);
