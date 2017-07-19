@@ -28,7 +28,10 @@ class Ping {
     }
 
     add(origTimestamp) {
-        this.pings.push(Date.now() - origTimestamp)
+        const ping = Date.now() - origTimestamp
+        if (ping < 0)
+            throw 'Ping cannot be negative, received timestamp from future'
+        this.pings.push(ping)
         const buffer = 200
         if (this.pings.length > buffer)
             this.pings.splice(0, this.pings.length - buffer)
