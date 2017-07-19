@@ -61,8 +61,9 @@ impl<'a> System<'a> for Sending {
 
 fn send(engine: &Engine, ids: &Ids, state: ClientState) {
     let state = Arc::new(RwLock::new(state));
+    let connections = engine.connections.read().unwrap();
     for id in ids.read().unwrap().iter() {
-        let channel = engine.send_channel.clone();
-        channel.send((*id, state.clone())).wait().unwrap();
+        let channel = connections.get(&id).expect("Didn't find connection in list").write().unwrap().send_channel.clone();
+        channel.send(state.clone()).wait().expect("Failed to send message");
     }
 }

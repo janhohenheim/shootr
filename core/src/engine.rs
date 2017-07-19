@@ -37,10 +37,19 @@ type SinkContent = Framed<TcpStream, MessageCodec<OwnedMessage>>;
 type SplitSink = futures::stream::SplitSink<SinkContent>;
 
 #[derive(Clone)]
-pub struct Engine {
-    pub send_channel: mpsc::UnboundedSender<(Id, Arc<RwLock<ClientState>>)>,
-    pub remote: Remote,
+pub struct ConnectionData {
+    pub ping: u64,
+    pub send_channel: mpsc::UnboundedSender<Arc<RwLock<ClientState>>>,
 }
+type SyncConnections = HashMap<Id, RwLock<ConnectionData>>;
+type Connections = Arc<RwLock<SyncConnections>>;
+
+#[derive(Clone)]
+pub struct Engine {
+    pub remote: Remote,
+    pub connections: Connections,
+}
+
 
 #[derive(Serialize, Debug)]
 pub struct Msg {
@@ -71,9 +80,9 @@ where
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
     let (send_channel_out, send_channel_in) = mpsc::unbounded();
-
+    
     let engine = Engine {
-        send_channel: send_channel_out.clone(),
+        connections: connections.clone(),
         remote: remote.clone(),
     };
     let event_handler = T::new(engine);
@@ -98,7 +107,8 @@ where
             let event_handler = event_handler_inner.clone();
             let connections_inner = connections_inner.clone();
             println!("Got a connection from: {}", addr);
-            let channel = receive_channel_out.clone();
+            let receive_channel = receive_channel_out.clone();
+            let send_channel = send_channel_out.clone();
             let conn_id = conn_id.clone();
             let f = upgrade.accept().and_then(move |(framed, _)| {
                 let id = conn_id.borrow_mut().next().expect(
@@ -108,8 +118,14 @@ where
                     return Ok(());
                 }
                 let (sink, stream) = framed.split();
-                channel.send((id, stream)).wait().unwrap();
-                connections_inner.write().unwrap().insert(id, sink);
+                let (conn_out, conn_in) = mpsc::unbounded();
+                send_channel.send((conn_in, sink)).wait().unwrap();
+                receive_channel.send((id, stream)).wait().unwrap();
+                let data = ConnectionData {
+                    ping: 0,
+                    send_channel: conn_out,
+                };
+                connections_inner.write().unwrap().insert(id, RwLock::new(data));
                 Ok(())
             });
             spawn_future(f, "Handle new connection", &handle);
@@ -119,51 +135,37 @@ where
 
 
     // Handle receiving messages from a client
-    let remote_inner = remote.clone();
     let connections_inner = connections.clone();
     let event_handler_inner = event_handler.clone();
     let receive_handler = pool.spawn_fn(|| {
         receive_channel_in.for_each(move |(id, stream)| {
             let connections = connections_inner.clone();
             let event_handler = event_handler_inner.clone();
-            remote_inner.spawn(move |_| {
-                let connections = connections.clone();
-                let event_handler = event_handler.clone();
-                stream
-                    .for_each(move |msg| {
-                        process_message(id, &msg, &*event_handler, connections.clone());
-                        Ok(())
-                    })
-                    .map_err(|e| println!("Error while receiving messages: {}", e))
-            });
-            Ok(())
+            stream
+                .for_each(move |msg| {
+                    process_message(id, &msg, &*event_handler, connections.clone());
+                    Ok(())
+                })
+                .map_err(|e| println!("Error while receiving messages: {}", e))
         })
     }).map_err(|e| println!("Error while receiving messages: {:?}", e));
 
 
     // Handle sending messages to a client
-    let connections_inner = connections.clone();
-    let event_handler_inner = event_handler.clone();
+    
     let send_handler = pool.spawn_fn(move || {
-        let connections = connections_inner.clone();
-        let event_handler = event_handler_inner.clone();
-        send_channel_in.for_each(move |(id, state): (Id, Arc<RwLock<ClientState>>)| {
-            let mut conn = connections.write().unwrap();
-            // Todo: don't even send invalid ids
-            let mut is_ok = true;
-            if let Some(mut sink) = conn.get_mut(&id) {
+        send_channel_in.for_each(move |(conn_in, sink): (mpsc::UnboundedReceiver<Arc<RwLock<ClientState>>>, SplitSink)| {
+            let sink = Arc::new(RwLock::new(sink));
+            conn_in.for_each(move |state: Arc<RwLock<ClientState>>| {
                 let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
                 // println!("Sending message: {}", msg);
+                let mut sink = sink.write().unwrap();
                 sink.start_send(OwnedMessage::Text(msg)).expect(
                     "Failed to start sending message",
                 );
-                let result = sink.poll_complete();
-                is_ok = result.is_ok();
-            }
-            if !is_ok {
-                kick(&mut conn, id, &*event_handler);
-            }
-            Ok(())
+                sink.poll_complete().expect("Failed to send message"); 
+                Ok(())
+            })
         })
     }).map_err(|e| println!("Error while sending messages: {:?}", e));
 
@@ -200,11 +202,14 @@ fn process_message<T>(
     id: Id,
     msg: &OwnedMessage,
     event_handler: &T,
-    connections: Arc<RwLock<HashMap<Id, SplitSink>>>,
+    connections: Connections,
 ) where
     T: EventHandler,
 {
     match *msg {
+        OwnedMessage::Pong(_) => {
+            
+        }
         OwnedMessage::Text(ref content) => {
             let msg = Msg {
                 id,
@@ -213,18 +218,19 @@ fn process_message<T>(
             event_handler.message(&msg);
         }
         OwnedMessage::Close(_) => {
-            let mut conn = connections.write().unwrap();
-            kick(&mut conn, id, event_handler);
+            kick(&connections, id, event_handler);
         }
         _ => {}
     };
 }
 
-fn kick<T>(connections: &mut HashMap<Id, SplitSink>, id: Id, event_handler: &T)
+fn kick<T>(connections: &Connections, id: Id, event_handler: &T)
 where
     T: EventHandler,
 {
     connections
+        .write()
+        .unwrap()
         .remove(&id)
         .and_then(|_| Some(println!("Client with id {} disconnected", id)))
         .expect("Tried to remove id that was not in list");
