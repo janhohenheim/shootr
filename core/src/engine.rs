@@ -163,7 +163,7 @@ where
                         } else {
                             let message = Msg {
                                 id: id,
-                                content: msg
+                                content: msg,
                             };
                             event_handler.message(&message);
                         }
@@ -218,24 +218,27 @@ where
     ));
 
     Interval::new(Duration::from_millis(500), &handle)
-    .and_then(move |interval| {
-        let ping_timestamps = ping_timestamps.clone();
-        let id_gen = id_gen.clone();
-        let connections = connections.clone();
-        let f = interval.for_each(move |_| {
-            let connections = connections.read().unwrap();
-            for (_, connection) in connections.iter() {
-                let connection = connection.write().unwrap();
-                let mut ping_timestamps = ping_timestamps.write().unwrap();
-                let signature = id_gen.write().unwrap().next().expect("Reached id generation limit");
-                ping_timestamps.insert(signature, timestamp());
-            }
+        .and_then(move |interval| {
+            let ping_timestamps = ping_timestamps.clone();
+            let id_gen = id_gen.clone();
+            let connections = connections.clone();
+            let f = interval.for_each(move |_| {
+                let connections = connections.read().unwrap();
+                for (_, connection) in connections.iter() {
+                    let connection = connection.write().unwrap();
+                    let mut ping_timestamps = ping_timestamps.write().unwrap();
+                    let signature = id_gen.write().unwrap().next().expect(
+                        "Reached id generation limit",
+                    );
+                    ping_timestamps.insert(signature, timestamp());
+                }
+                Ok(())
+            });
+            spawn_future(f, "Ping interval", &handle);
             Ok(())
-        });
-        spawn_future(f, "Ping interval", &handle);
-        Ok(())
-    }).map_err(|e| println!("Error in setting pinger interval up: {:?}", e));
-    
+        })
+        .map_err(|e| println!("Error in setting pinger interval up: {:?}", e));
+
 
     core.run(handlers)
         .map_err(|_| println!("Unspecified error while running core loop"))
