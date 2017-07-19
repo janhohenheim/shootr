@@ -1,10 +1,8 @@
 extern crate specs;
 extern crate futures;
-extern crate chrono;
 
 use self::specs::{Join, ReadStorage, Fetch, System};
 use self::futures::{Future, Sink};
-use self::chrono::{TimeZone, Utc};
 use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
@@ -12,7 +10,7 @@ use std::collections::HashMap;
 use model::comp::{Pos, Vel, Acc, PlayerId, Bounciness};
 use model::client::{ClientState, Ball, Player};
 use engine::{Id, Engine};
-use util::elapsed_ms;
+use util::timestamp;
 
 type Ids = Arc<RwLock<Vec<Id>>>;
 
@@ -53,7 +51,7 @@ impl<'a> System<'a> for Sending {
         let state = ClientState {
             ball,
             players,
-            timestamp: elapsed_ms(Utc.timestamp(0, 0), Utc::now()).expect("Time went backwards"),
+            timestamp: timestamp(),
         };
         send(engine, ids, state);
     }
