@@ -54,7 +54,8 @@ function connect(address) {
         const state = JSON.parse(msg.data, (key, value) => value === "" ? 0 : value)
         ping.add(state.timestamp)
         states.push(state)
-        setTimeout(states.shift, 200)
+        // Todo: Exchange for real queue library
+        setTimeout(states.shift, 100)
         const lastIds = Object.keys(players)
         const currIds = Object.keys(state.players)
         // Todo: Optimize this algorithm
@@ -242,19 +243,17 @@ function play() {
 function render(states) {
     const renderTime = getRenderTime()
     const index = getIndexOfRenderState(states, renderTime)
-    if (index < 0) {
-        console.log('couldn\'t find', renderTime)
-        console.log('in', states.map((state)=>state.timestamp))
+    if (index < 0)
         return
-    }
     let interpolatedState = getInterpolatedState(states[index], states[index + 1], renderTime)
     setWorld(interpolatedState)
 }
 
 function getRenderTime() {
     const now = new Date().getTime()
-    const min = 100
-    const delay = Math.max(min, ping.average)
+    const minDelay = 100
+    const maxDelay = 300
+    const delay = Math.max(minDelay, Math.min(maxDelay, ping.average))
     return now - delay
 }
 
