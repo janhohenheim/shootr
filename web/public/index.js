@@ -30,7 +30,7 @@ class Ping {
     add(origTimestamp) {
         const ping = Date.now() - origTimestamp
         if (ping < 0)
-            throw 'Ping cannot be negative, received timestamp from future'
+            console.error('Ping cannot be negative, received timestamp from future')
         this.pings.push(ping)
         const buffer = 200
         if (this.pings.length > buffer)
@@ -187,7 +187,7 @@ function setup() {
     connectionInfo.style.dropShadow = true
     connectionInfo.style.dropShadowAlpha = 0.7
     connectionInfo.y = 30
-    connectionInfo.x = 900
+    connectionInfo.x = GAME_WIDTH - 200
     app.stage.addChild(connectionInfo)
 
     pingInfo = new PIXI.Text('Ping: Calculating...')

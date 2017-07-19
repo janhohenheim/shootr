@@ -106,7 +106,6 @@ where
             let (upgrade, addr) = conn.unwrap();
             let event_handler = event_handler_inner.clone();
             let connections_inner = connections_inner.clone();
-            println!("Got a connection from: {}", addr);
             let receive_channel = receive_channel_out.clone();
             let send_channel = send_channel_out.clone();
             let conn_id = conn_id.clone();
@@ -114,12 +113,13 @@ where
                 let id = conn_id.borrow_mut().next().expect(
                     "maximum amount of ids reached",
                 );
+                println!("Got a connection from: {}, assigned id {}", addr, id);
                 if !event_handler.connect(id) {
                     return Ok(());
                 }
                 let (sink, stream) = framed.split();
                 let (conn_out, conn_in) = mpsc::unbounded();
-                send_channel.send((conn_in, sink)).wait().unwrap();
+                send_channel.send((id, conn_in, sink)).wait().unwrap();
                 receive_channel.send((id, stream)).wait().unwrap();
                 let data = ConnectionData {
                     ping: 0,
@@ -137,35 +137,49 @@ where
     // Handle receiving messages from a client
     let connections_inner = connections.clone();
     let event_handler_inner = event_handler.clone();
+    let remote_inner = remote.clone();
     let receive_handler = pool.spawn_fn(|| {
         receive_channel_in.for_each(move |(id, stream)| {
             let connections = connections_inner.clone();
             let event_handler = event_handler_inner.clone();
+            remote_inner.spawn(move |_| {
             stream
                 .for_each(move |msg| {
                     process_message(id, &msg, &*event_handler, connections.clone());
                     Ok(())
                 })
                 .map_err(|e| println!("Error while receiving messages: {}", e))
+            });
+            Ok(())
         })
     }).map_err(|e| println!("Error while receiving messages: {:?}", e));
 
 
     // Handle sending messages to a client
-    
+    let event_handler_inner = event_handler.clone();
     let send_handler = pool.spawn_fn(move || {
-        send_channel_in.for_each(move |(conn_in, sink): (mpsc::UnboundedReceiver<Arc<RwLock<ClientState>>>, SplitSink)| {
+        let remote = remote.clone();
+        let connections = connections.clone();
+        let event_handler = event_handler_inner.clone();
+        send_channel_in.for_each(move |(id, conn_in, sink): (Id, mpsc::UnboundedReceiver<Arc<RwLock<ClientState>>>, SplitSink)| {
             let sink = Arc::new(RwLock::new(sink));
-            conn_in.for_each(move |state: Arc<RwLock<ClientState>>| {
-                let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
-                // println!("Sending message: {}", msg);
-                let mut sink = sink.write().unwrap();
-                sink.start_send(OwnedMessage::Text(msg)).expect(
-                    "Failed to start sending message",
-                );
-                sink.poll_complete().expect("Failed to send message"); 
-                Ok(())
-            })
+            let connections = connections.clone();
+            let event_handler = event_handler.clone();
+            remote.spawn(move |_| {
+                conn_in.for_each(move |state: Arc<RwLock<ClientState>>| {
+                    let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
+                    // println!("Sending message: {}", msg);
+                    let mut sink = sink.write().unwrap();
+                    let ok_send = sink.start_send(OwnedMessage::Text(msg)).is_ok();
+                    let ok_poll = sink.poll_complete().is_ok();
+                    if !ok_send || !ok_poll {
+                        println!("Failed to send, kicking client {}", id);
+                        kick(&connections, id, &*event_handler);
+                    }                    
+                    Ok(())
+                })
+            });
+            Ok(())
         })
     }).map_err(|e| println!("Error while sending messages: {:?}", e));
 
@@ -215,6 +229,7 @@ fn process_message<T>(
                 id,
                 content: content.clone(),
             };
+            println!("Received message: {}", msg.content);
             event_handler.message(&msg);
         }
         OwnedMessage::Close(_) => {
