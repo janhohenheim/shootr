@@ -1,5 +1,6 @@
 extern crate specs;
 extern crate futures;
+extern crate serde_json;
 
 use self::specs::{Join, ReadStorage, Fetch, System};
 use self::futures::{Future, Sink};
@@ -9,7 +10,7 @@ use std::collections::HashMap;
 
 use model::comp::{Pos, Vel, Acc, PlayerId, Bounciness};
 use model::client::{ClientState, Ball, Player};
-use engine::{Id, Engine};
+use engine::{Id, Engine, OwnedMessage};
 use util::timestamp;
 
 type Ids = Arc<RwLock<Vec<Id>>>;
@@ -68,7 +69,8 @@ fn send(engine: &Engine, ids: &Ids, state: ClientState) {
             .unwrap()
             .send_channel
             .clone();
-        channel.send(state.clone()).wait().expect(
+        let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
+        channel.send(OwnedMessage::Text(msg)).wait().expect(
             "Failed to send message",
         );
     }

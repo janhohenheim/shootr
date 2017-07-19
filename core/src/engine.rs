@@ -9,13 +9,13 @@ extern crate byteorder;
 
 use self::dotenv::dotenv;
 
-use self::websocket::message::OwnedMessage;
+pub use self::websocket::message::OwnedMessage;
 use self::websocket::server::{WsServer, InvalidConnection};
 use self::websocket::async::{Server, MessageCodec};
 use self::websocket::client::async::Framed;
 use self::websocket::server::NoTlsAcceptor;
 
-use self::tokio_core::reactor::{Handle, Remote, Core};
+use self::tokio_core::reactor::{Handle, Remote, Core, Interval};
 use self::tokio_core::net::{TcpStream, TcpListener};
 
 use self::futures::{Future, Sink, Stream};
@@ -25,12 +25,11 @@ use self::futures_cpupool::CpuPool;
 use self::byteorder::{BigEndian, ReadBytesExt};
 
 use std::sync::{RwLock, Arc};
-use std::rc::Rc;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::collections::HashMap;
-use std::cell::RefCell;
 use std::io::Cursor;
+use std::time::Duration;
 
 use model::client::ClientState;
 use util::{timestamp, read_env_var};
@@ -44,7 +43,7 @@ type SplitSink = futures::stream::SplitSink<SinkContent>;
 #[derive(Clone)]
 pub struct ConnectionData {
     pub ping: u64,
-    pub send_channel: mpsc::UnboundedSender<Arc<RwLock<ClientState>>>,
+    pub send_channel: mpsc::UnboundedSender<OwnedMessage>,
 }
 type SyncConnections = HashMap<Id, RwLock<ConnectionData>>;
 type Connections = Arc<RwLock<SyncConnections>>;
@@ -56,10 +55,10 @@ pub struct Engine {
 }
 
 
-#[derive(Serialize, Debug)]
+#[derive(Debug)]
 pub struct Msg {
     pub id: Id,
-    pub content: String,
+    pub content: OwnedMessage,
 }
 
 pub trait EventHandler {
@@ -81,12 +80,13 @@ where
     let remote = core.remote();
 
     let server = build_server(&handle);
-    let pool = CpuPool::new(3);
+    let pool = CpuPool::new(4);
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
     let (send_channel_out, send_channel_in) = mpsc::unbounded();
 
     let ping_timestamps = Arc::new(RwLock::new(HashMap::new()));
+    let id_gen = Arc::new(RwLock::new(IdGen::new()));
 
     let engine = Engine {
         connections: connections.clone(),
@@ -95,9 +95,10 @@ where
     let event_handler = T::new(engine);
     let event_handler = Arc::new(event_handler);
 
-    let conn_id = Rc::new(RefCell::new(IdGen::new()));
+    let id_gen_inner = id_gen.clone();
     let connections_inner = connections.clone();
     let event_handler_inner = event_handler.clone();
+    let handle_inner = handle.clone();
     // Handle new connection
     let connection_handler = server
         .incoming()
@@ -115,9 +116,9 @@ where
             let connections_inner = connections_inner.clone();
             let receive_channel = receive_channel_out.clone();
             let send_channel = send_channel_out.clone();
-            let conn_id = conn_id.clone();
+            let id_gen = id_gen_inner.clone();
             let f = upgrade.accept().and_then(move |(framed, _)| {
-                let id = conn_id.borrow_mut().next().expect(
+                let id = id_gen.write().unwrap().next().expect(
                     "maximum amount of ids reached",
                 );
                 println!("Got a connection from: {}, assigned id {}", addr, id);
@@ -138,7 +139,7 @@ where
                 );
                 Ok(())
             });
-            spawn_future(f, "Handle new connection", &handle);
+            spawn_future(f, "Handle new connection", &handle_inner);
             Ok(())
         })
         .map_err(|e: ()| e);
@@ -157,15 +158,15 @@ where
             remote_inner.spawn(move |_| {
                 stream
                     .for_each(move |msg| {
-                        if let OwnedMessage::Pong(ref signature) = msg {
-                            handle_pong_signature(
-                                id,
-                                signature,
-                                connections.clone(),
-                                ping_timestamps.clone(),
-                            );
+                        if let OwnedMessage::Close(_) = msg {
+                            kick(&connections, id, &*event_handler);
+                        } else {
+                            let message = Msg {
+                                id: id,
+                                content: msg
+                            };
+                            event_handler.message(&message);
                         }
-                        process_message(id, &msg, &*event_handler, connections.clone());
                         Ok(())
                     })
                     .map_err(|e| println!("Error while receiving messages: {}", e))
@@ -177,23 +178,22 @@ where
 
     // Handle sending messages to a client
     let event_handler_inner = event_handler.clone();
+    let connections_inner = connections.clone();
     let send_handler = pool.spawn_fn(move || {
         let remote = remote.clone();
-        let connections = connections.clone();
+        let connections = connections_inner.clone();
         let event_handler = event_handler_inner.clone();
         send_channel_in.for_each(
             move |(id, conn_in, sink): (Id,
-                                        mpsc::UnboundedReceiver<Arc<RwLock<ClientState>>>,
+                                        mpsc::UnboundedReceiver<OwnedMessage>,
                                         SplitSink)| {
                 let sink = Arc::new(RwLock::new(sink));
                 let connections = connections.clone();
                 let event_handler = event_handler.clone();
                 remote.spawn(move |_| {
-                    conn_in.for_each(move |state: Arc<RwLock<ClientState>>| {
-                        let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
-                        // println!("Sending message: {}", msg);
+                    conn_in.for_each(move |msg: OwnedMessage| {
                         let mut sink = sink.write().unwrap();
-                        let ok_send = sink.start_send(OwnedMessage::Text(msg)).is_ok();
+                        let ok_send = sink.start_send(msg).is_ok();
                         let ok_poll = sink.poll_complete().is_ok();
                         if !ok_send || !ok_poll {
                             println!("Failed to send, kicking client {}", id);
@@ -212,9 +212,31 @@ where
         event_handler.main_loop();
         Ok::<(), ()>(())
     }).map_err(|e| println!("Error in main callback function: {:?}", e));
+
     let handlers = main_fn.select2(connection_handler.select2(
         receive_handler.select(send_handler),
     ));
+
+    Interval::new(Duration::from_millis(500), &handle)
+    .and_then(move |interval| {
+        let ping_timestamps = ping_timestamps.clone();
+        let id_gen = id_gen.clone();
+        let connections = connections.clone();
+        let f = interval.for_each(move |_| {
+            let connections = connections.read().unwrap();
+            for (_, connection) in connections.iter() {
+                let connection = connection.write().unwrap();
+                let mut ping_timestamps = ping_timestamps.write().unwrap();
+                let signature = id_gen.write().unwrap().next().expect("Reached id generation limit");
+                ping_timestamps.insert(signature, timestamp());
+            }
+            Ok(())
+        });
+        spawn_future(f, "Ping interval", &handle);
+        Ok(())
+    }).map_err(|e| println!("Error in setting pinger interval up: {:?}", e));
+    
+
     core.run(handlers)
         .map_err(|_| println!("Unspecified error while running core loop"))
         .unwrap();
@@ -236,25 +258,6 @@ fn build_server(handle: &Handle) -> WsServer<NoTlsAcceptor, TcpListener> {
     Server::bind(address, handle).expect("Failed to create server")
 }
 
-fn process_message<T>(id: Id, msg: &OwnedMessage, event_handler: &T, connections: Connections)
-where
-    T: EventHandler,
-{
-    match *msg {
-        OwnedMessage::Text(ref content) => {
-            let msg = Msg {
-                id,
-                content: content.clone(),
-            };
-            println!("Received message: {}", msg.content);
-            event_handler.message(&msg);
-        }
-        OwnedMessage::Close(_) => {
-            kick(&connections, id, event_handler);
-        }
-        _ => {}
-    };
-}
 
 fn handle_pong_signature(
     id: Id,

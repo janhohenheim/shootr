@@ -7,7 +7,7 @@ extern crate serde_json;
 use self::specs::{DispatcherBuilder, World, Entity};
 use self::chrono::prelude::*;
 
-use shootr::engine::{Msg, Engine, EventHandler, Id};
+use shootr::engine::{Msg, Engine, EventHandler, Id, OwnedMessage};
 use shootr::util::{read_env_var, elapsed_ms};
 use shootr::model::comp::{Acc, Vel, Pos, Bounciness, PlayerId, Friction};
 use shootr::model::client::InputMsg;
@@ -77,6 +77,29 @@ impl Handler {
             };
         }
     }
+
+    fn handle_text(&self, id: Id, msg: &str) {
+        let input = serde_json::from_str::<InputMsg>(&msg);
+        if input.is_err() {
+            println!("Client #{}:\tinvalid message ({})", id, msg);
+            return;
+        }
+        let input = input.unwrap();
+
+        let mut key_state = KeyState {
+            pressed: input.pressed,
+            fired: false,
+        };
+
+        let inputs = self.inputs.read().unwrap();
+        // guaranteed to contain key as connect() had to be called before
+        let key_states = &mut inputs.get(&id).unwrap().write().unwrap().key_states;
+
+        if let Some(last) = key_states.get_mut(&input.key) {
+            key_state.fired = last.pressed && !key_state.pressed;
+        }
+        key_states.insert(input.key, key_state);
+    }
 }
 
 impl EventHandler for Handler {
@@ -128,26 +151,10 @@ impl EventHandler for Handler {
     }
 
     fn message(&self, msg: &Msg) {
-        let input = serde_json::from_str::<InputMsg>(&msg.content);
-        if input.is_err() {
-            println!("Client #{}:\tinvalid message ({})", msg.id, msg.content);
-            return;
-        }
-        let input = input.unwrap();
-
-        let mut key_state = KeyState {
-            pressed: input.pressed,
-            fired: false,
+        match msg.content {
+            OwnedMessage::Text(ref txt) => self.handle_text(msg.id, txt),
+            _ => {}
         };
-
-        let inputs = self.inputs.read().unwrap();
-        // guaranteed to contain key as connect() had to be called before
-        let key_states = &mut inputs.get(&msg.id).unwrap().write().unwrap().key_states;
-
-        if let Some(last) = key_states.get_mut(&input.key) {
-            key_state.fired = last.pressed && !key_state.pressed;
-        }
-        key_states.insert(input.key, key_state);
     }
     fn connect(&self, id: Id) -> bool {
         self.ids.write().unwrap().push(id);
