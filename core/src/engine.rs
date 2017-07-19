@@ -5,6 +5,7 @@ extern crate tokio_core;
 extern crate serde;
 extern crate serde_json;
 extern crate dotenv;
+extern crate byteorder;
 
 use self::dotenv::dotenv;
 
@@ -21,15 +22,19 @@ use self::futures::{Future, Sink, Stream};
 use self::futures::sync::mpsc;
 use self::futures_cpupool::CpuPool;
 
+use self::byteorder::{BigEndian, ReadBytesExt};
+
 use std::sync::{RwLock, Arc};
 use std::rc::Rc;
 use std::fmt::Debug;
 use std::ops::Deref;
 use std::collections::HashMap;
 use std::cell::RefCell;
+use std::io::Cursor;
 
 use model::client::ClientState;
-use util::{timestamp, elapsed_ms, read_env_var};
+use util::{timestamp, read_env_var};
+
 
 pub type Id = u32;
 
@@ -80,6 +85,8 @@ where
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
     let (send_channel_out, send_channel_in) = mpsc::unbounded();
+
+    let ping_timestamps = Arc::new(RwLock::new(HashMap::new()));
 
     let engine = Engine {
         connections: connections.clone(),
@@ -141,13 +148,23 @@ where
     let connections_inner = connections.clone();
     let event_handler_inner = event_handler.clone();
     let remote_inner = remote.clone();
+    let ping_timestamps_inner = ping_timestamps.clone();
     let receive_handler = pool.spawn_fn(|| {
         receive_channel_in.for_each(move |(id, stream)| {
             let connections = connections_inner.clone();
             let event_handler = event_handler_inner.clone();
+            let ping_timestamps = ping_timestamps_inner.clone();
             remote_inner.spawn(move |_| {
                 stream
                     .for_each(move |msg| {
+                        if let OwnedMessage::Pong(ref signature) = msg {
+                            handle_pong_signature(
+                                id,
+                                signature,
+                                connections.clone(),
+                                ping_timestamps.clone(),
+                            );
+                        }
                         process_message(id, &msg, &*event_handler, connections.clone());
                         Ok(())
                     })
@@ -224,17 +241,6 @@ where
     T: EventHandler,
 {
     match *msg {
-        OwnedMessage::Pong(_) => {
-            let connections = connections
-                .read()
-                .unwrap();
-            
-            connections.get(&id)
-                .expect("Tried to access invalid id")
-                .write()
-                .unwrap()
-                .ping = timestamp();
-        }
         OwnedMessage::Text(ref content) => {
             let msg = Msg {
                 id,
@@ -248,6 +254,28 @@ where
         }
         _ => {}
     };
+}
+
+fn handle_pong_signature(
+    id: Id,
+    signature: &Vec<u8>,
+    connections: Connections,
+    ping_timestamps: Arc<RwLock<HashMap<Id, u64>>>,
+) {
+    let connections = connections.read().unwrap();
+    let mut ping_timestamps = ping_timestamps.write().unwrap();
+    let mut signature = Cursor::new(&signature);
+    if let Ok(signature) = signature.read_u32::<BigEndian>() {
+        if let Some(ping_timestamp) = ping_timestamps.remove(&signature) {
+            let ping = timestamp() - ping_timestamp;
+            connections
+                .get(&id)
+                .expect("Tried to access invalid id")
+                .write()
+                .unwrap()
+                .ping = ping;
+        }
+    }
 }
 
 fn kick<T>(connections: &Connections, id: Id, event_handler: &T)
