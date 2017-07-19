@@ -1,6 +1,6 @@
 extern crate chrono;
 
-use self::chrono::{DateTime, Utc};
+use self::chrono::{DateTime, Utc, TimeZone};
 use std::env;
 
 pub fn read_env_var(var: &str) -> String {
@@ -18,6 +18,10 @@ pub fn read_env_var(var: &str) -> String {
 pub fn elapsed_ms(from: DateTime<Utc>, to: DateTime<Utc>) -> Result<u64, ()> {
     let ms = to.signed_duration_since(from).num_milliseconds();
     if ms >= 0 { Ok(ms as u64) } else { Err(()) }
+}
+
+pub fn timestamp() -> u64 {
+    elapsed_ms(Utc.timestamp(0, 0), Utc::now()).expect("Time went backwards")
 }
 
 
@@ -83,9 +87,6 @@ fn read_empty_envvar() {
 }
 
 
-#[cfg(test)]
-use util::chrono::TimeZone;
-
 #[test]
 fn one_elapsed_ms() {
     let a = Utc.ymd(1970, 1, 1).and_hms_milli(0, 0, 0, 0);
@@ -112,6 +113,18 @@ fn negative_elapsed_time() {
     let a = Utc.ymd(1970, 1, 1).and_hms(0, 0, 1);
     let b = Utc.ymd(1970, 1, 1).and_hms(0, 0, 0);
     assert!(elapsed_ms(a, b).is_err());
+}
+
+#[test]
+fn timestamp_wait() {
+    use std::thread;
+    use std::time::Duration;
+
+    let a = timestamp();
+    let delta = 420;
+    thread::sleep(Duration::from_millis(delta));
+    let b = timestamp();
+    assert!(b - a >= delta)
 }
 
 #[test]
