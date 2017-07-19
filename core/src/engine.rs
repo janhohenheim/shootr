@@ -88,7 +88,7 @@ where
     let event_handler = T::new(engine);
     let event_handler = Arc::new(event_handler);
 
-    let conn_id = Rc::new(RefCell::new(Counter::new()));
+    let conn_id = Rc::new(RefCell::new(IdGen::new()));
     let connections_inner = connections.clone();
     let event_handler_inner = event_handler.clone();
     // Handle new connection
@@ -253,17 +253,17 @@ where
 }
 
 
-struct Counter {
+struct IdGen {
     count: Id,
 }
-impl Counter {
+impl IdGen {
     fn new() -> Self {
-        Counter { count: 0 }
+        IdGen { count: 0 }
     }
 }
 
 
-impl Iterator for Counter {
+impl Iterator for IdGen {
     type Item = Id;
 
     fn next(&mut self) -> Option<Id> {
@@ -274,4 +274,17 @@ impl Iterator for Counter {
             None
         }
     }
+}
+
+#[test]
+fn id_gen_unique() {
+    let mut id_gen = IdGen::new();
+    let mut ids = Vec::new();
+    let ids_count = 1000;
+    for _ in 0..ids_count {
+        ids.push(id_gen.next());
+    }
+    ids.sort();
+    ids.dedup_by_key(|id| *id);
+    assert_eq!(ids_count, ids.len());
 }
