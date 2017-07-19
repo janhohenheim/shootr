@@ -1,7 +1,8 @@
 extern crate chrono;
 
-use self::chrono::{DateTime, Utc, TimeZone};
+use self::chrono::{DateTime, Utc};
 use std::env;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn read_env_var(var: &str) -> String {
     env::var_os(var)
@@ -17,11 +18,18 @@ pub fn read_env_var(var: &str) -> String {
 
 pub fn elapsed_ms(from: DateTime<Utc>, to: DateTime<Utc>) -> Result<u64, ()> {
     let ms = to.signed_duration_since(from).num_milliseconds();
-    if ms >= 0 { Ok(ms as u64) } else { Err(()) }
+    if ms >= 0 {
+        Ok(ms as u64)
+    } else {
+        Err(())
+    }
 }
 
 pub fn timestamp() -> u64 {
-    elapsed_ms(Utc.timestamp(0, 0), Utc::now()).expect("Time went backwards")
+    let now = SystemTime::now();
+    let elapsed = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
+    let in_ms = elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1_000_000;
+    in_ms
 }
 
 
@@ -72,6 +80,10 @@ macro_rules! add_impl {
         }
      };
 }
+
+
+#[cfg(test)]
+use util::chrono::TimeZone;
 
 #[test]
 fn read_string_envvar() {
