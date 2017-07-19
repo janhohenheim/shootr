@@ -29,7 +29,7 @@ use std::collections::HashMap;
 use std::cell::RefCell;
 
 use model::client::ClientState;
-use util::read_env_var;
+use util::{timestamp, elapsed_ms, read_env_var};
 
 pub type Id = u32;
 
@@ -80,7 +80,7 @@ where
     let connections = Arc::new(RwLock::new(HashMap::new()));
     let (receive_channel_out, receive_channel_in) = mpsc::unbounded();
     let (send_channel_out, send_channel_in) = mpsc::unbounded();
-    
+
     let engine = Engine {
         connections: connections.clone(),
         remote: remote.clone(),
@@ -125,7 +125,10 @@ where
                     ping: 0,
                     send_channel: conn_out,
                 };
-                connections_inner.write().unwrap().insert(id, RwLock::new(data));
+                connections_inner.write().unwrap().insert(
+                    id,
+                    RwLock::new(data),
+                );
                 Ok(())
             });
             spawn_future(f, "Handle new connection", &handle);
@@ -143,12 +146,12 @@ where
             let connections = connections_inner.clone();
             let event_handler = event_handler_inner.clone();
             remote_inner.spawn(move |_| {
-            stream
-                .for_each(move |msg| {
-                    process_message(id, &msg, &*event_handler, connections.clone());
-                    Ok(())
-                })
-                .map_err(|e| println!("Error while receiving messages: {}", e))
+                stream
+                    .for_each(move |msg| {
+                        process_message(id, &msg, &*event_handler, connections.clone());
+                        Ok(())
+                    })
+                    .map_err(|e| println!("Error while receiving messages: {}", e))
             });
             Ok(())
         })
@@ -161,26 +164,30 @@ where
         let remote = remote.clone();
         let connections = connections.clone();
         let event_handler = event_handler_inner.clone();
-        send_channel_in.for_each(move |(id, conn_in, sink): (Id, mpsc::UnboundedReceiver<Arc<RwLock<ClientState>>>, SplitSink)| {
-            let sink = Arc::new(RwLock::new(sink));
-            let connections = connections.clone();
-            let event_handler = event_handler.clone();
-            remote.spawn(move |_| {
-                conn_in.for_each(move |state: Arc<RwLock<ClientState>>| {
-                    let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
-                    // println!("Sending message: {}", msg);
-                    let mut sink = sink.write().unwrap();
-                    let ok_send = sink.start_send(OwnedMessage::Text(msg)).is_ok();
-                    let ok_poll = sink.poll_complete().is_ok();
-                    if !ok_send || !ok_poll {
-                        println!("Failed to send, kicking client {}", id);
-                        kick(&connections, id, &*event_handler);
-                    }                    
-                    Ok(())
-                })
-            });
-            Ok(())
-        })
+        send_channel_in.for_each(
+            move |(id, conn_in, sink): (Id,
+                                        mpsc::UnboundedReceiver<Arc<RwLock<ClientState>>>,
+                                        SplitSink)| {
+                let sink = Arc::new(RwLock::new(sink));
+                let connections = connections.clone();
+                let event_handler = event_handler.clone();
+                remote.spawn(move |_| {
+                    conn_in.for_each(move |state: Arc<RwLock<ClientState>>| {
+                        let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
+                        // println!("Sending message: {}", msg);
+                        let mut sink = sink.write().unwrap();
+                        let ok_send = sink.start_send(OwnedMessage::Text(msg)).is_ok();
+                        let ok_poll = sink.poll_complete().is_ok();
+                        if !ok_send || !ok_poll {
+                            println!("Failed to send, kicking client {}", id);
+                            kick(&connections, id, &*event_handler);
+                        }
+                        Ok(())
+                    })
+                });
+                Ok(())
+            },
+        )
     }).map_err(|e| println!("Error while sending messages: {:?}", e));
 
     // Run maIn loop
@@ -212,17 +219,21 @@ fn build_server(handle: &Handle) -> WsServer<NoTlsAcceptor, TcpListener> {
     Server::bind(address, handle).expect("Failed to create server")
 }
 
-fn process_message<T>(
-    id: Id,
-    msg: &OwnedMessage,
-    event_handler: &T,
-    connections: Connections,
-) where
+fn process_message<T>(id: Id, msg: &OwnedMessage, event_handler: &T, connections: Connections)
+where
     T: EventHandler,
 {
     match *msg {
         OwnedMessage::Pong(_) => {
+            let connections = connections
+                .read()
+                .unwrap();
             
+            connections.get(&id)
+                .expect("Tried to access invalid id")
+                .write()
+                .unwrap()
+                .ping = timestamp();
         }
         OwnedMessage::Text(ref content) => {
             let msg = Msg {
@@ -261,8 +272,6 @@ impl IdGen {
         IdGen { count: 0 }
     }
 }
-
-
 impl Iterator for IdGen {
     type Item = Id;
 
