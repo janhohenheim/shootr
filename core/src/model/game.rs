@@ -1,22 +1,15 @@
 extern crate specs;
+extern crate uuid;
+
 use self::specs::Entity;
+use self::uuid::Uuid;
 
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
-use super::client::Key;
 
-#[derive(Debug, Clone, Serialize)]
-pub struct KeyState {
-    pub pressed: bool,
-    pub fired: bool,
-}
 
-pub type PlayerInputMap = Arc<RwLock<HashMap<Entity, RwLock<PlayerInput>>>>;
-#[derive(Debug, Clone, Serialize)]
-pub struct PlayerInput {
-    pub key_states: HashMap<Key, KeyState>,
-}
 
+pub type Id = Uuid;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Add, AddAssign)]
 pub struct Vector {

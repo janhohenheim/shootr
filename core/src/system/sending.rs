@@ -29,9 +29,9 @@ impl<'a> System<'a> for Sending {
         };
 
         let mut players = HashMap::new();
-        for (pos, vel, acc) in (&pos, &vel, &acc).join() {
+        for (pos, vel, acc, player) in (&pos, &vel, &acc, &player).join() {
             players.insert(
-                "Foo".to_owned(),
+                player.id,
                 Player {
                     pos: pos.clone(),
                     vel: vel.clone(),

@@ -1,12 +1,9 @@
 extern crate specs;
-extern crate uuid;
-
 use self::specs::{Component, VecStorage};
-use self::uuid::Uuid;
 
 use engine::SendChannel;
-use super::client::Key;
-use super::game::{Vector, KeyState};
+use super::game::{Vector, Id};
+use model::client::{Key, KeyState};
 use std::ops::{Deref, DerefMut};
 use std::convert::From;
 use std::collections::HashMap;
@@ -27,16 +24,16 @@ pub struct Connect;
 pub struct Disconnect;
 
 
-pub type InputState = HashMap<Key, KeyState>;
+pub type KeyboardState = HashMap<Key, bool>;
 #[derive(Component)]
 pub struct Player {
-    pub id: Uuid,
+    pub id: Id,
     pub send_channel: SendChannel,
-    pub inputs: Vec<InputState>,
+    pub inputs: Vec<KeyboardState>,
     pub pingpongs: HashMap<u64, (u64, Option<u64>)>,
 }
 impl Player {
-    pub fn new(id: Uuid, send_channel: SendChannel) -> Self {
+    pub fn new(id: Id, send_channel: SendChannel) -> Self {
         Player {
             id,
             send_channel,

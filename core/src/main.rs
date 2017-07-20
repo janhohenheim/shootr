@@ -3,17 +3,15 @@ extern crate shootr;
 extern crate specs;
 extern crate chrono;
 extern crate serde_json;
-extern crate uuid;
 
 use self::specs::{DispatcherBuilder, World, Entity};
 use self::chrono::prelude::*;
-use self::uuid::Uuid;
 
 use shootr::engine::{EventHandler, OwnedMessage, SendChannel};
 use shootr::util::{read_env_var, elapsed_ms};
 use shootr::model::comp::{Vel, Pos, Bounciness, Connect, Disconnect, Player};
-use shootr::model::client::InputMsg;
-use shootr::model::game::{KeyState, PlayerInputMap, PlayerInput, Vector};
+use shootr::model::client::KeyState;
+use shootr::model::game::{Vector, Id};
 use shootr::system::*;
 use shootr::bootstrap;
 
@@ -22,16 +20,17 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
+use std::ops::Deref;
 
 fn main() {
     shootr::engine::execute::<Handler>();
 }
 
 struct Handler {
-    id_entity: RwLock<HashMap<Uuid, Entity>>,
-    to_spawn: RwLock<HashMap<Uuid, SendChannel>>,
-    to_despawn: RwLock<HashSet<Uuid>>,
-    inputs: PlayerInputMap,
+    id_entity: RwLock<HashMap<Id, Entity>>,
+    to_spawn: RwLock<HashMap<Id, SendChannel>>,
+    to_despawn: RwLock<HashSet<Id>>,
+    inputs: Arc<RwLock<HashMap<Id, Vec<KeyState>>>>,
 }
 
 impl Handler {
@@ -49,29 +48,19 @@ impl Handler {
     }
 
 
-    fn handle_text(&self, id: <Handler as EventHandler>::Id, msg: &str) {
-        let input = serde_json::from_str::<InputMsg>(&msg);
-        if input.is_err() {
-            println!("invalid message ({})", msg);
-            return;
+    fn handle_text(&self, id: Id, msg: &str) {
+        if let Ok(key_state) = serde_json::from_str::<KeyState>(&msg) {
+            let mut inputs = self.inputs.write().unwrap();
+            let has_already_inputs = inputs.get(&id).is_some();
+            if has_already_inputs {
+                inputs.get_mut(&id).unwrap().push(key_state);
+            }
+            else {
+                inputs.insert(id, vec![key_state]);
+            }
+        } else {
+            println!("Client {}: Sent invalid message: {}", id, msg);
         }
-        let input = input.unwrap();
-
-        let mut key_state = KeyState {
-            pressed: input.pressed,
-            fired: false,
-        };
-
-        let inputs = self.inputs.read().unwrap();
-        let id_entity = self.id_entity.read().unwrap();
-        // guaranteed to contain key as connect() had to be called before
-        let entity = id_entity.get(&id).unwrap();
-        let key_states = &mut inputs.get(&entity).unwrap().write().unwrap().key_states;
-
-        if let Some(last) = key_states.get_mut(&input.key) {
-            key_state.fired = last.pressed && !key_state.pressed;
-        }
-        key_states.insert(input.key, key_state);
     }
 
     fn register_spawns(&self, world: &mut World) {
@@ -84,11 +73,6 @@ impl Handler {
                 .with(Player::new(id, send_channel))
                 .build();
             id_entity.insert(id, entity.clone());
-            let id_state = RwLock::new(PlayerInput { key_states: HashMap::new() });
-            self.inputs.write().unwrap().insert(
-                entity.clone(),
-                id_state,
-            );
         }
 
         let mut to_despawn = self.to_despawn.write().unwrap();
@@ -102,7 +86,7 @@ impl Handler {
 }
 
 impl EventHandler for Handler {
-    type Id = Uuid;
+    type Id = Id;
 
     fn new() -> Self {
         Handler {
@@ -157,7 +141,7 @@ impl EventHandler for Handler {
         };
     }
     fn on_connect(&self, _: SocketAddr, send_channel: SendChannel) -> Option<Self::Id> {
-        let id = Uuid::new_v4();
+        let id = Id::new_v4();
         self.to_spawn.write().unwrap().insert(id, send_channel);
         Some(id)
     }

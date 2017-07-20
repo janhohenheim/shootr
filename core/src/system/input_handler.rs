@@ -1,40 +1,57 @@
 extern crate specs;
-
 use self::specs::{Fetch, Join, ReadStorage, WriteStorage, System, Entities};
 
 use model::comp::{Acc, Player};
-use model::game::PlayerInputMap;
-use model::client::Key;
+use model::game::{Id};
+use model::client::{Key, KeyState};
+
+use std::sync::{Arc, RwLock};
+use std::collections::HashMap;
 
 pub struct InputHandler;
 impl<'a> System<'a> for InputHandler {
-    type SystemData = (Fetch<'a, PlayerInputMap>,
+    type SystemData = (Fetch<'a, Arc<RwLock<HashMap<Id, Vec<KeyState>>>>>,
      WriteStorage<'a, Acc>,
-     ReadStorage<'a, Player>,
-     Entities<'a>);
+     WriteStorage<'a, Player>);
 
-    fn run(&mut self, (player_input_map, mut acc, player, entities): Self::SystemData) {
-        let player_input_map = player_input_map.read().unwrap();
-        for (mut acc, entity, _) in (&mut acc, &*entities, &player).join() {
-            let mut player_input = player_input_map.get(&entity).unwrap().write().unwrap();
-            let mut key_states = &mut player_input.key_states;
-
-            if let Some(state) = key_states.get_mut(&Key::ArrowUp) {
-                state.fired = false;
-                if state.pressed {
-                    acc.y = -5
-                } else if acc.y < 0 {
-                    acc.y = 0
-                }
-            }
-            if let Some(state) = key_states.get_mut(&Key::ArrowDown) {
-                state.fired = false;
-                if state.pressed {
-                    acc.y = 5
-                } else if acc.y > 0 {
-                    acc.y = 0
+    fn run(&mut self, (inputs, mut acc, mut player): Self::SystemData) {
+        let inputs = inputs.read().unwrap();
+        for (mut player, mut acc) in (&mut player, &mut acc).join() {
+            if let Some(key_states) = inputs.get(&player.id) {
+                for key_state in key_states {
+                    update_player_inputs(&mut player, &key_state);
+                    handle_key_state(&player, &mut acc, &key_state);
                 }
             }
         }
+    }
+}
+
+fn update_player_inputs(player: &mut Player, key_state: &KeyState) {
+    let mut input = HashMap::new();
+    if let Some(ref last_input) = player.inputs.last() {
+        input.clone_from(last_input);
+        input.insert(key_state.key.clone(), key_state.pressed);
+    }
+    player.inputs.push(input);
+}
+
+fn handle_key_state(_: &Player, acc: &mut Acc, key_state: &KeyState) {
+    match key_state.key {
+        Key::ArrowUp => {
+            if key_state.pressed {
+                acc.y = -5
+            } else if acc.y < 0 {
+                acc.y = 0
+            }
+        },
+        Key::ArrowDown => {
+            if key_state.pressed {
+                acc.y = 5
+            } else if acc.y > 0 {
+                acc.y = 0
+            }
+        }
+        _ => {}
     }
 }

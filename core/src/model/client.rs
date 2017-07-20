@@ -1,10 +1,12 @@
 use super::comp::{Pos, Vel, Acc};
+use super::game::{Id};
+
 use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ClientState {
     pub ball: Ball,
-    pub players: HashMap<String, Player>,
+    pub players: HashMap<Id, Player>,
     // UTC timestamp in ms
     pub timestamp: u64,
 }
@@ -22,16 +24,14 @@ pub struct Player {
     pub acc: Acc,
 }
 
-
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub enum Key {
     ArrowUp,
     ArrowDown,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct InputMsg {
-    pub id: i64,
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct KeyState {
     pub key: Key,
-    pub pressed: bool,
+    pub pressed: bool
 }
