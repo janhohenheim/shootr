@@ -85,17 +85,17 @@ impl Handler {
                 .build();
             id_entity.insert(id, entity.clone());
             let id_state = RwLock::new(PlayerInput { key_states: HashMap::new() });
-            self.inputs
-                .write()
-                .unwrap()
-                .insert(entity.clone(), id_state);
+            self.inputs.write().unwrap().insert(
+                entity.clone(),
+                id_state,
+            );
         }
 
         let mut to_despawn = self.to_despawn.write().unwrap();
         for id in to_despawn.drain() {
-            let entity = id_entity
-                .remove(&id)
-                .expect("Tried to remove id that was not there");
+            let entity = id_entity.remove(&id).expect(
+                "Tried to remove id that was not there",
+            );
             world.write::<Disconnect>().insert(entity, Disconnect {});
         }
     }
@@ -128,9 +128,9 @@ impl EventHandler for Handler {
 
         let mut lag: u64 = 0;
         let mut previous = Utc::now();
-        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC")
-            .parse::<u64>()
-            .expect("Failed to parse environmental variable as integer");
+        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC").parse::<u64>().expect(
+            "Failed to parse environmental variable as integer",
+        );
         let ms_per_update = 1000 / updates_per_sec;
         loop {
             let current = Utc::now();

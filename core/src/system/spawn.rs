@@ -6,18 +6,18 @@ use model::game::Vector;
 
 pub struct Spawn;
 impl<'a> System<'a> for Spawn {
-    type SystemData = (
-        Entities<'a>,
-        WriteStorage<'a, Connect>,
-        ReadStorage<'a, Disconnect>,
+    type SystemData = (Entities<'a>,
+     WriteStorage<'a, Connect>,
+     ReadStorage<'a, Disconnect>,
 
-        WriteStorage<'a, Pos>,
-        WriteStorage<'a, Vel>,
-        WriteStorage<'a, Acc>,
-        WriteStorage<'a, Friction>,
-    );
+     WriteStorage<'a, Pos>,
+     WriteStorage<'a, Vel>,
+     WriteStorage<'a, Acc>,
+     WriteStorage<'a, Friction>);
 
-    fn run(&mut self, (mut entities, mut connect, disconnect, mut pos, mut vel, mut acc, mut friction): Self::SystemData) {
+fn run(&mut self,
+( mut entities, mut connect,  disconnect,
+mut pos, mut vel, mut acc, mut friction): Self::SystemData){
         let mut to_spawn = Vec::new();
         for (entity, _) in (&*entities, &connect).join() {
             to_spawn.push(entity);
@@ -40,5 +40,3 @@ impl<'a> System<'a> for Spawn {
         }
     }
 }
-
-
