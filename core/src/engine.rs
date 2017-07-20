@@ -33,9 +33,9 @@ pub trait EventHandler {
     type Id: Send + Sync + Clone;
     fn new() -> Self;
     fn main_loop(&self);
-    fn message(&self, id: Self::Id, msg: OwnedMessage);
-    fn connect(&self, addr: SocketAddr, send_channel: SendChannel) -> Option<Self::Id>;
-    fn disconnect(&self, id: Self::Id);
+    fn on_message(&self, id: Self::Id, msg: OwnedMessage);
+    fn on_connect(&self, addr: SocketAddr, send_channel: SendChannel) -> Option<Self::Id>;
+    fn on_disconnect(&self, id: Self::Id);
 }
 
 pub fn execute<T>()
@@ -76,7 +76,7 @@ where
             let send_channel = send_channel_out.clone();
             let f = upgrade.accept().and_then(move |(framed, _)| {
                 let (conn_out, conn_in) = mpsc::unbounded();
-                let res = event_handler.connect(addr, conn_out);
+                let res = event_handler.on_connect(addr, conn_out);
                 if let Some(id) = res {
                     let (sink, stream) = framed.split();
                     send_channel
@@ -104,9 +104,9 @@ where
                     .for_each(move |msg| {
                         let id = id.clone();
                         if let OwnedMessage::Close(_) = msg {
-                            event_handler.disconnect(id);
+                            event_handler.on_disconnect(id);
                         } else {
-                            event_handler.message(id, msg);
+                            event_handler.on_message(id, msg);
                         }
                         Ok(())
                     })
@@ -137,7 +137,7 @@ where
                         let ok_poll = sink.poll_complete().is_ok();
                         if !ok_send || !ok_poll {
                             println!("Failed to send, kicking client");
-                            event_handler.disconnect(id.clone());
+                            event_handler.on_disconnect(id.clone());
                         }
                         Ok(())
                     })

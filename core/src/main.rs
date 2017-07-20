@@ -150,18 +150,18 @@ impl EventHandler for Handler {
         }
     }
 
-    fn message(&self, id: Self::Id, msg: OwnedMessage) {
+    fn on_message(&self, id: Self::Id, msg: OwnedMessage) {
         match msg {
             OwnedMessage::Text(ref txt) => self.handle_text(id, txt),
             _ => {}
         };
     }
-    fn connect(&self, _: SocketAddr, send_channel: SendChannel) -> Option<Self::Id> {
+    fn on_connect(&self, _: SocketAddr, send_channel: SendChannel) -> Option<Self::Id> {
         let id = Uuid::new_v4();
         self.to_spawn.write().unwrap().insert(id, send_channel);
         Some(id)
     }
-    fn disconnect(&self, id: Self::Id) {
+    fn on_disconnect(&self, id: Self::Id) {
         self.to_despawn.write().unwrap().insert(id);
     }
 }
