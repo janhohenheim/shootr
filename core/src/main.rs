@@ -81,7 +81,7 @@ impl Handler {
             let entity = world
                 .create_entity()
                 .with(Connect {})
-                .with(Player { send_channel })
+                .with(Player::new(id, send_channel))
                 .build();
             id_entity.insert(id, entity.clone());
             let id_state = RwLock::new(PlayerInput { key_states: HashMap::new() });

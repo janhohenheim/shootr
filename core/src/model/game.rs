@@ -11,8 +11,6 @@ pub struct KeyState {
     pub fired: bool,
 }
 
-
-
 pub type PlayerInputMap = Arc<RwLock<HashMap<Entity, RwLock<PlayerInput>>>>;
 #[derive(Debug, Clone, Serialize)]
 pub struct PlayerInput {
