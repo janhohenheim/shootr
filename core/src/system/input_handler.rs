@@ -2,7 +2,7 @@ extern crate specs;
 use self::specs::{Fetch, Join, ReadStorage, WriteStorage, System, Entities};
 
 use model::comp::{Acc, Player};
-use model::game::{Id};
+use model::game::Id;
 use model::client::{Key, KeyState};
 
 use std::sync::{Arc, RwLock};
@@ -44,7 +44,7 @@ fn handle_key_state(_: &Player, acc: &mut Acc, key_state: &KeyState) {
             } else if acc.y < 0 {
                 acc.y = 0
             }
-        },
+        }
         Key::ArrowDown => {
             if key_state.pressed {
                 acc.y = 5

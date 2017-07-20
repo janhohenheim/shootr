@@ -54,8 +54,7 @@ impl Handler {
             let has_already_inputs = inputs.get(&id).is_some();
             if has_already_inputs {
                 inputs.get_mut(&id).unwrap().push(key_state);
-            }
-            else {
+            } else {
                 inputs.insert(id, vec![key_state]);
             }
         } else {

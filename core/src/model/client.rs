@@ -1,5 +1,5 @@
 use super::comp::{Pos, Vel, Acc};
-use super::game::{Id};
+use super::game::Id;
 
 use std::collections::HashMap;
 
@@ -33,5 +33,5 @@ pub enum Key {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct KeyState {
     pub key: Key,
-    pub pressed: bool
+    pub pressed: bool,
 }
