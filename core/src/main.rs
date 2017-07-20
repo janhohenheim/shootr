@@ -11,7 +11,7 @@ use self::uuid::Uuid;
 
 use shootr::engine::{EventHandler, OwnedMessage, SendChannel};
 use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::comp::{Acc, Vel, Pos, Bounciness, Friction, Connect, Disconnect, Player};
+use shootr::model::comp::{Vel, Pos, Bounciness, Connect, Disconnect, Player};
 use shootr::model::client::InputMsg;
 use shootr::model::game::{KeyState, PlayerInputMap, PlayerInput, Vector};
 use shootr::system::*;
@@ -21,7 +21,6 @@ use std::sync::{Arc, RwLock};
 use std::thread::sleep;
 use std::time::Duration;
 use std::collections::{HashMap, HashSet};
-use std::ops::Deref;
 
 fn main() {
     shootr::engine::execute::<Handler>();

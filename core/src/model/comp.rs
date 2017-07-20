@@ -1,5 +1,5 @@
 extern crate specs;
-use self::specs::{Component, VecStorage, Entity};
+use self::specs::{Component, VecStorage};
 
 use engine::SendChannel;
 use super::game::Vector;

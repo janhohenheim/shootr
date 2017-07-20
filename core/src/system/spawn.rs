@@ -1,5 +1,5 @@
 extern crate specs;
-use self::specs::{Fetch, Join, WriteStorage, ReadStorage, System, Entities, EntitiesRes, Entity};
+use self::specs::{Join, WriteStorage, ReadStorage, System, Entities};
 
 use model::comp::{Pos, Vel, Acc, Friction, Connect, Disconnect};
 use model::game::Vector;
@@ -16,7 +16,7 @@ impl<'a> System<'a> for Spawn {
      WriteStorage<'a, Friction>);
 
 fn run(&mut self,
-( mut entities, mut connect,  disconnect,
+( entities, mut connect,  disconnect,
 mut pos, mut vel, mut acc, mut friction): Self::SystemData){
         let mut to_spawn = Vec::new();
         for (entity, _) in (&*entities, &connect).join() {

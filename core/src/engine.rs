@@ -5,7 +5,6 @@ extern crate tokio_core;
 extern crate serde;
 extern crate serde_json;
 extern crate dotenv;
-extern crate byteorder;
 
 use self::dotenv::dotenv;
 
@@ -15,24 +14,17 @@ use self::websocket::async::{Server, MessageCodec};
 use self::websocket::client::async::Framed;
 use self::websocket::server::NoTlsAcceptor;
 
-use self::tokio_core::reactor::{Handle, Remote, Core, Interval};
+use self::tokio_core::reactor::{Handle, Core};
 use self::tokio_core::net::{TcpStream, TcpListener};
 
 use self::futures::{Future, Sink, Stream};
 use self::futures::sync::mpsc;
 use self::futures_cpupool::CpuPool;
 
-use self::byteorder::{BigEndian, ReadBytesExt};
-
 use std::sync::{RwLock, Arc};
 use std::fmt::Debug;
-use std::ops::Deref;
-use std::collections::{HashMap, HashSet};
-use std::io::Cursor;
-use std::time::Duration;
 
-use model::client::ClientState;
-use util::{timestamp, read_env_var};
+use util::read_env_var;
 
 
 pub type SendChannel = mpsc::UnboundedSender<OwnedMessage>;
