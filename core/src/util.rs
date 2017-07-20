@@ -164,16 +164,3 @@ fn clamp_more_than_max() {
     let res = clamp(999, 9, 10);
     assert_eq!(10, res);
 }
-
-#[test]
-fn id_gen_unique() {
-    let mut id_gen = IdGen::new();
-    let mut ids = Vec::new();
-    let ids_count = 1000;
-    for _ in 0..ids_count {
-        ids.push(id_gen.next());
-    }
-    ids.sort();
-    ids.dedup_by_key(|id| *id);
-    assert_eq!(ids_count, ids.len());
-}
