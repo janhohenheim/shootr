@@ -9,13 +9,26 @@ pub fn prepare_world(world: &mut World) {
     add_constraints(world);
 }
 
+
+macro_rules! register {
+    (  $world:ident: $( $comp:ty ),+  ) => {
+        $ (
+            $world.register::<$comp>();
+        )+
+    };
+}
+
 fn register_components(world: &mut World) {
-    world.register::<Pos>();
-    world.register::<Vel>();
-    world.register::<Acc>();
-    world.register::<Bounciness>();
-    world.register::<PlayerId>();
-    world.register::<Friction>();
+    register!(
+        world: Pos,
+        Vel,
+        Acc,
+        Bounciness,
+        Player,
+        Friction,
+        Connect,
+        Disconnect
+    );
 }
 
 fn add_constraints(world: &mut World) {

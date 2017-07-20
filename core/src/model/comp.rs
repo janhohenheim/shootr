@@ -1,7 +1,7 @@
 extern crate specs;
-use self::specs::{Component, VecStorage};
+use self::specs::{Component, VecStorage, Entity};
 
-use engine::Id;
+use engine::SendChannel;
 use super::game::Vector;
 use std::ops::{Deref, DerefMut};
 use std::convert::From;
@@ -14,9 +14,17 @@ vectype!(Pos);
 #[derive(Debug, Clone, Serialize, Component)]
 pub struct Bounciness {}
 
-newtype!(PlayerId(Id): Debug, Clone, Serialize, Component);
 newtype!(Friction(i32): Debug, Clone, Serialize, Component);
 
+#[derive(Component)]
+pub struct Connect;
+#[derive(Component)]
+pub struct Disconnect;
+
+#[derive(Component)]
+pub struct Player {
+    pub send_channel: SendChannel,
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Bounds<T> {

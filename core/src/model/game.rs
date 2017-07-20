@@ -1,4 +1,6 @@
-use engine::Id;
+extern crate specs;
+use self::specs::Entity;
+
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 use super::client::Key;
@@ -9,12 +11,9 @@ pub struct KeyState {
     pub fired: bool,
 }
 
-#[derive(Debug, Clone, Serialize)]
-pub enum Spawnable {
-    Player(Id),
-}
 
-pub type PlayerInputMap = Arc<RwLock<HashMap<Id, RwLock<PlayerInput>>>>;
+
+pub type PlayerInputMap = Arc<RwLock<HashMap<Entity, RwLock<PlayerInput>>>>;
 #[derive(Debug, Clone, Serialize)]
 pub struct PlayerInput {
     pub key_states: HashMap<Key, KeyState>,

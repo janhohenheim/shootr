@@ -7,11 +7,11 @@ extern crate serde_json;
 use self::specs::{DispatcherBuilder, World, Entity};
 use self::chrono::prelude::*;
 
-use shootr::engine::{Msg, Engine, EventHandler, Id, OwnedMessage};
+use shootr::engine::{EventHandler, OwnedMessage, SendChannel};
 use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::comp::{Acc, Vel, Pos, Bounciness, PlayerId, Friction};
+use shootr::model::comp::{Acc, Vel, Pos, Bounciness, Friction, Connect, Disconnect, Player};
 use shootr::model::client::InputMsg;
-use shootr::model::game::{KeyState, PlayerInputMap, PlayerInput, Spawnable, Vector};
+use shootr::model::game::{KeyState, PlayerInputMap, PlayerInput, Vector};
 use shootr::system::{Physics, Sending, InputHandler, Bounce};
 use shootr::bootstrap;
 
@@ -26,20 +26,14 @@ fn main() {
 }
 
 struct Handler {
-    engine: Engine,
-    ids: Arc<RwLock<Vec<Id>>>,
+    world: Arc<RwLock<World>>,
     inputs: PlayerInputMap,
-    id_entities: RwLock<HashMap<Id, Entity>>,
-    spawn_list: RwLock<Vec<Spawnable>>,
-    despawn_list: RwLock<Vec<Entity>>,
 }
 
 impl Handler {
-    fn prepare_world(&self, world: &mut World) {
-        bootstrap::prepare_world(world);
-
-        world.add_resource(self.engine.clone());
-        world.add_resource(self.ids.clone());
+    fn prepare_world(&self) {
+        let mut world = self.world.write().unwrap();
+        bootstrap::prepare_world(&mut *world);
         world.add_resource(self.inputs.clone());
 
         // Ball
@@ -51,37 +45,11 @@ impl Handler {
             .build();
     }
 
-    fn despawn(&self, world: &mut World) {
-        let mut despawn_list = self.despawn_list.write().unwrap();
-        for to_despawn in despawn_list.drain(..) {
-            world.delete_entity(to_despawn);
-        }
-    }
 
-    fn spawn(&self, world: &mut World) {
-        let mut spawn_list = self.spawn_list.write().unwrap();
-        for to_spawn in spawn_list.drain(..) {
-            match to_spawn {
-                Spawnable::Player(id) => {
-                    let x = if id % 2 == 0 { 20 } else { 980 };
-                    let entity = world
-                        .create_entity()
-                        .with(Acc::from(Vector { x: 0, y: 0 }))
-                        .with(Vel::from(Vector { x: 0, y: 0 }))
-                        .with(Pos::from(Vector { x, y: 500 }))
-                        .with(Friction(2))
-                        .with(PlayerId(id))
-                        .build();
-                    self.id_entities.write().unwrap().insert(id, entity);
-                }
-            };
-        }
-    }
-
-    fn handle_text(&self, id: Id, msg: &str) {
+    fn handle_text(&self, id: <Handler as EventHandler>::Id, msg: &str) {
         let input = serde_json::from_str::<InputMsg>(&msg);
         if input.is_err() {
-            println!("Client #{}:\tinvalid message ({})", id, msg);
+            println!("invalid message ({})", msg);
             return;
         }
         let input = input.unwrap();
@@ -103,19 +71,16 @@ impl Handler {
 }
 
 impl EventHandler for Handler {
-    fn new(engine: Engine) -> Self {
+    type Id = Entity;
+
+    fn new() -> Self {
         Handler {
-            engine,
-            ids: Arc::new(RwLock::new(Vec::new())),
+            world: Arc::new(RwLock::new(World::new())),
             inputs: Arc::new(RwLock::new(HashMap::new())),
-            id_entities: RwLock::new(HashMap::new()),
-            spawn_list: RwLock::new(Vec::new()),
-            despawn_list: RwLock::new(Vec::new()),
         }
     }
     fn main_loop(&self) {
-        let mut world = World::new();
-        self.prepare_world(&mut world);
+        self.prepare_world();
 
         let mut updater = DispatcherBuilder::new()
             .add(InputHandler, "input_handler", &[])
@@ -137,40 +102,42 @@ impl EventHandler for Handler {
             let elapsed = elapsed_ms(previous, current).expect("Time went backwards");
             previous = current;
             lag += elapsed;
-            self.despawn(&mut world);
-            self.spawn(&mut world);
-
-            while lag >= ms_per_update {
-                updater.dispatch(&mut world.res);
-                lag -= ms_per_update;
+            {
+                let mut world = self.world.write().unwrap();
+                while lag >= ms_per_update {
+                    updater.dispatch(&mut world.res);
+                    lag -= ms_per_update;
+                }
+                sender.dispatch(&mut world.res);
+                world.maintain();
             }
-            sender.dispatch(&mut world.res);
-            world.maintain();
             sleep(Duration::from_millis(ms_per_update - lag));
         }
     }
 
-    fn message(&self, msg: &Msg) {
-        match msg.content {
-            OwnedMessage::Text(ref txt) => self.handle_text(msg.id, txt),
+    fn message(&self, id: Self::Id, msg: OwnedMessage) {
+        match msg {
+            OwnedMessage::Text(ref txt) => self.handle_text(id, txt),
             _ => {}
         };
     }
-    fn connect(&self, id: Id) -> bool {
-        self.ids.write().unwrap().push(id);
+    fn connect(&self, send_channel: SendChannel) -> Option<Self::Id> {
+        let world = self.world.write().unwrap();
+        let entity = world
+            .create_entity()
+            .with(Connect {})
+            .with(Player { send_channel })
+            .build();
+
         let id_state = RwLock::new(PlayerInput { key_states: HashMap::new() });
-        self.spawn_list.write().unwrap().push(Spawnable::Player(id));
-        self.inputs.write().unwrap().insert(id, id_state);
-        true
-    }
-    fn disconnect(&self, id: Id) {
-        let mut ids = self.ids.write().unwrap();
-        let pos = ids.iter().position(|&x| x == id).expect(
-            "Tried to remove id that was not added in the first place",
+        self.inputs.write().unwrap().insert(
+            entity.clone(),
+            id_state,
         );
-        let id = ids.remove(pos);
-        if let Some(entity) = self.id_entities.write().unwrap().remove(&id) {
-            self.despawn_list.write().unwrap().push(entity);
-        }
+        Some(entity)
+    }
+    fn disconnect(&self, id: Self::Id) {
+        let world = self.world.write().unwrap();
+        world.write::<Disconnect>().insert(id, Disconnect {});
     }
 }

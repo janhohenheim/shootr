@@ -2,36 +2,28 @@ extern crate specs;
 extern crate futures;
 extern crate serde_json;
 
-use self::specs::{Join, ReadStorage, Fetch, System};
+use self::specs::{Join, ReadStorage, WriteStorage, Fetch, System};
 use self::futures::{Future, Sink};
 use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 
-use model::comp::{Pos, Vel, Acc, PlayerId, Bounciness};
+use model::comp::{Pos, Vel, Acc, Bounciness, Player as PlayerComp};
 use model::client::{ClientState, Ball, Player};
-use engine::{Id, Engine, OwnedMessage};
+use engine::{OwnedMessage, SendChannel};
 use util::timestamp;
 
-type Ids = Arc<RwLock<Vec<Id>>>;
 
 pub struct Sending;
 impl<'a> System<'a> for Sending {
     #[allow(type_complexity)]
-    type SystemData = (Fetch<'a, Ids>,
-     Fetch<'a, Engine>,
-     ReadStorage<'a, Pos>,
+    type SystemData = (ReadStorage<'a, Pos>,
      ReadStorage<'a, Vel>,
      ReadStorage<'a, Acc>,
-     ReadStorage<'a, PlayerId>,
-     ReadStorage<'a, Bounciness>);
+     ReadStorage<'a, Bounciness>,
+     WriteStorage<'a, PlayerComp>);
 
-    fn run(&mut self, data: Self::SystemData) {
-        let (ids, engine, pos, vel, acc, id, bounciness) = data;
-
-        let ids = ids.deref();
-        let engine = engine.deref();
-
+    fn run(&mut self, (pos, vel, acc, bounciness, mut player): Self::SystemData) {
         let (ball_pos, ball_vel, _) = (&pos, &vel, &bounciness).join().take(1).next().unwrap();
         let ball = Ball {
             pos: ball_pos.clone(),
@@ -39,9 +31,9 @@ impl<'a> System<'a> for Sending {
         };
 
         let mut players = HashMap::new();
-        for (pos, vel, acc, id) in (&pos, &vel, &acc, &id).join() {
+        for (pos, vel, acc) in (&pos, &vel, &acc).join() {
             players.insert(
-                *id.deref(),
+                "Foo".to_owned(),
                 Player {
                     pos: pos.clone(),
                     vel: vel.clone(),
@@ -54,24 +46,15 @@ impl<'a> System<'a> for Sending {
             players,
             timestamp: timestamp(),
         };
-        send(engine, ids, state);
+        for mut player in &mut player.join() {
+            send(&mut player.send_channel.clone(), &state);
+        }
     }
 }
 
-fn send(engine: &Engine, ids: &Ids, state: ClientState) {
-    let state = Arc::new(RwLock::new(state));
-    let connections = engine.connections.read().unwrap();
-    for id in ids.read().unwrap().iter() {
-        let channel = connections
-            .get(&id)
-            .expect("Didn't find connection in list")
-            .write()
-            .unwrap()
-            .send_channel
-            .clone();
-        let msg = serde_json::to_string(state.read().unwrap().deref()).unwrap();
-        channel.send(OwnedMessage::Text(msg)).wait().expect(
-            "Failed to send message",
-        );
-    }
+fn send(send_channel: &mut SendChannel, state: &ClientState) {
+    let msg = serde_json::to_string(&state).unwrap();
+    send_channel.send(OwnedMessage::Text(msg)).wait().expect(
+        "Failed to send message",
+    );
 }
