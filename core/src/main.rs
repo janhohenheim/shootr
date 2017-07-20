@@ -20,7 +20,6 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
-use std::ops::Deref;
 
 fn main() {
     shootr::engine::execute::<Handler>();

@@ -3,7 +3,7 @@ use self::specs::{Component, VecStorage};
 
 use engine::SendChannel;
 use super::game::{Vector, Id};
-use model::client::{Key, KeyState};
+use model::client::Key;
 use std::ops::{Deref, DerefMut};
 use std::convert::From;
 use std::collections::HashMap;

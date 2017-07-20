@@ -1,5 +1,5 @@
 extern crate specs;
-use self::specs::{Fetch, Join, ReadStorage, WriteStorage, System, Entities};
+use self::specs::{Fetch, Join, WriteStorage, System};
 
 use model::comp::{Acc, Player};
 use model::game::Id;
@@ -52,6 +52,5 @@ fn handle_key_state(_: &Player, acc: &mut Acc, key_state: &KeyState) {
                 acc.y = 0
             }
         }
-        _ => {}
     }
 }

@@ -1,12 +1,5 @@
-extern crate specs;
 extern crate uuid;
-
-use self::specs::Entity;
 use self::uuid::Uuid;
-
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
-
 
 
 pub type Id = Uuid;
