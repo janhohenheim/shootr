@@ -23,6 +23,7 @@ use self::futures_cpupool::CpuPool;
 
 use std::sync::{RwLock, Arc};
 use std::fmt::Debug;
+use std::net::SocketAddr;
 
 use util::read_env_var;
 
@@ -33,7 +34,7 @@ pub trait EventHandler {
     fn new() -> Self;
     fn main_loop(&self);
     fn message(&self, id: Self::Id, msg: OwnedMessage);
-    fn connect(&self, send_channel: SendChannel) -> Option<Self::Id>;
+    fn connect(&self, addr: SocketAddr, send_channel: SendChannel) -> Option<Self::Id>;
     fn disconnect(&self, id: Self::Id);
 }
 
@@ -75,7 +76,7 @@ where
             let send_channel = send_channel_out.clone();
             let f = upgrade.accept().and_then(move |(framed, _)| {
                 let (conn_out, conn_in) = mpsc::unbounded();
-                let res = event_handler.connect(conn_out);
+                let res = event_handler.connect(addr, conn_out);
                 if let Some(id) = res {
                     let (sink, stream) = framed.split();
                     send_channel

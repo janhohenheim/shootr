@@ -21,6 +21,7 @@ use std::sync::{Arc, RwLock};
 use std::thread::sleep;
 use std::time::Duration;
 use std::collections::{HashMap, HashSet};
+use std::net::SocketAddr;
 
 fn main() {
     shootr::engine::execute::<Handler>();
@@ -155,7 +156,7 @@ impl EventHandler for Handler {
             _ => {}
         };
     }
-    fn connect(&self, send_channel: SendChannel) -> Option<Self::Id> {
+    fn connect(&self, _: SocketAddr, send_channel: SendChannel) -> Option<Self::Id> {
         let id = Uuid::new_v4();
         self.to_spawn.write().unwrap().insert(id, send_channel);
         Some(id)
