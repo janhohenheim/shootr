@@ -24,13 +24,14 @@ use self::futures_cpupool::CpuPool;
 use std::sync::{RwLock, Arc};
 use std::fmt::Debug;
 use std::net::SocketAddr;
+use std::fmt::Display;
 
 use util::read_env_var;
 
 
 pub type SendChannel = mpsc::UnboundedSender<OwnedMessage>;
 pub trait EventHandler {
-    type Id: Send + Sync + Clone;
+    type Id: Send + Sync + Clone + Debug + Display;
     fn new() -> Self;
     fn main_loop(&self);
     fn on_message(&self, id: Self::Id, msg: OwnedMessage);
@@ -78,6 +79,7 @@ where
                 let (conn_out, conn_in) = mpsc::unbounded();
                 let res = event_handler.on_connect(addr, conn_out);
                 if let Some(id) = res {
+                    println!("Client {}: Connect", id);
                     let (sink, stream) = framed.split();
                     send_channel
                         .send((id.clone(), conn_in, sink))
@@ -104,8 +106,10 @@ where
                     .for_each(move |msg| {
                         let id = id.clone();
                         if let OwnedMessage::Close(_) = msg {
+                            println!("Client {}: Disconnect", id);
                             event_handler.on_disconnect(id);
                         } else {
+                            println!("Client {}: Received message {:?}", id, msg);
                             event_handler.on_message(id, msg);
                         }
                         Ok(())
@@ -136,7 +140,10 @@ where
                         let ok_send = sink.start_send(msg).is_ok();
                         let ok_poll = sink.poll_complete().is_ok();
                         if !ok_send || !ok_poll {
-                            println!("Failed to send, kicking client");
+                            println!(
+                                "Client {}: Forced disconnect (failed to receive message)",
+                                id
+                            );
                             event_handler.on_disconnect(id.clone());
                         }
                         Ok(())
