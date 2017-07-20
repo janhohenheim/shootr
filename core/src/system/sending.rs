@@ -16,13 +16,15 @@ use util::timestamp;
 pub struct Sending;
 impl<'a> System<'a> for Sending {
     #[allow(type_complexity)]
-    type SystemData = (ReadStorage<'a, Pos>,
-     ReadStorage<'a, Vel>,
-     ReadStorage<'a, Acc>,
-     ReadStorage<'a, Bounciness>,
-     WriteStorage<'a, PlayerComp>,
-     WriteStorage<'a, Ping>,
-     Entities<'a>);
+    type SystemData = (
+        ReadStorage<'a, Pos>,
+        ReadStorage<'a, Vel>,
+        ReadStorage<'a, Acc>,
+        ReadStorage<'a, Bounciness>,
+        WriteStorage<'a, PlayerComp>,
+        WriteStorage<'a, Ping>,
+        Entities<'a>,
+    );
 
     fn run(
         &mut self,
@@ -70,9 +72,10 @@ impl<'a> System<'a> for Sending {
 fn send(player: &PlayerComp, state: &ClientState) {
     let msg = serde_json::to_string(&state).unwrap();
     let send_channel = player.send_channel.clone();
-    send_channel.send(OwnedMessage::Text(msg)).wait().expect(
-        "Failed to send message",
-    );
+    send_channel
+        .send(OwnedMessage::Text(msg))
+        .wait()
+        .expect("Failed to send message");
 }
 
 fn send_ping(player: &mut PlayerComp) {
@@ -80,5 +83,8 @@ fn send_ping(player: &mut PlayerComp) {
     let timestamp = timestamp();
     let id = Id::new_v4();
     player.pingpongs.insert(id, (timestamp, None));
-    send_channel.send(OwnedMessage::Ping(id.as_bytes().to_vec()));
+    send_channel
+        .send(OwnedMessage::Ping(id.as_bytes().to_vec()))
+        .wait()
+        .unwrap();
 }
