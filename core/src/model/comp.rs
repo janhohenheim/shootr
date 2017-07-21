@@ -25,6 +25,11 @@ pub struct Connect;
 pub struct Disconnect;
 #[derive(Component)]
 pub struct Ping;
+#[derive(Component)]
+pub struct Pong {
+    pub ping_id: Id,
+    pub timestamp: u64,
+}
 
 pub type KeyboardState = HashMap<Key, bool>;
 #[derive(Component)]
@@ -32,6 +37,7 @@ pub struct Player {
     pub id: Id,
     pub send_channel: SendChannel,
     pub inputs: Vec<KeyboardState>,
+    pub delay: usize,
     pub pingpongs: HashMap<Id, (u64, Option<u64>)>,
 }
 impl Player {
@@ -40,6 +46,7 @@ impl Player {
             id,
             send_channel,
             inputs: Vec::new(),
+            delay: 0,
             pingpongs: HashMap::new(),
         }
     }

@@ -4,13 +4,15 @@ extern crate specs;
 extern crate chrono;
 extern crate serde_json;
 extern crate websocket_server;
+extern crate dotenv;
 
-use self::specs::{DispatcherBuilder, World, Entity};
-use self::chrono::prelude::*;
-use self::websocket_server::{start as start_server, EventHandler, SendChannel, OwnedMessage};
+use specs::{DispatcherBuilder, World, Entity};
+use chrono::prelude::*;
+use websocket_server::{start as start_server, EventHandler, SendChannel, OwnedMessage};
+use dotenv::dotenv;
 
-use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::comp::{Vel, Pos, Bounciness, Connect, Disconnect, Player, Ping};
+use shootr::util::{read_env_var, elapsed_ms, timestamp};
+use shootr::model::comp::{Vel, Pos, Bounciness, Connect, Disconnect, Player, Ping, Pong};
 use shootr::model::client::KeyState;
 use shootr::model::game::{Vector, Id};
 use shootr::system::*;
@@ -23,9 +25,10 @@ use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 
 fn main() {
-    let port = read_env_var("CORE_PORT").parse::<u32>().expect(
-        "Specified port is not a valid number",
-    );
+    dotenv().ok();
+    let port = read_env_var("CORE_PORT")
+        .parse::<u32>()
+        .expect("Specified port is not a valid number");
     start_server::<Handler>("localhost", port);
 }
 
@@ -34,6 +37,7 @@ struct Handler {
     to_spawn: RwLock<HashMap<Id, SendChannel>>,
     to_despawn: RwLock<HashSet<Id>>,
     inputs: Arc<RwLock<HashMap<Id, Vec<KeyState>>>>,
+    pongs: Arc<RwLock<Vec<(Id, Id, u64)>>>,
 }
 
 impl Handler {
@@ -65,6 +69,17 @@ impl Handler {
         }
     }
 
+    fn handle_pong(&self, id: Id, data: &Vec<u8>) {
+        let timestamp = timestamp();
+        if let Ok(data) = Id::from_bytes(&data) {
+            let mut pongs = self.pongs.write().unwrap();
+            pongs.push((id, data, timestamp));
+        } else {
+            println!("Client {}: Sent pong with invalid bytes {:?}", id, data);
+        }
+    }
+
+
     fn register_spawns(&self, world: &mut World) {
         let mut id_entity = self.id_entity.write().unwrap();
         let mut to_spawn = self.to_spawn.write().unwrap();
@@ -79,9 +94,9 @@ impl Handler {
 
         let mut to_despawn = self.to_despawn.write().unwrap();
         for id in to_despawn.drain() {
-            let entity = id_entity.remove(&id).expect(
-                "Tried to remove id that was not there",
-            );
+            let entity = id_entity
+                .remove(&id)
+                .expect("Tried to remove id that was not there");
             world.write::<Disconnect>().insert(entity, Disconnect {});
         }
     }
@@ -89,6 +104,20 @@ impl Handler {
     fn register_pings(&self, world: &mut World) {
         for (_, entity) in self.id_entity.read().unwrap().iter() {
             world.write::<Ping>().insert(entity.clone(), Ping {});
+        }
+    }
+
+    fn register_pongs(&self, world: &mut World) {
+        let id_entity = self.id_entity.read().unwrap();
+        let mut pongs = self.pongs.write().unwrap();
+        for pong in pongs.drain(..) {
+            let (player_id, ping_id, timestamp) = pong;
+            let entity = id_entity
+                .get(&player_id)
+                .expect("Processed pong from player that isn't in list");
+            world
+                .write::<Pong>()
+                .insert(entity.clone(), Pong { ping_id, timestamp });
         }
     }
 }
@@ -102,6 +131,7 @@ impl EventHandler for Handler {
             to_spawn: RwLock::new(HashMap::new()),
             to_despawn: RwLock::new(HashSet::new()),
             inputs: Arc::new(RwLock::new(HashMap::new())),
+            pongs: Arc::new(RwLock::new(Vec::new())),
         }
     }
     fn main_loop(&self) {
@@ -117,12 +147,13 @@ impl EventHandler for Handler {
         let mut sender = DispatcherBuilder::new()
             .add(Sending, "sending", &[])
             .build();
+        let mut delay = DispatcherBuilder::new().add(Delay, "delay", &[]).build();
 
         let mut lag: u64 = 0;
         let mut previous = Utc::now();
-        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC").parse::<u64>().expect(
-            "Failed to parse environmental variable as integer",
-        );
+        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC")
+            .parse::<u64>()
+            .expect("Failed to parse environmental variable as integer");
         let ms_per_update = 1000 / updates_per_sec;
         let mut ping_timer = 0;
         let ping_interval = 500;
@@ -133,11 +164,13 @@ impl EventHandler for Handler {
             lag += elapsed;
             ping_timer += elapsed;
 
-            self.register_spawns(&mut world);
             if ping_timer > ping_interval {
                 self.register_pings(&mut world);
+                delay.dispatch(&mut world.res);
                 ping_timer = 0;
             }
+            self.register_pongs(&mut world);
+            self.register_spawns(&mut world);
 
             while lag >= ms_per_update {
                 updater.dispatch(&mut world.res);
@@ -153,6 +186,7 @@ impl EventHandler for Handler {
     fn on_message(&self, id: Self::Id, msg: OwnedMessage) {
         match msg {
             OwnedMessage::Text(ref txt) => self.handle_text(id, txt),
+            OwnedMessage::Pong(ref data) => self.handle_pong(id, data),
             _ => {}
         };
     }

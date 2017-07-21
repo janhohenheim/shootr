@@ -19,6 +19,7 @@ pub struct Ball {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Player {
+    pub delay: usize,
     pub pos: Pos,
     pub vel: Vel,
     pub acc: Acc,
