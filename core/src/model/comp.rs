@@ -1,7 +1,8 @@
 extern crate specs;
+extern crate websocket_server;
 use self::specs::{Component, VecStorage};
+use self::websocket_server::SendChannel;
 
-use engine::SendChannel;
 use super::game::{Vector, Id};
 use model::client::Key;
 use std::ops::{Deref, DerefMut};

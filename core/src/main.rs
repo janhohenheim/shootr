@@ -3,11 +3,12 @@ extern crate shootr;
 extern crate specs;
 extern crate chrono;
 extern crate serde_json;
+extern crate websocket_server;
 
 use self::specs::{DispatcherBuilder, World, Entity};
 use self::chrono::prelude::*;
+use self::websocket_server::{start as start_server, EventHandler, SendChannel, OwnedMessage};
 
-use shootr::engine::{EventHandler, OwnedMessage, SendChannel};
 use shootr::util::{read_env_var, elapsed_ms};
 use shootr::model::comp::{Vel, Pos, Bounciness, Connect, Disconnect, Player};
 use shootr::model::client::KeyState;
@@ -22,7 +23,8 @@ use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 
 fn main() {
-    shootr::engine::execute::<Handler>();
+    let port = read_env_var("CORE_PORT").parse::<u32>().expect("Specified port is not a valid number");
+    start_server::<Handler>("localhost", port);
 }
 
 struct Handler {

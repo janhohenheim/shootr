@@ -1,15 +1,17 @@
 extern crate specs;
 extern crate futures;
 extern crate serde_json;
+extern crate websocket_server;
 
 use self::specs::{Join, ReadStorage, System};
 use self::futures::{Future, Sink};
-use std::collections::HashMap;
+use self::websocket_server::{OwnedMessage, SendChannel};
 
 use model::comp::{Pos, Vel, Acc, Bounciness, Player as PlayerComp};
 use model::client::{ClientState, Ball, Player};
-use engine::{OwnedMessage, SendChannel};
 use util::timestamp;
+
+use std::collections::HashMap;
 
 
 pub struct Sending;
