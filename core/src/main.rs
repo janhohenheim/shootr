@@ -10,7 +10,7 @@ use self::chrono::prelude::*;
 use self::websocket_server::{start as start_server, EventHandler, SendChannel, OwnedMessage};
 
 use shootr::util::{read_env_var, elapsed_ms};
-use shootr::model::comp::{Vel, Pos, Bounciness, Connect, Disconnect, Player};
+use shootr::model::comp::{Vel, Pos, Bounciness, Connect, Disconnect, Player, Ping};
 use shootr::model::client::KeyState;
 use shootr::model::game::{Vector, Id};
 use shootr::system::*;
@@ -83,6 +83,12 @@ impl Handler {
             world.write::<Disconnect>().insert(entity, Disconnect {});
         }
     }
+
+    fn register_pings(&self, world: &mut World) {
+        for (_, entity) in self.id_entity.read().unwrap().iter() {
+            world.write::<Ping>().insert(entity.clone(), Ping {});
+        }
+    }
 }
 
 impl EventHandler for Handler {
@@ -116,13 +122,21 @@ impl EventHandler for Handler {
             "Failed to parse environmental variable as integer",
         );
         let ms_per_update = 1000 / updates_per_sec;
+        let mut ping_timer = 0;
+        let ping_interval = 500;
         loop {
             let current = Utc::now();
             let elapsed = elapsed_ms(previous, current).expect("Time went backwards");
             previous = current;
             lag += elapsed;
+            ping_timer += elapsed;
 
             self.register_spawns(&mut world);
+            if ping_timer > ping_interval {
+                self.register_pings(&mut world);
+                ping_timer = 0;
+            }
+
             while lag >= ms_per_update {
                 updater.dispatch(&mut world.res);
                 lag -= ms_per_update;

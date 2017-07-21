@@ -23,7 +23,8 @@ newtype!(Friction(i32): Debug, Clone, Serialize, Component);
 pub struct Connect;
 #[derive(Component)]
 pub struct Disconnect;
-
+#[derive(Component)]
+pub struct Ping;
 
 pub type KeyboardState = HashMap<Key, bool>;
 #[derive(Component)]
@@ -31,7 +32,7 @@ pub struct Player {
     pub id: Id,
     pub send_channel: SendChannel,
     pub inputs: Vec<KeyboardState>,
-    pub pingpongs: HashMap<u64, (u64, Option<u64>)>,
+    pub pingpongs: HashMap<Id, (u64, Option<u64>)>,
 }
 impl Player {
     pub fn new(id: Id, send_channel: SendChannel) -> Self {

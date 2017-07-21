@@ -15,15 +15,21 @@ impl<'a> System<'a> for InputHandler {
      WriteStorage<'a, Player>);
 
     fn run(&mut self, (inputs, mut acc, mut player): Self::SystemData) {
-        let inputs = inputs.read().unwrap();
+        let mut inputs = inputs.write().unwrap();
         for (mut player, mut acc) in (&mut player, &mut acc).join() {
-            if let Some(key_states) = inputs.get(&player.id) {
-                for key_state in key_states {
+            if let Some(mut key_states) = inputs.get_mut(&player.id) {
+                for key_state in key_states.drain(..) {
                     update_player_inputs(&mut player, &key_state);
                     handle_key_state(&player, &mut acc, &key_state);
                 }
+                let bufferlen = 10;
+                let len = player.inputs.len();
+                if len > bufferlen {
+                    player.inputs.drain(0..len - bufferlen);
+                }
             }
         }
+
     }
 }
 

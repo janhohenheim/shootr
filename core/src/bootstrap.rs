@@ -27,7 +27,8 @@ fn register_components(world: &mut World) {
         Player,
         Friction,
         Connect,
-        Disconnect
+        Disconnect,
+        Ping
     );
 }
 
