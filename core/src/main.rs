@@ -23,7 +23,9 @@ use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
 
 fn main() {
-    let port = read_env_var("CORE_PORT").parse::<u32>().expect("Specified port is not a valid number");
+    let port = read_env_var("CORE_PORT").parse::<u32>().expect(
+        "Specified port is not a valid number",
+    );
     start_server::<Handler>("localhost", port);
 }
 
