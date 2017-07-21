@@ -7,8 +7,6 @@ use std::collections::HashMap;
 pub struct ClientState {
     pub ball: Ball,
     pub players: HashMap<Id, Player>,
-    // UTC timestamp in ms
-    pub timestamp: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]

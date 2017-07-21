@@ -9,7 +9,6 @@ use self::websocket_server::OwnedMessage;
 
 use model::comp::{Pos, Vel, Acc, Bounciness, Player as PlayerComp};
 use model::client::{ClientState, Ball, Player};
-use util::timestamp;
 
 use std::collections::HashMap;
 
@@ -44,14 +43,9 @@ impl<'a> System<'a> for Sending {
                 },
             );
         }
-        let state = ClientState {
-            ball,
-            players,
-            timestamp: timestamp(),
-        };
+        let state = ClientState { ball, players };
 
         for player in &mut player.join() {
-            println!("{}", player.delay);
             send(player, &state);
         }
     }

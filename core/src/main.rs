@@ -156,7 +156,7 @@ impl EventHandler for Handler {
             .expect("Failed to parse environmental variable as integer");
         let ms_per_update = 1000 / updates_per_sec;
         let mut ping_timer = 0;
-        let ping_interval = 500;
+        let ping_interval = 1000;
         loop {
             let current = Utc::now();
             let elapsed = elapsed_ms(previous, current).expect("Time went backwards");
