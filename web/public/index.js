@@ -20,32 +20,6 @@ function setPingInfo(ping) {
 }
 
 
-class Ping {
-    constructor() {
-        this.average = 0
-        this.pings = [0]
-        setInterval(() => this.calcAverage(), 1000)
-    }
-
-    add(origTimestamp) {
-        const ping = Date.now() - origTimestamp
-        if (ping < 0)
-            console.error('Ping cannot be negative, received timestamp from future')
-        this.pings.push(ping)
-        const buffer = 200
-        if (this.pings.length > buffer)
-            this.pings.splice(0, this.pings.length - buffer)
-    }
-
-    calcAverage() {
-        if (!this.pings)
-            return
-        const sum = this.pings.reduce((a, b) => a + b, 0)
-        this.average = (sum / this.pings.length) | 0
-        setPingInfo(this.average)
-    }
-}
-
 function connect(address) {
     io = new WebSocket(address)
     io.onopen = () => {
@@ -55,7 +29,7 @@ function connect(address) {
 
     io.onmessage = (msg) => {
         const state = JSON.parse(msg.data, (key, value) => value === "" ? 0 : value)
-        ping.add(state.timestamp)
+        state.timestamp = Date.now()
         states.push(state)
         // Todo: Exchange for real queue library
         setTimeout(states.shift, 100)
@@ -205,10 +179,14 @@ function setup() {
     resize()
     window.addEventListener('resize', resize);
 
+    setInterval(() => setPingInfo(getOwnPing()))
     const addr = window.location.hostname === 'localhost' ? 'ws://localhost:8081' : 'wss://beta.jnferner.com/socket'
-    ping = new Ping()
     connect(addr)
     app.ticker.add(gameLoop)
+}
+
+function getOwnPing() {
+    return states.length > 0 ? states[states.length - 1].players[0] : 0
 }
 
 function resize() {
@@ -230,7 +208,7 @@ function connecting() {
     connectionInfo.text = 'Connecting...'
     connectionInfo.visible = true
 
-    const renderTime = getRenderTime()
+    const renderTime = getRenderTime(getOwnPing())
     const index = getIndexOfRenderState(states, renderTime)
     if (index >= 0) {
         connectionInfo.visible = false
@@ -244,7 +222,7 @@ function play() {
 
 
 function render(states) {
-    const renderTime = getRenderTime()
+    const renderTime = getRenderTime(getOwnPing())
     const index = getIndexOfRenderState(states, renderTime)
     if (index < 0)
         return
@@ -252,11 +230,11 @@ function render(states) {
     setWorld(interpolatedState)
 }
 
-function getRenderTime() {
+function getRenderTime(ping) {
     const now = new Date().getTime()
     const minDelay = 100
     const maxDelay = 300
-    const delay = Math.max(minDelay, Math.min(maxDelay, ping.average))
+    const delay = Math.max(minDelay, Math.min(maxDelay, ping))
     return now - delay
 }
 
