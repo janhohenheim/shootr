@@ -179,7 +179,7 @@ function setup() {
     resize()
     window.addEventListener('resize', resize);
 
-    setInterval(() => setPingInfo(getOwnPing()))
+    setInterval(() => setPingInfo(getOwnPing()), 1000)
     const addr = window.location.hostname === 'localhost' ? 'ws://localhost:8081' : 'wss://beta.jnferner.com/socket'
     connect(addr)
     app.ticker.add(gameLoop)
