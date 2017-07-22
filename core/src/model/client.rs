@@ -1,12 +1,11 @@
 use super::comp::{Pos, Vel, Acc};
 use super::game::Id;
 
-use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ClientState {
     pub ball: Ball,
-    pub players: HashMap<Id, Player>,
+    pub players: Vec<Player>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -17,6 +16,7 @@ pub struct Ball {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Player {
+    pub id: Id,
     pub delay: usize,
     pub pos: Pos,
     pub vel: Vel,

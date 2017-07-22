@@ -26,9 +26,9 @@ use std::net::SocketAddr;
 
 fn main() {
     dotenv().ok();
-    let port = read_env_var("CORE_PORT")
-        .parse::<u32>()
-        .expect("Specified port is not a valid number");
+    let port = read_env_var("CORE_PORT").parse::<u32>().expect(
+        "Specified port is not a valid number",
+    );
     start_server::<Handler>("localhost", port);
 }
 
@@ -94,10 +94,9 @@ impl Handler {
 
         let mut to_despawn = self.to_despawn.write().unwrap();
         for id in to_despawn.drain() {
-            let entity = id_entity
-                .remove(&id)
-                .expect("Tried to remove id that was not there");
-            world.write::<Disconnect>().insert(entity, Disconnect {});
+            if let Some(entity) = id_entity.remove(&id) {
+                world.write::<Disconnect>().insert(entity, Disconnect {});
+            }
         }
     }
 
@@ -112,12 +111,13 @@ impl Handler {
         let mut pongs = self.pongs.write().unwrap();
         for pong in pongs.drain(..) {
             let (player_id, ping_id, timestamp) = pong;
-            let entity = id_entity
-                .get(&player_id)
-                .expect("Processed pong from player that isn't in list");
-            world
-                .write::<Pong>()
-                .insert(entity.clone(), Pong { ping_id, timestamp });
+            let entity = id_entity.get(&player_id).expect(
+                "Processed pong from player that isn't in list",
+            );
+            world.write::<Pong>().insert(
+                entity.clone(),
+                Pong { ping_id, timestamp },
+            );
         }
     }
 }
@@ -151,9 +151,9 @@ impl EventHandler for Handler {
 
         let mut lag: u64 = 0;
         let mut previous = Utc::now();
-        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC")
-            .parse::<u64>()
-            .expect("Failed to parse environmental variable as integer");
+        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC").parse::<u64>().expect(
+            "Failed to parse environmental variable as integer",
+        );
         let ms_per_update = 1000 / updates_per_sec;
         let mut ping_timer = 0;
         let ping_interval = 1000;
