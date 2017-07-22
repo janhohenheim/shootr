@@ -111,13 +111,12 @@ impl Handler {
         let mut pongs = self.pongs.write().unwrap();
         for pong in pongs.drain(..) {
             let (player_id, ping_id, timestamp) = pong;
-            let entity = id_entity.get(&player_id).expect(
-                "Processed pong from player that isn't in list",
-            );
-            world.write::<Pong>().insert(
-                entity.clone(),
-                Pong { ping_id, timestamp },
-            );
+            if let Some(entity) = id_entity.get(&player_id) {
+                world.write::<Pong>().insert(
+                    entity.clone(),
+                    Pong { ping_id, timestamp },
+                );
+            }
         }
     }
 }
