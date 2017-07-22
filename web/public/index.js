@@ -186,7 +186,12 @@ function setup() {
 }
 
 function getOwnPing() {
-    return states.length > 0 ? states[states.length - 1].players[0] : 0
+    if (states.length > 0) {
+        const players = states[states.length - 1].players
+        if (players.length > 0)
+            return players[0]
+    }
+    return 0
 }
 
 function resize() {
