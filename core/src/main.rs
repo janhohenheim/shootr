@@ -8,7 +8,7 @@ extern crate dotenv;
 
 use specs::{DispatcherBuilder, World, Entity};
 use chrono::prelude::*;
-use websocket_server::{start as start_server, EventHandler, SendChannel, OwnedMessage};
+use websocket_server::{start as start_server, EventHandler, SendChannel, Message};
 use dotenv::dotenv;
 
 use shootr::util::{read_env_var, elapsed_ms, timestamp};
@@ -183,10 +183,10 @@ impl EventHandler for Handler {
         }
     }
 
-    fn on_message(&self, id: Self::Id, msg: OwnedMessage) {
+    fn on_message(&self, id: Self::Id, msg: Message) {
         match msg {
-            OwnedMessage::Text(ref txt) => self.handle_text(id, txt),
-            OwnedMessage::Pong(ref data) => self.handle_pong(id, data),
+            Message::Text(ref txt) => self.handle_text(id, txt),
+            Message::Pong(ref data) => self.handle_pong(id, data),
             _ => {}
         };
     }

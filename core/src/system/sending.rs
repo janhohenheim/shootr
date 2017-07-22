@@ -5,7 +5,7 @@ extern crate websocket_server;
 
 use self::specs::{Join, ReadStorage, System};
 use self::futures::{Future, Sink};
-use self::websocket_server::OwnedMessage;
+use self::websocket_server::Message;
 
 use model::comp::{Pos, Vel, Acc, Bounciness, Player as PlayerComp};
 use model::client::{ClientState, Ball, Player};
@@ -55,7 +55,7 @@ fn send(player: &PlayerComp, state: &ClientState) {
     let msg = serde_json::to_string(&state).unwrap();
     let send_channel = player.send_channel.clone();
     send_channel
-        .send(OwnedMessage::Text(msg))
+        .send(Message::Text(msg))
         .wait()
         .expect("Failed to send message");
 }

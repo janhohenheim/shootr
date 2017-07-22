@@ -5,7 +5,7 @@ extern crate websocket_server;
 
 use self::specs::{Join, WriteStorage, System, Entities};
 use self::futures::{Future, Sink};
-use self::websocket_server::OwnedMessage;
+use self::websocket_server::Message;
 
 use model::game::Id;
 use model::comp::{Ping, Pong, Player};
@@ -62,7 +62,7 @@ fn send_ping(player: &mut Player) {
     let id = Id::new_v4();
     player.pingpongs.insert(id, (timestamp, None));
     send_channel
-        .send(OwnedMessage::Ping(id.as_bytes().to_vec()))
+        .send(Message::Ping(id.as_bytes().to_vec()))
         .wait()
         .unwrap();
 }
