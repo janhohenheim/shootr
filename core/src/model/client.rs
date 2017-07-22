@@ -1,6 +1,25 @@
 use super::comp::{Pos, Vel, Acc};
 use super::game::Id;
 
+#[derive(Debug, Clone, Serialize)]
+pub struct Greeting {
+    pub client_id: Id,
+    pub ball: Ball,
+    pub players: Vec<Player>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConnectionInfo {
+    pub player_id: Id,
+    pub status: ConnectionStatus,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum ConnectionStatus {
+    Connected,
+    Disconnected,
+}
+
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ClientState {

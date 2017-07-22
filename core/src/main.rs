@@ -142,6 +142,7 @@ impl EventHandler for Handler {
             .add(Physics, "physics", &["input_handler"])
             .add(Bounce, "bounce", &["physics"])
             .add(Spawn, "spawn", &["physics", "bounce"])
+            .add(Despawn, "despawn", &["spawn"])
             .build();
         let mut sender = DispatcherBuilder::new()
             .add(Sending, "sending", &[])

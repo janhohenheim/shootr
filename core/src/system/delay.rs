@@ -15,12 +15,10 @@ use util::timestamp;
 pub struct Delay;
 impl<'a> System<'a> for Delay {
     #[allow(type_complexity)]
-    type SystemData = (
-        WriteStorage<'a, Player>,
-        WriteStorage<'a, Ping>,
-        WriteStorage<'a, Pong>,
-        Entities<'a>,
-    );
+    type SystemData = (WriteStorage<'a, Player>,
+     WriteStorage<'a, Ping>,
+     WriteStorage<'a, Pong>,
+     Entities<'a>);
 
     fn run(&mut self, (mut player, mut ping, mut pong, entities): Self::SystemData) {
         let mut pinged_players = Vec::new();
