@@ -189,7 +189,7 @@ function getOwnPing() {
     if (states.length > 0) {
         const players = states[states.length - 1].players
         if (players.length > 0)
-            return players[0]
+            return players[0].delay
     }
     return 0
 }
