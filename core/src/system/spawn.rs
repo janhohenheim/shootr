@@ -18,11 +18,7 @@ impl<'a> System<'a> for Spawn {
         &mut self,
         (entities, connect, mut pos, mut vel, mut acc, mut friction): Self::SystemData,
     ) {
-        let mut to_spawn = Vec::new();
         for (entity, _) in (&*entities, &connect).join() {
-            to_spawn.push(entity);
-        }
-        for entity in to_spawn {
             let x = if entity.id() % 2 == 0 { 20 } else { 980 };
             acc.insert(entity, Acc::from(Vector { x: 0, y: 0 }));
             vel.insert(entity, Vel::from(Vector { x: 0, y: 0 }));

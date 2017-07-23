@@ -80,15 +80,10 @@ impl<'a> System<'a> for Sending {
         }
 
 
-        let mut new_disconnects = Vec::new();
         for (actor, _) in (&actor, &disconnect).join() {
-            new_disconnects.push(actor.id.clone());
-        }
-
-        for new_disconnect in new_disconnects {
             let disconnect = ClientMessage {
                 opcode: OpCode::Disconnect,
-                payload: new_disconnect.clone(),
+                payload: actor.id.clone(),
             };
             for player in (&player).join() {
                 send(player, &disconnect);
