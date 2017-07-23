@@ -69,11 +69,11 @@ fn handle_new_connections(
         new_connections.push((entity.clone(), new_actor.clone()));
         let mut payload = Vec::new();
         payload.push(serialize(&new_actor.id));
-        let mut id_actor_kind = HashMap::new();
+        let mut actors = Vec::new();
         for actor in (&actor).join() {
-            id_actor_kind.insert(actor.id, actor.kind.clone());
+            actors.push(actor);
         }
-        payload.push(serialize(&id_actor_kind));
+        payload.push(serialize(&actors));
         let greeting = ClientMessage {
             opcode: OpCode::Greeting,
             payload: payload,
