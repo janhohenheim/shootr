@@ -5,7 +5,6 @@ let connectionInfo
 let pingInfo
 let states = []
 
-let ping
 
 function setPingInfo(ping) {
     pingInfo.text = 'Ping: ' + ping
@@ -19,7 +18,7 @@ function setPingInfo(ping) {
     pingInfo.style.fill = fill
 }
 
-
+let ownId
 function connect(address) {
     io = new WebSocket(address)
     io.onopen = () => {
@@ -27,21 +26,36 @@ function connect(address) {
         connectionInfo.visible = false
     };
 
-    io.onmessage = (msg) => {
-        const state = JSON.parse(msg.data, (key, value) => value === "" ? 0 : value)
-        state.timestamp = Date.now()
-        states.push(state)
-        // Todo: Exchange for real queue library
-        setTimeout(states.shift, 100)
-        const lastIds = Object.keys(players)
-        const currIds = Object.keys(state.players)
-        // Todo: Optimize this algorithm
-        for (let id of currIds)
-            if (lastIds.indexOf(id) === -1)
-                spawnPlayer(id)
-        for (let id of lastIds)
-            if (currIds.indexOf(id) === -1)
-                removePlayer(id)
+    io.onmessage = (serializedMsg) => {
+        const timestamp = Date.now()
+        const msg = JSON.parse(serializedMsg.data, (key, value) => value === "" ? 0 : value)
+
+        switch (msg.opcode) {
+            case 'Greeting':
+                ownId = msg.payload[0]
+                const actors = msg.payload[1]
+
+                for (let actor of actors) {
+                    spawnActor(actor)
+                }
+                break;
+            case 'Connect':
+                const player = {id: msg.payload.id, kind: "Player"}
+                spawnActor(player)
+                break;
+            case 'Disconnect':
+                removeActor(msg.payload)
+                break;
+            case 'WorldUpdate':
+                const state = msg.payload
+                state.timestamp = timestamp
+                states.push(state)
+                // Todo: Exchange for real queue library
+                setTimeout(states.shift, 100)
+                break;
+            default:
+                throw 'Received invalid opcode: ' + msg.opcode
+        }
     }
 
     io.onclose = () => {
@@ -147,9 +161,6 @@ function loadProgressHandler(loader, resource) {
         console.error(resource.error)
 }
 
-let ball
-let players = {}
-
 function setup() {
     const background = new Sprite(resources.pong.textures['fancy-court.png'])
     background.width = GAME_WIDTH
@@ -172,10 +183,6 @@ function setup() {
     pingInfo.x = 40
     app.stage.addChild(pingInfo)
 
-    ball = new Sprite(resources.pong.textures['fancy-ball.png'])
-    ball.anchor.set(0.5)
-    app.stage.addChild(ball)
-
     resize()
     window.addEventListener('resize', resize);
 
@@ -186,12 +193,10 @@ function setup() {
 }
 
 function getOwnPing() {
-    if (states.length > 0) {
-        const players = states[states.length - 1].players
-        if (players.length > 0)
-            return players[0].delay
-    }
-    return 0
+    if (states.len === 0 || !ownId)
+        return 0
+    const players = states[states.length - 1]
+    return players[ownId].delay
 }
 
 function resize() {
@@ -254,38 +259,35 @@ function getInterpolatedState(from, to, renderTime) {
     if (total === 0 || progress === 0)
         return from
     const fraction = progress / total
-    let state = from
-
-    state.ball.vel.x += (to.ball.vel.x - from.ball.vel.x) * fraction
-    state.ball.vel.y += (to.ball.vel.y - from.ball.vel.y) * fraction
-    state.ball.pos.x += (to.ball.pos.x - from.ball.pos.x) * fraction
-    state.ball.pos.y += (to.ball.pos.y - from.ball.pos.y) * fraction
-
-    for (let id of Object.keys(state.players)) {
-        if (!to.players[id] || !from.players[id])
+    let state = JSON.parse(JSON.stringify(from))
+    for (let id of Object.keys(state)) {
+        const actor = state[id]
+        const toActor = to[id]
+        if (!toActor)
             continue
-        state.players[id].vel.x += (to.players[id].vel.x - from.players[id].vel.x) * fraction
-        state.players[id].vel.y += (to.players[id].vel.y - from.players[id].vel.y) * fraction
-        state.players[id].pos.x += (to.players[id].pos.x - from.players[id].pos.x) * fraction
-        state.players[id].pos.y += (to.players[id].pos.y - from.players[id].pos.y) * fraction
-    }
+        const fromActor = from[id]
 
+        actor.pos.x += (toActor.pos.x - fromActor.pos.x) * fraction
+        actor.pos.y += (toActor.pos.y - fromActor.pos.y) * fraction
+        actor.vel.x += (toActor.vel.x - fromActor.vel.x) * fraction
+        actor.vel.y += (toActor.vel.y - fromActor.vel.y) * fraction
+    }
     state.timestamp = renderTime
     return state
 }
 
 
+let actors = {}
 function setWorld(state) {
-    ball.x = state.ball.pos.x
-    ball.y = state.ball.pos.y
-
-    addBlur(ball, state.ball.vel)
-    for (let id of Object.keys(players)) {
-        if (!state.players[id])
-            continue;
-        players[id].x = state.players[id].pos.x
-        players[id].y = state.players[id].pos.y
-        addBlur(players[id], state.players[id].vel)
+    for (let id of Object.keys(state)) {
+        const liveActor = actors[id]
+        const stateActor = state[id]
+        if (!liveActor || !stateActor)
+            continue
+        liveActor.x = stateActor.pos.x
+        liveActor.y = stateActor.pos.y
+        if (stateActor.vel)
+            addBlur(liveActor, stateActor.vel)
     }
 }
 
@@ -298,15 +300,27 @@ function addBlur(obj, vel) {
     }
 }
 
-function spawnPlayer(id) {
-    const player = new Sprite(resources.pong.textures['fancy-paddle-green.png'])
-    player.anchor.set(0.5)
-    app.stage.addChild(player)
-    players[id] = player
+
+function spawnActor(actor) {
+    let texture
+    switch (actor.kind) {
+        case "Player":
+            texture = 'fancy-paddle-green.png'
+            break;
+        case "Ball":
+            texture = 'fancy-ball.png'
+            break;
+        default:
+            throw 'Tried to spawn invalid kind of actor: ' + actor.kind
+    }
+    const sprite = new Sprite(resources.pong.textures[texture])
+    sprite.anchor.set(0.5)
+    app.stage.addChild(sprite)
+    actors[actor.id] = sprite
 }
 
-function removePlayer(id) {
-    const player = players[id]
-    app.stage.removeChild(player)
-    delete players[id]
+function removeActor(id) {
+    const actor = actors[id]
+    app.stage.removeChild(actor)
+    delete actors[id]
 }
