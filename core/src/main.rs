@@ -14,7 +14,8 @@ use dotenv::dotenv;
 use byteorder::{BigEndian, ReadBytesExt};
 
 use shootr::util::{read_env_var, elapsed_ms, timestamp, SeqId};
-use shootr::model::comp::{Vel, Pos, Bounciness, Connect, Disconnect, Player, Ping, Pong, WorldId};
+use shootr::model::comp::{Vel, Pos, Bounciness, Connect, Disconnect, Player, Ping, Pong, Actor,
+                          ActorKind};
 use shootr::model::client::KeyState;
 use shootr::model::game::{Vector, Id};
 use shootr::system::*;
@@ -29,9 +30,9 @@ use std::io::Cursor;
 
 fn main() {
     dotenv().ok();
-    let port = read_env_var("CORE_PORT")
-        .parse::<u32>()
-        .expect("Specified port is not a valid number");
+    let port = read_env_var("CORE_PORT").parse::<u32>().expect(
+        "Specified port is not a valid number",
+    );
     start_server::<Handler>("localhost", port);
 }
 
@@ -53,7 +54,10 @@ impl Handler {
             .create_entity()
             .with(Vel::from(Vector { x: 15, y: 10 }))
             .with(Pos::from(Vector { x: 500, y: 500 }))
-            .with(WorldId(Id::new_v4()))
+            .with(Actor {
+                id: Id::new_v4(),
+                kind: ActorKind::Ball,
+            })
             .with(Bounciness {})
             .build();
     }
@@ -94,7 +98,10 @@ impl Handler {
                 .create_entity()
                 .with(Connect {})
                 .with(Player::new(send_channel))
-                .with(WorldId(id))
+                .with(Actor {
+                    id,
+                    kind: ActorKind::Player,
+                })
                 .build();
             id_entity.insert(id, entity.clone());
         }
@@ -119,9 +126,10 @@ impl Handler {
         for pong in pongs.drain(..) {
             let (player_id, ping_id, timestamp) = pong;
             if let Some(entity) = id_entity.get(&player_id) {
-                world
-                    .write::<Pong>()
-                    .insert(entity.clone(), Pong { ping_id, timestamp });
+                world.write::<Pong>().insert(
+                    entity.clone(),
+                    Pong { ping_id, timestamp },
+                );
             }
         }
     }
@@ -157,9 +165,9 @@ impl EventHandler for Handler {
 
         let mut lag: u64 = 0;
         let mut previous = Utc::now();
-        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC")
-            .parse::<u64>()
-            .expect("Failed to parse environmental variable as integer");
+        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC").parse::<u64>().expect(
+            "Failed to parse environmental variable as integer",
+        );
         let ms_per_update = 1000 / updates_per_sec;
         let mut ping_timer = 0;
         let ping_interval = 1000;

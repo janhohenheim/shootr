@@ -18,11 +18,7 @@ pub fn read_env_var(var: &str) -> String {
 
 pub fn elapsed_ms(from: DateTime<Utc>, to: DateTime<Utc>) -> Result<u64, ()> {
     let ms = to.signed_duration_since(from).num_milliseconds();
-    if ms >= 0 {
-        Ok(ms as u64)
-    } else {
-        Err(())
-    }
+    if ms >= 0 { Ok(ms as u64) } else { Err(()) }
 }
 
 pub fn timestamp() -> u64 {

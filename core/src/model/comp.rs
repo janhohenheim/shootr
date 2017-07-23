@@ -20,15 +20,19 @@ vectype!(Pos);
 pub struct Bounciness {}
 
 newtype!(Friction(i32): Debug, Clone, Serialize, Component);
-newtype!(
-    WorldId(GameId): Debug,
-    Clone,
-    Serialize,
-    Component,
-    Eq,
-    PartialEq,
-    Hash
-);
+
+#[derive(Debug, Clone, Serialize)]
+pub enum ActorKind {
+    Player,
+    Ball,
+}
+
+
+#[derive(Debug, Clone, Serialize, Component)]
+pub struct Actor {
+    pub id: GameId,
+    pub kind: ActorKind,
+}
 
 #[derive(Component)]
 pub struct Connect;

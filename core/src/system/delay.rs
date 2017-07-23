@@ -19,13 +19,11 @@ use std::sync::RwLock;
 pub struct Delay;
 impl<'a> System<'a> for Delay {
     #[allow(type_complexity)]
-    type SystemData = (
-        WriteStorage<'a, Player>,
-        WriteStorage<'a, Ping>,
-        WriteStorage<'a, Pong>,
-        Entities<'a>,
-        Fetch<'a, RwLock<SeqIdGen>>,
-    );
+    type SystemData = (WriteStorage<'a, Player>,
+     WriteStorage<'a, Ping>,
+     WriteStorage<'a, Pong>,
+     Entities<'a>,
+     Fetch<'a, RwLock<SeqIdGen>>);
 
     fn run(&mut self, (mut player, mut ping, mut pong, entities, seq_id_gen): Self::SystemData) {
         let mut pinged_players = Vec::new();

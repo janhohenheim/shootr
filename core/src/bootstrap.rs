@@ -32,7 +32,7 @@ fn register_components(world: &mut World) {
         Friction,
         Connect,
         Disconnect,
-        WorldId,
+        Actor,
         Ping,
         Pong
     );
