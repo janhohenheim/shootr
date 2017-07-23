@@ -4,7 +4,7 @@ extern crate serde;
 extern crate serde_json;
 extern crate websocket_server;
 
-use self::specs::{Join, ReadStorage, WriteStorage, System, Entities};
+use self::specs::{Join, ReadStorage, WriteStorage, System, Entities, EntitiesRes};
 use self::futures::{Future, Sink};
 use self::websocket_server::Message;
 use self::serde::ser::Serialize;
@@ -31,7 +31,7 @@ impl<'a> System<'a> for Sending {
         (pos, vel, player, actor, mut connect, disconnect, entities): Self::SystemData,
     ) {
 
-        handle_new_connections(&player, &entities, &actor, &mut connect);
+        handle_new_connections(&player, &*entities, &actor, &mut connect);
         handle_disconnects(&player, &actor, &disconnect);
 
         send_world_updates(&player, &actor, &pos, &vel);
@@ -58,10 +58,10 @@ where
 }
 
 
-fn handle_new_connections(player: &ReadStorage<PlayerComp>, entities: &Entities, actor: &ReadStorage<Actor>, connect: &mut WriteStorage<Connect>) {
+fn handle_new_connections(player: &ReadStorage<PlayerComp>, entities: &EntitiesRes, actor: &ReadStorage<Actor>, connect: &mut WriteStorage<Connect>) {
     let mut new_connections = Vec::new();
     for (new_player, entity, new_actor, _) in
-        (player, &**entities, actor, &mut *connect).join()
+        (player, entities, actor, &mut *connect).join()
         {
             new_connections.push((entity.clone(), new_actor.clone()));
             let mut payload = Vec::new();
@@ -85,7 +85,7 @@ fn handle_new_connections(player: &ReadStorage<PlayerComp>, entities: &Entities,
             opcode: OpCode::Connect,
             payload: new_actor.clone(),
         };
-        for (player, entity) in (player, &**entities).join() {
+        for (player, entity) in (player, entities).join() {
             if entity != new_entity {
                 send(player, &connection);
             }
