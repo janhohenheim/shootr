@@ -9,7 +9,6 @@ use self::futures::{Future, Sink};
 use self::websocket_server::Message;
 use self::byteorder::{BigEndian, WriteBytesExt};
 
-use model::game::Id;
 use model::comp::{Ping, Pong, Player};
 use util::{timestamp, SeqIdGen};
 

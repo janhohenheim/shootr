@@ -1,7 +1,7 @@
 extern crate specs;
 use self::specs::{Fetch, Join, WriteStorage, ReadStorage, System};
 
-use model::comp::{Acc, Player, Actor, ActorKind};
+use model::comp::{Acc, Player, Actor};
 use model::game::Id;
 use model::client::{Key, KeyState};
 

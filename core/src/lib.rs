@@ -6,6 +6,7 @@ extern crate serde_derive;
 extern crate derive_more;
 #[macro_use]
 extern crate shootr_derive;
+#[allow(unused_imports)]
 #[macro_use]
 extern crate maplit;
 

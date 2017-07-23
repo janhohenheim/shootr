@@ -9,7 +9,6 @@ use model::client::Key;
 use std::ops::{Deref, DerefMut};
 use std::convert::From;
 use std::collections::HashMap;
-use std::hash::Hash;
 
 vectype!(Acc);
 vectype!(Vel);

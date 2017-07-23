@@ -1,7 +1,6 @@
 extern crate serde;
 
 use self::serde::ser::Serialize;
-use super::comp::{Pos, Vel, Acc};
 
 #[derive(Debug, Clone, Serialize)]
 pub enum OpCode {

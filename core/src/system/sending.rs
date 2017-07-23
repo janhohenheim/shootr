@@ -9,8 +9,7 @@ use self::futures::{Future, Sink};
 use self::websocket_server::Message;
 use self::serde::ser::Serialize;
 
-use model::comp::{Pos, Vel, Bounciness, Connect, Disconnect, Player as PlayerComp, Actor,
-                  ActorKind};
+use model::comp::{Pos, Vel, Connect, Disconnect, Player as PlayerComp, Actor};
 use model::client::{Message as ClientMessage, OpCode};
 
 use std::collections::HashMap;
@@ -21,7 +20,6 @@ impl<'a> System<'a> for Sending {
     #[allow(type_complexity)]
     type SystemData = (ReadStorage<'a, Pos>,
      ReadStorage<'a, Vel>,
-     ReadStorage<'a, Bounciness>,
      ReadStorage<'a, PlayerComp>,
      ReadStorage<'a, Actor>,
      WriteStorage<'a, Connect>,
@@ -30,7 +28,7 @@ impl<'a> System<'a> for Sending {
 
     fn run(
         &mut self,
-        (pos, vel, bounciness, player, actor, mut connect, disconnect, entities): Self::SystemData,
+        (pos, vel, player, actor, mut connect, disconnect, entities): Self::SystemData,
     ) {
         let mut serialized_actors = HashMap::new();
         for actor in (&actor).join() {
