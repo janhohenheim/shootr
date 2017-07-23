@@ -3,11 +3,13 @@ extern crate websocket_server;
 use self::specs::{Component, VecStorage};
 use self::websocket_server::SendChannel;
 
-use super::game::{Vector, Id};
+use super::game::{Vector, Id as GameId};
+use util::SeqId as PingId;
 use model::client::Key;
 use std::ops::{Deref, DerefMut};
 use std::convert::From;
 use std::collections::HashMap;
+use std::hash::Hash;
 
 vectype!(Acc);
 vectype!(Vel);
@@ -18,6 +20,15 @@ vectype!(Pos);
 pub struct Bounciness {}
 
 newtype!(Friction(i32): Debug, Clone, Serialize, Component);
+newtype!(
+    WorldId(GameId): Debug,
+    Clone,
+    Serialize,
+    Component,
+    Eq,
+    PartialEq,
+    Hash
+);
 
 #[derive(Component)]
 pub struct Connect;
@@ -27,23 +38,21 @@ pub struct Disconnect;
 pub struct Ping;
 #[derive(Component)]
 pub struct Pong {
-    pub ping_id: Id,
+    pub ping_id: PingId,
     pub timestamp: u64,
 }
 
 pub type KeyboardState = HashMap<Key, bool>;
 #[derive(Component)]
 pub struct Player {
-    pub id: Id,
     pub send_channel: SendChannel,
     pub inputs: Vec<KeyboardState>,
     pub delay: usize,
-    pub pingpongs: HashMap<Id, (u64, Option<u64>)>,
+    pub pingpongs: HashMap<PingId, (u64, Option<u64>)>,
 }
 impl Player {
-    pub fn new(id: Id, send_channel: SendChannel) -> Self {
+    pub fn new(send_channel: SendChannel) -> Self {
         Player {
-            id,
             send_channel,
             inputs: Vec::new(),
             delay: 0,

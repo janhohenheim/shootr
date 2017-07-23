@@ -5,14 +5,16 @@ extern crate chrono;
 extern crate serde_json;
 extern crate websocket_server;
 extern crate dotenv;
+extern crate byteorder;
 
 use specs::{DispatcherBuilder, World, Entity};
 use chrono::prelude::*;
 use websocket_server::{start as start_server, EventHandler, SendChannel, Message};
 use dotenv::dotenv;
+use byteorder::{BigEndian, ReadBytesExt};
 
-use shootr::util::{read_env_var, elapsed_ms, timestamp};
-use shootr::model::comp::{Vel, Pos, Bounciness, Connect, Disconnect, Player, Ping, Pong};
+use shootr::util::{read_env_var, elapsed_ms, timestamp, SeqId};
+use shootr::model::comp::{Vel, Pos, Bounciness, Connect, Disconnect, Player, Ping, Pong, WorldId};
 use shootr::model::client::KeyState;
 use shootr::model::game::{Vector, Id};
 use shootr::system::*;
@@ -23,12 +25,13 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
+use std::io::Cursor;
 
 fn main() {
     dotenv().ok();
-    let port = read_env_var("CORE_PORT").parse::<u32>().expect(
-        "Specified port is not a valid number",
-    );
+    let port = read_env_var("CORE_PORT")
+        .parse::<u32>()
+        .expect("Specified port is not a valid number");
     start_server::<Handler>("localhost", port);
 }
 
@@ -37,7 +40,7 @@ struct Handler {
     to_spawn: RwLock<HashMap<Id, SendChannel>>,
     to_despawn: RwLock<HashSet<Id>>,
     inputs: Arc<RwLock<HashMap<Id, Vec<KeyState>>>>,
-    pongs: Arc<RwLock<Vec<(Id, Id, u64)>>>,
+    pongs: Arc<RwLock<Vec<(Id, SeqId, u64)>>>,
 }
 
 impl Handler {
@@ -45,11 +48,12 @@ impl Handler {
         bootstrap::prepare_world(world);
         world.add_resource(self.inputs.clone());
 
-        // Ball
+        // Create ball
         world
             .create_entity()
             .with(Vel::from(Vector { x: 15, y: 10 }))
             .with(Pos::from(Vector { x: 500, y: 500 }))
+            .with(WorldId(Id::new_v4()))
             .with(Bounciness {})
             .build();
     }
@@ -71,7 +75,9 @@ impl Handler {
 
     fn handle_pong(&self, id: Id, data: &Vec<u8>) {
         let timestamp = timestamp();
-        if let Ok(data) = Id::from_bytes(&data) {
+
+        let mut rdr = Cursor::new(data);
+        if let Ok(data) = rdr.read_u32::<BigEndian>() {
             let mut pongs = self.pongs.write().unwrap();
             pongs.push((id, data, timestamp));
         } else {
@@ -87,7 +93,8 @@ impl Handler {
             let entity = world
                 .create_entity()
                 .with(Connect {})
-                .with(Player::new(id, send_channel))
+                .with(Player::new(send_channel))
+                .with(WorldId(id))
                 .build();
             id_entity.insert(id, entity.clone());
         }
@@ -112,10 +119,9 @@ impl Handler {
         for pong in pongs.drain(..) {
             let (player_id, ping_id, timestamp) = pong;
             if let Some(entity) = id_entity.get(&player_id) {
-                world.write::<Pong>().insert(
-                    entity.clone(),
-                    Pong { ping_id, timestamp },
-                );
+                world
+                    .write::<Pong>()
+                    .insert(entity.clone(), Pong { ping_id, timestamp });
             }
         }
     }
@@ -151,9 +157,9 @@ impl EventHandler for Handler {
 
         let mut lag: u64 = 0;
         let mut previous = Utc::now();
-        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC").parse::<u64>().expect(
-            "Failed to parse environmental variable as integer",
-        );
+        let updates_per_sec = read_env_var("CORE_UPDATES_PER_SEC")
+            .parse::<u64>()
+            .expect("Failed to parse environmental variable as integer");
         let ms_per_update = 1000 / updates_per_sec;
         let mut ping_timer = 0;
         let ping_interval = 1000;
@@ -193,9 +199,11 @@ impl EventHandler for Handler {
     fn on_connect(&self, _: SocketAddr, send_channel: SendChannel) -> Option<Self::Id> {
         let id = Id::new_v4();
         self.to_spawn.write().unwrap().insert(id, send_channel);
+        println!("Client {}: Connected", id);
         Some(id)
     }
     fn on_disconnect(&self, id: Self::Id) {
+        println!("Client {}: Disonnected", id);
         self.to_despawn.write().unwrap().insert(id);
     }
 }

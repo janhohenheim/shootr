@@ -9,65 +9,64 @@ use self::futures::{Future, Sink};
 use self::websocket_server::Message;
 use self::serde::ser::Serialize;
 
-use model::comp::{Pos, Vel, Acc, Bounciness, Connect, Disconnect, Player as PlayerComp};
-use model::client::{ClientState, Ball, Player, Greeting, ConnectionInfo, ConnectionStatus};
+use model::comp::{Pos, Vel, Acc, Bounciness, Connect, Disconnect, Player as PlayerComp, WorldId};
+use model::client::{Message as ClientMessage, OpCode};
 
+use std::collections::HashMap;
+use std::fmt::Debug;
 
 pub struct Sending;
 impl<'a> System<'a> for Sending {
     #[allow(type_complexity)]
-    type SystemData = (ReadStorage<'a, Pos>,
-     ReadStorage<'a, Vel>,
-     ReadStorage<'a, Acc>,
-     ReadStorage<'a, Bounciness>,
-     ReadStorage<'a, PlayerComp>,
-     WriteStorage<'a, Connect>,
-     ReadStorage<'a, Disconnect>,
-     Entities<'a>);
+    type SystemData = (
+        ReadStorage<'a, Pos>,
+        ReadStorage<'a, Vel>,
+        ReadStorage<'a, Acc>,
+        ReadStorage<'a, Bounciness>,
+        ReadStorage<'a, PlayerComp>,
+        ReadStorage<'a, WorldId>,
+        WriteStorage<'a, Connect>,
+        ReadStorage<'a, Disconnect>,
+        Entities<'a>,
+    );
 
     fn run(
         &mut self,
-        (pos, vel, acc, bounciness, player, mut connect, disconnect, entities): Self::SystemData,
+        (pos, vel, acc, bounciness, player, world_id, mut connect, disconnect, entities): Self::SystemData,
     ) {
-        let (ball_pos, ball_vel, _) = (&pos, &vel, &bounciness).join().take(1).next().unwrap();
-        let ball = Ball {
-            pos: ball_pos.clone(),
-            vel: ball_vel.clone(),
-        };
-
-        let mut players = Vec::new();
-        for (pos, vel, acc, player) in (&pos, &vel, &acc, &player).join() {
-            players.push(Player {
-                id: player.id,
-                delay: player.delay,
-                pos: pos.clone(),
-                vel: vel.clone(),
-                acc: acc.clone(),
-            });
+        let mut actors = HashMap::new();
+        for id in (&world_id).join() {
+            actors.insert(id, HashMap::new());
         }
-        let state = ClientState {
-            ball: ball.clone(),
-            players: players.clone(),
-        };
+
+        for (pos, vel, id) in (&pos, &vel, &world_id).join() {
+            let mut actor = actors.get_mut(&id).unwrap();
+            actor.insert("pos", serialize(&pos));
+            actor.insert("vel", serialize(&vel));
+        }
+
+
+        for (player, id) in (&player, &world_id).join() {
+            let mut actor = actors.get_mut(&id).unwrap();
+            actor.insert("delay", serialize(&player.delay));
+        }
 
         let mut new_connections = Vec::new();
-        for (player, entity, _) in (&player, &*entities, &mut connect).join() {
-            new_connections.push((entity.clone(), player.id.clone()));
-            let greeting = Greeting {
-                client_id: player.id,
-                ball: ball.clone(),
-                players: players.clone(),
+        for (player, entity, id, _) in (&player, &*entities, &world_id, &mut connect).join() {
+            new_connections.push((entity.clone(), id.clone()));
+            let greeting = ClientMessage {
+                opcode: OpCode::Greeting,
+                payload: id.clone(),
             };
-
             send(player, &greeting);
         }
 
         for new_connection in new_connections {
             let (new_entity, new_id) = new_connection;
             connect.remove(new_entity);
-            let connection = ConnectionInfo {
-                player_id: new_id,
-                status: ConnectionStatus::Connected,
+            let connection = ClientMessage {
+                opcode: OpCode::Connect,
+                payload: new_id.clone(),
             };
             for (player, entity) in (&player, &*entities).join() {
                 if entity != new_entity {
@@ -78,33 +77,41 @@ impl<'a> System<'a> for Sending {
 
 
         let mut new_disconnects = Vec::new();
-        for (player, _) in (&player, &disconnect).join() {
-            new_disconnects.push(player.id);
+        for (id,  _) in (&world_id, &disconnect).join() {
+            new_disconnects.push(id);
         }
 
         for new_disconnect in new_disconnects {
-            let disconnect = ConnectionInfo {
-                player_id: new_disconnect,
-                status: ConnectionStatus::Disconnected,
+            let disconnect = ClientMessage {
+                opcode: OpCode::Disconnect,
+                payload: new_disconnect.clone(),
             };
             for player in (&player).join() {
                 send(player, &disconnect);
             }
         }
 
+        let world_state = ClientMessage {
+            opcode: OpCode::WorldUpdate,
+            payload: actors,
+        };
         for player in (&player).join() {
-            send(player, &state);
+            send(player, &world_state);
         }
     }
 }
 
-fn send<T>(player: &PlayerComp, state: &T)
-where
-    T: Serialize,
+fn send<T>(player: &PlayerComp, msg: &ClientMessage<T>)
+where T: Serialize
 {
-    let msg = serde_json::to_string(&state).unwrap();
+    let msg = serde_json::to_string(&msg).unwrap();
     let send_channel = player.send_channel.clone();
-    send_channel.send(Message::Text(msg)).wait().expect(
-        "Failed to send message",
-    );
+    send_channel
+        .send(Message::Text(msg))
+        .wait()
+        .expect("Failed to send message");
+}
+
+fn serialize<T>(t: &T) -> String where T: Serialize + Debug {
+    serde_json::to_string(t).expect(&format!("Failed to serialize object {:?}", t))
 }

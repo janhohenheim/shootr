@@ -1,23 +1,28 @@
 extern crate specs;
-use self::specs::{Fetch, Join, WriteStorage, System};
+use self::specs::{Fetch, Join, WriteStorage, ReadStorage, System};
 
-use model::comp::{Acc, Player};
+use model::comp::{Acc, Player, WorldId};
 use model::game::Id;
 use model::client::{Key, KeyState};
 
 use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 
+type InputMap = Arc<RwLock<HashMap<Id, Vec<KeyState>>>>;
+
 pub struct InputHandler;
 impl<'a> System<'a> for InputHandler {
-    type SystemData = (Fetch<'a, Arc<RwLock<HashMap<Id, Vec<KeyState>>>>>,
-     WriteStorage<'a, Acc>,
-     WriteStorage<'a, Player>);
+    type SystemData = (
+        Fetch<'a, InputMap>,
+        WriteStorage<'a, Acc>,
+        WriteStorage<'a, Player>,
+        ReadStorage<'a, WorldId>,
+    );
 
-    fn run(&mut self, (inputs, mut acc, mut player): Self::SystemData) {
+    fn run(&mut self, (inputs, mut acc, mut player, world_id): Self::SystemData) {
         let mut inputs = inputs.write().unwrap();
-        for (mut player, mut acc) in (&mut player, &mut acc).join() {
-            if let Some(mut key_states) = inputs.get_mut(&player.id) {
+        for (mut player, mut acc, world_id) in (&mut player, &mut acc, &world_id).join() {
+            if let Some(mut key_states) = inputs.get_mut(&world_id) {
                 for key_state in key_states.drain(..) {
                     update_player_inputs(&mut player, &key_state);
                     handle_key_state(&player, &mut acc, &key_state);

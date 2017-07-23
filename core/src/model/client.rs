@@ -1,6 +1,27 @@
-use super::comp::{Pos, Vel, Acc};
-use super::game::Id;
+extern crate serde;
 
+use self::serde::ser::Serialize;
+use super::comp::{Pos, Vel, Acc};
+use super::game::Id as GameId;
+
+#[derive(Debug, Clone, Serialize)]
+pub enum OpCode {
+    Greeting,
+    Connect,
+    Disconnect,
+    WorldUpdate,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Message<T>
+where
+    T: Serialize,
+{
+    pub opcode: OpCode,
+    pub payload: T,
+}
+
+/*
 #[derive(Debug, Clone, Serialize)]
 pub struct Greeting {
     pub client_id: Id,
@@ -41,7 +62,7 @@ pub struct Player {
     pub vel: Vel,
     pub acc: Acc,
 }
-
+*/
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub enum Key {
     ArrowUp,

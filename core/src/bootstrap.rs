@@ -3,10 +3,14 @@ extern crate specs;
 use self::specs::World;
 use model::comp::*;
 use model::game::Vector;
+use util::SeqIdGen;
+
+use std::sync::RwLock;
 
 pub fn prepare_world(world: &mut World) {
     register_components(world);
     add_constraints(world);
+    add_utils(world);
 }
 
 
@@ -28,6 +32,7 @@ fn register_components(world: &mut World) {
         Friction,
         Connect,
         Disconnect,
+        WorldId,
         Ping,
         Pong
     );
@@ -46,4 +51,8 @@ fn add_constraints(world: &mut World) {
         min: Pos::from(Vector { x: 0, y: 0 }),
         max: Pos::from(Vector { x: 1000, y: 1000 }),
     });
+}
+
+fn add_utils(world: &mut World) {
+    world.add_resource(RwLock::new(SeqIdGen::new()));
 }

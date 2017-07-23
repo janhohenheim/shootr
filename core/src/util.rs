@@ -18,7 +18,11 @@ pub fn read_env_var(var: &str) -> String {
 
 pub fn elapsed_ms(from: DateTime<Utc>, to: DateTime<Utc>) -> Result<u64, ()> {
     let ms = to.signed_duration_since(from).num_milliseconds();
-    if ms >= 0 { Ok(ms as u64) } else { Err(()) }
+    if ms >= 0 {
+        Ok(ms as u64)
+    } else {
+        Err(())
+    }
 }
 
 pub fn timestamp() -> u64 {
@@ -39,6 +43,22 @@ where
         _ => val,
     }
 }
+
+pub type SeqId = u32;
+pub struct SeqIdGen {
+    curr_id: SeqId,
+}
+impl SeqIdGen {
+    pub fn new() -> Self {
+        SeqIdGen { curr_id: 0 }
+    }
+
+    pub fn gen(&mut self) -> SeqId {
+        self.curr_id += 1;
+        self.curr_id
+    }
+}
+
 
 #[macro_export]
 macro_rules! newtype {
@@ -163,4 +183,18 @@ fn clamp_less_than_min() {
 fn clamp_more_than_max() {
     let res = clamp(999, 9, 10);
     assert_eq!(10, res);
+}
+
+
+#[test]
+fn id_gen_unique() {
+    let mut id_gen = IdGen::new();
+    let mut ids = Vec::new();
+    let ids_count = 1000;
+    for _ in 0..ids_count {
+        ids.push(id_gen.next());
+    }
+    ids.sort();
+    ids.dedup_by_key(|id| *id);
+    assert_eq!(ids_count, ids.len());
 }
