@@ -61,12 +61,12 @@ fn handle_new_connections(
     for (new_player, entity, new_actor, _) in (player, entities, actor, &mut *connect).join() {
         new_connections.push((entity.clone(), new_actor.clone()));
         let mut payload = Vec::new();
-        payload.push(json!({"id": new_actor.id}));
+        payload.push(json!(new_actor.id));
         let mut actors = Vec::new();
         for actor in (&actor).join() {
             actors.push(actor);
         }
-        payload.push(json!({"actors": actors}));
+        payload.push(json!(actors));
         let greeting = ClientMessage {
             opcode: OpCode::Greeting,
             payload: payload,
@@ -114,20 +114,18 @@ fn send_world_updates(
 ) {
     let mut serialized_actors = HashMap::new();
     for actor in (actor).join() {
-        serialized_actors.insert(actor.id, Vec::new());
+        serialized_actors.insert(actor.id, HashMap::new());
     }
 
     for (pos, vel, actor) in (pos, vel, actor).join() {
         let mut actor = serialized_actors.get_mut(&actor.id).unwrap();
-        actor.push(json!({
-            "pos": pos,
-            "vel": vel
-        }));
+        actor.insert("pos", json!(pos));
+        actor.insert("vel", json!(vel));
     }
 
     for (player, actor) in (player, actor).join() {
         let mut actor = serialized_actors.get_mut(&actor.id).unwrap();
-        actor.push(json!({"delay": player.delay}));
+        actor.insert("delay", json!(player.delay));
     }
     let world_state = ClientMessage {
         opcode: OpCode::WorldUpdate,
