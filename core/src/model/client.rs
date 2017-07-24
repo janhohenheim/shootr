@@ -1,6 +1,7 @@
 extern crate serde;
 
 use self::serde::ser::Serialize;
+use std::fmt::Debug;
 
 #[derive(Debug, Clone, Serialize)]
 pub enum OpCode {
@@ -13,7 +14,7 @@ pub enum OpCode {
 #[derive(Debug, Clone, Serialize)]
 pub struct Message<T>
 where
-    T: Serialize,
+    T: Serialize + Debug,
 {
     pub opcode: OpCode,
     pub payload: T,
