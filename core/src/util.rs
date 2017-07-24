@@ -50,8 +50,9 @@ impl SeqIdGen {
     }
 
     pub fn gen(&mut self) -> SeqId {
+        let curr_id = self.curr_id;
         self.curr_id += 1;
-        self.curr_id
+        curr_id
     }
 }
 
@@ -183,14 +184,10 @@ fn clamp_more_than_max() {
 
 
 #[test]
-fn id_gen_unique() {
-    let mut id_gen = IdGen::new();
-    let mut ids = Vec::new();
+fn seq_id_gen_sequential() {
+    let mut id_gen = SeqIdGen::new();
     let ids_count = 1000;
-    for _ in 0..ids_count {
-        ids.push(id_gen.next());
+    for i in 0..ids_count {
+        assert_eq!(i, id_gen.gen());
     }
-    ids.sort();
-    ids.dedup_by_key(|id| *id);
-    assert_eq!(ids_count, ids.len());
 }
