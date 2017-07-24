@@ -59,7 +59,7 @@ function connect(address) {
     }
 
     io.onclose = () => {
-        connectionInfo.text = 'Reconnecting...'
+        onnectionInfo.text = 'Reconnecting...'connectionInfo.text = 'Reconnecting...'
         connectionInfo.visible = true
         io = null
         setTimeout(() => {
@@ -70,6 +70,8 @@ function connect(address) {
 
     io.onerror = (err) => {
         console.error('Socket encountered error: ', err.message, 'Closing socket')
+        for (let id of Object.keys(actors))
+            removeActor(id)
         io.close()
         io = null
     };
@@ -217,7 +219,7 @@ function gameLoop(delta) {
 function connecting() {
     const txt = 'Connecting...'
     if (connectionInfo.text != txt) {
-        connectionInfo.text = 'txt'
+        connectionInfo.text = txt
         connectionInfo.visible = true
     }
 
