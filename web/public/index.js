@@ -27,7 +27,6 @@ function connect(address) {
     };
 
     io.onmessage = (serializedMsg) => {
-        const timestamp = Date.now()
         const msg = JSON.parse(serializedMsg.data, (key, value) => value === "" ? 0 : value)
 
         switch (msg.opcode) {
@@ -47,8 +46,9 @@ function connect(address) {
                 removeActor(msg.payload)
                 break;
             case 'WorldUpdate':
-                const state = msg.payload
-                state.timestamp = timestamp
+                const state = {}
+                state.actors = msg.payload
+                state.timestamp = Date.now()
                 states.push(state)
                 // Todo: Exchange for real queue library
                 setTimeout(states.shift, 100)
@@ -195,7 +195,7 @@ function setup() {
 function getOwnPing() {
     if (states.len === 0 || !ownId)
         return 0
-    const players = states[states.length - 1]
+    const players = states[states.length - 1].actors
     return players[ownId].delay
 }
 
@@ -215,8 +215,11 @@ function gameLoop(delta) {
 }
 
 function connecting() {
-    connectionInfo.text = 'Connecting...'
-    connectionInfo.visible = true
+    const txt = 'Connecting...'
+    if (connectionInfo.text != txt) {
+        connectionInfo.text = 'txt'
+        connectionInfo.visible = true
+    }
 
     const renderTime = getRenderTime(getOwnPing())
     const index = getIndexOfRenderState(states, renderTime)
@@ -259,7 +262,7 @@ function getInterpolatedState(from, to, renderTime) {
     if (total === 0 || progress === 0)
         return from
     const fraction = progress / total
-    let state = JSON.parse(JSON.stringify(from))
+    let state = JSON.parse(JSON.stringify(from)).actors
     for (let id of Object.keys(state)) {
         const actor = state[id]
         const toActor = to[id]
@@ -294,7 +297,7 @@ function setWorld(state) {
 function addBlur(obj, vel) {
     const maxVel = Math.max(vel.x, vel.y)
     const strength = Math.pow(Math.atan(Math.pow((maxVel / 10), 1.5)), 2) - 0.2
-    if (strength > 0) {
+    if (strength > 0.5) {
         const blurFilter = new PIXI.filters.BlurFilter(strength, 1, 1)
         obj.filters = [blurFilter]
     }
