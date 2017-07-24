@@ -196,7 +196,7 @@ function setup() {
 }
 
 function getOwnPing() {
-    if (states.len === 0 || !ownId)
+    if (states.length === 0 || !ownId)
         return 0
     const players = states[states.length - 1].actors
     return players[ownId].delay
