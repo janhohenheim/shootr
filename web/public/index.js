@@ -59,7 +59,7 @@ function connect(address) {
     }
 
     io.onclose = () => {
-        onnectionInfo.text = 'Reconnecting...'connectionInfo.text = 'Reconnecting...'
+        connectionInfo.text = 'Attempting to reconnect'
         connectionInfo.visible = true
         io = null
         setTimeout(() => {
@@ -68,8 +68,9 @@ function connect(address) {
         }, wait)
     };
 
-    io.onerror = (err) => {
-        console.error('Socket encountered error: ', err.message, 'Closing socket')
+    io.onerror = () => {
+        connectionInfo.text = 'Lost connection to server'
+        connectionInfo.visible = true
         for (let id of Object.keys(actors))
             removeActor(id)
         io.close()
@@ -174,7 +175,7 @@ function setup() {
     connectionInfo.style.dropShadow = true
     connectionInfo.style.dropShadowAlpha = 0.7
     connectionInfo.y = 30
-    connectionInfo.x = GAME_WIDTH - 200
+    connectionInfo.x = GAME_WIDTH - 300
     app.stage.addChild(connectionInfo)
 
     pingInfo = new PIXI.Text('Ping: Calculating...')
