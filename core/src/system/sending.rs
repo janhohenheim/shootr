@@ -41,20 +41,13 @@ impl<'a> System<'a> for Sending {
 
 fn send<T>(player: &PlayerComp, msg: &ClientMessage<T>)
 where
-    T: Serialize,
+    T: Serialize + Debug,
 {
-    let msg = serde_json::to_string(&msg).unwrap();
+    let msg = serde_json::to_string(&msg).expect(&format!("Failed to serialize object {:?}", msg));
     let send_channel = player.send_channel.clone();
     send_channel.send(Message::Text(msg)).wait().expect(
         "Failed to send message",
     );
-}
-
-fn serialize<T>(t: &T) -> String
-where
-    T: Serialize + Debug,
-{
-    serde_json::to_string(t).expect(&format!("Failed to serialize object {:?}", t))
 }
 
 
@@ -68,12 +61,12 @@ fn handle_new_connections(
     for (new_player, entity, new_actor, _) in (player, entities, actor, &mut *connect).join() {
         new_connections.push((entity.clone(), new_actor.clone()));
         let mut payload = Vec::new();
-        payload.push(serialize(&new_actor.id));
+        payload.push(json!({"id": new_actor.id}));
         let mut actors = Vec::new();
         for actor in (&actor).join() {
             actors.push(actor);
         }
-        payload.push(serialize(&actors));
+        payload.push(json!({"actors": actors}));
         let greeting = ClientMessage {
             opcode: OpCode::Greeting,
             payload: payload,
@@ -121,18 +114,20 @@ fn send_world_updates(
 ) {
     let mut serialized_actors = HashMap::new();
     for actor in (actor).join() {
-        serialized_actors.insert(actor.id, HashMap::new());
+        serialized_actors.insert(actor.id, Vec::new());
     }
 
     for (pos, vel, actor) in (pos, vel, actor).join() {
         let mut actor = serialized_actors.get_mut(&actor.id).unwrap();
-        actor.insert("pos", serialize(&pos));
-        actor.insert("vel", serialize(&vel));
+        actor.push(json!({
+            "pos": pos,
+            "vel": vel
+        }));
     }
 
     for (player, actor) in (player, actor).join() {
         let mut actor = serialized_actors.get_mut(&actor.id).unwrap();
-        actor.insert("delay", serialize(&player.delay));
+        actor.push(json!({"delay": player.delay}));
     }
     let world_state = ClientMessage {
         opcode: OpCode::WorldUpdate,

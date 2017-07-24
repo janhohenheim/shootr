@@ -3,6 +3,8 @@
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
+extern crate serde_json;
+#[macro_use]
 extern crate derive_more;
 #[macro_use]
 extern crate shootr_derive;
