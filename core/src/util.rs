@@ -146,7 +146,7 @@ fn timestamp_wait() {
 
     let a = timestamp();
     let delta = 420;
-    thread::sleep(Duration::from_millis(delta));
+    thread::sleep(Duration::from_millis(delta + 10));
     let b = timestamp();
     assert!(b - a >= delta)
 }
