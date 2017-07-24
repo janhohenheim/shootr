@@ -50,9 +50,8 @@ impl SeqIdGen {
     }
 
     pub fn gen(&mut self) -> SeqId {
-        let curr_id = self.curr_id;
         self.curr_id += 1;
-        curr_id
+        self.curr_id
     }
 }
 
@@ -188,6 +187,6 @@ fn seq_id_gen_sequential() {
     let mut id_gen = SeqIdGen::new();
     let ids_count = 1000;
     for i in 0..ids_count {
-        assert_eq!(i, id_gen.gen());
+        assert_eq!(i + 1, id_gen.gen());
     }
 }
