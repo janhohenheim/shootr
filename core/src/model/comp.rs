@@ -1,6 +1,6 @@
 extern crate specs;
 extern crate websocket_server;
-use self::specs::{Component, VecStorage};
+use self::specs::{Component, DenseVecStorage};
 use self::websocket_server::SendChannel;
 
 use super::game::{Vector, Id as GameId};
@@ -73,5 +73,5 @@ impl<T> Component for Bounds<T>
 where
     T: Send + Sync + 'static,
 {
-    type Storage = VecStorage<Self>;
+    type Storage = DenseVecStorage<Self>;
 }

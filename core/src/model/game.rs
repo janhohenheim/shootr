@@ -1,7 +1,6 @@
 extern crate uuid;
 use self::uuid::Uuid;
 
-
 pub type Id = Uuid;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Add, AddAssign)]
