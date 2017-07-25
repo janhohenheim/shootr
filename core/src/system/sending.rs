@@ -11,6 +11,7 @@ use self::serde::ser::Serialize;
 
 use model::comp::{Pos, Vel, Connect, Disconnect, Player as PlayerComp, Actor};
 use model::client::{Message as ClientMessage, OpCode};
+use util::timestamp;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -39,11 +40,16 @@ impl<'a> System<'a> for Sending {
 }
 
 
-fn send<T>(player: &PlayerComp, msg: &ClientMessage<T>)
+fn send<T>(player: &PlayerComp, opcode: &OpCode, payload: &T)
 where
     T: Serialize + Debug,
 {
-    let msg = serde_json::to_string(&msg).expect(&format!("Failed to serialize object {:?}", msg));
+    let raw_msg = ClientMessage {
+        opcode,
+        timestamp: timestamp(),
+        payload
+    };
+    let msg = serde_json::to_string(&raw_msg).expect(&format!("Failed to serialize object {:?}", raw_msg));
     let send_channel = player.send_channel.clone();
     send_channel.send(Message::Text(msg)).wait().expect(
         "Failed to send message",
@@ -67,23 +73,15 @@ fn handle_new_connections(
             actors.push(actor);
         }
         payload.push(json!(actors));
-        let greeting = ClientMessage {
-            opcode: OpCode::Greeting,
-            payload: payload,
-        };
-        send(new_player, &greeting);
+        send(new_player, &OpCode::Greeting, &payload);
     }
 
     for new_connection in new_connections {
         let (new_entity, new_actor) = new_connection;
         connect.remove(new_entity);
-        let connection = ClientMessage {
-            opcode: OpCode::Connect,
-            payload: new_actor.clone(),
-        };
         for (player, entity) in (player, entities).join() {
             if entity != new_entity {
-                send(player, &connection);
+                send(player, &OpCode::Connect, &new_actor);
             }
         }
     }
@@ -95,12 +93,8 @@ fn handle_disconnects(
     disconnect: &ReadStorage<Disconnect>,
 ) {
     for (actor, _) in (actor, disconnect).join() {
-        let disconnect = ClientMessage {
-            opcode: OpCode::Disconnect,
-            payload: actor.id.clone(),
-        };
         for player in (player).join() {
-            send(player, &disconnect);
+            send(&player, &OpCode::Disconnect, &actor.id);
         }
     }
 
@@ -127,11 +121,7 @@ fn send_world_updates(
         let mut actor = serialized_actors.get_mut(&actor.id).unwrap();
         actor.insert("delay", json!(player.delay));
     }
-    let world_state = ClientMessage {
-        opcode: OpCode::WorldUpdate,
-        payload: serialized_actors,
-    };
     for player in (player).join() {
-        send(player, &world_state);
+        send(player, &OpCode::WorldUpdate, &serialized_actors);
     }
 }
