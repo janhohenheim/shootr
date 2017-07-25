@@ -48,7 +48,7 @@ function connect(address) {
             case 'WorldUpdate':
                 const state = {}
                 state.actors = msg.payload
-                state.timestamp = msg.timestamp
+                state.timestamp = Date.now()
                 states.push(state)
                 // Todo: Exchange for real queue library
                 setTimeout(states.shift, 100)
