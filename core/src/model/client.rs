@@ -12,13 +12,12 @@ pub enum OpCode {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Message<'a, T>
+pub struct Message<T>
 where
-    T: Serialize + Debug + 'a,
+    T: Serialize + Debug,
 {
-    pub opcode: &'a OpCode,
-    pub timestamp: u64,
-    pub payload: &'a T,
+    pub opcode: OpCode,
+    pub payload: T,
 }
 
 
