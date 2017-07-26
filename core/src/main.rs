@@ -211,7 +211,7 @@ impl EventHandler for Handler {
         Some(id)
     }
     fn on_disconnect(&self, id: Self::Id) {
-        println!("Client {}: Disonnected", id);
+        println!("Client {}: Disconnected", id);
         self.to_despawn.write().unwrap().insert(id);
     }
 }
