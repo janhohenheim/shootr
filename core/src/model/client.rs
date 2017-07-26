@@ -27,7 +27,7 @@ impl Message<Vec<Value>> {
     pub fn new_greeting(own_id: &Id, actors: &Vec<&Actor>) -> Self {
         Message {
             opcode: OpCode::Greeting,
-            payload: vec![json!(own_id), json!(actors)]
+            payload: vec![json!(own_id), json!(actors)],
         }
     }
 }
@@ -35,13 +35,13 @@ impl Message<Value> {
     pub fn new_connection(new_actor: &Actor) -> Self {
         Message {
             opcode: OpCode::Connect,
-            payload: json!(new_actor)
+            payload: json!(new_actor),
         }
     }
     pub fn new_disconnect(id: &Id) -> Self {
         Message {
             opcode: OpCode::Disconnect,
-            payload: json!(id)
+            payload: json!(id),
         }
     }
 }
