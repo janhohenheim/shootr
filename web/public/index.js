@@ -47,7 +47,7 @@ function connect(address) {
                 break;
             case 'WorldUpdate':
                 const state = {}
-                state.actors = msg.payload
+                state.actors = msg.payload.actors
                 state.timestamp = Date.now()
                 states.push(state)
                 break;
