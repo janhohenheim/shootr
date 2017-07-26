@@ -4,20 +4,17 @@ extern crate serde;
 extern crate serde_json;
 extern crate websocket_server;
 
-use self::specs::{Join, ReadStorage, WriteStorage, System, Entities, EntitiesRes, Fetch};
+use self::specs::{Join, ReadStorage, WriteStorage, System, Entities, EntitiesRes};
 use self::futures::{Future, Sink};
 use self::websocket_server::Message;
 use self::serde::ser::Serialize;
 
-use model::game::Id;
 use model::comp::{Pos, Vel, Connect, Disconnect, Player as PlayerComp, Actor};
-use model::client::{Message as ClientMessage, OpCode, KeyState};
+use model::client::{Message as ClientMessage, OpCode};
 
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::{Arc, RwLock};
 
-type InputMap = Arc<RwLock<HashMap<Id, Vec<KeyState>>>>;
 pub struct Sending;
 impl<'a> System<'a> for Sending {
     #[allow(type_complexity)]
@@ -27,12 +24,11 @@ impl<'a> System<'a> for Sending {
      ReadStorage<'a, Actor>,
      WriteStorage<'a, Connect>,
      ReadStorage<'a, Disconnect>,
-     Fetch<'a, InputMap>,
      Entities<'a>);
 
     fn run(
         &mut self,
-        (pos, vel, player, actor, mut connect, disconnect, input_map, entities): Self::SystemData,
+        (pos, vel, player, actor, mut connect, disconnect, entities): Self::SystemData,
     ) {
 
         handle_new_connections(&player, &*entities, &actor, &mut connect);
@@ -102,7 +98,7 @@ fn send_world_updates(
     player: &ReadStorage<PlayerComp>,
     actor: &ReadStorage<Actor>,
     pos: &ReadStorage<Pos>,
-    vel: &ReadStorage<Vel>,
+    vel: &ReadStorage<Vel>
 ) {
     let mut serialized_actors = HashMap::new();
     for actor in (actor).join() {
@@ -119,11 +115,17 @@ fn send_world_updates(
         let mut actor = serialized_actors.get_mut(&actor.id).unwrap();
         actor.insert("delay", json!(player.delay));
     }
-    let world_state = ClientMessage {
-        opcode: OpCode::WorldUpdate,
-        payload: serialized_actors,
-    };
+    let json_actors = json!(serialized_actors);
     for player in (player).join() {
+        let last_input = json!(player.last_input);
+        let payload = hashmap!(
+            "last_input" => &last_input,
+            "actors" => &json_actors
+        );
+        let world_state = ClientMessage {
+            opcode: OpCode::WorldUpdate,
+            payload: &payload
+        };
         send(player, &world_state);
     }
 }

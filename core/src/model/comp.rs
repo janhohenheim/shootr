@@ -50,6 +50,7 @@ pub type KeyboardState = HashMap<Key, bool>;
 pub struct Player {
     pub send_channel: SendChannel,
     pub inputs: Vec<KeyboardState>,
+    pub last_input: u32,
     pub delay: usize,
     pub pingpongs: HashMap<PingId, (u64, Option<u64>)>,
 }
@@ -58,6 +59,7 @@ impl Player {
         Player {
             send_channel,
             inputs: Vec::new(),
+            last_input: 0,
             delay: 0,
             pingpongs: HashMap::new(),
         }

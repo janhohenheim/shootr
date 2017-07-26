@@ -55,7 +55,7 @@ pub enum Key {
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct KeyState {
-    pub id: i32,
+    pub id: u32,
     pub key: Key,
     pub pressed: bool,
 }

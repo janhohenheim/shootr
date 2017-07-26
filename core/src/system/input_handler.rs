@@ -43,6 +43,7 @@ fn update_player_inputs(player: &mut Player, key_state: &KeyState) {
         input.insert(key_state.key.clone(), key_state.pressed);
     }
     player.inputs.push(input);
+    player.last_input = key_state.id;
 }
 
 fn handle_key_state(_: &Player, acc: &mut Acc, key_state: &KeyState) {
