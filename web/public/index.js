@@ -92,7 +92,7 @@ function incrementWait() {
 }
 
 function send(data) {
-    if (io && io.readyState === 1) {
+    if (io && io.readystate === 1) {
         console.log('sending data: ', data)
         io.send(JSON.stringify(data))
     }
@@ -209,10 +209,10 @@ function resize() {
 }
 
 
-let state = connecting
+let onGameUpdate = connecting
 
 function gameLoop(delta) {
-    state()
+    onGameUpdate(delta)
 }
 
 function connecting() {
@@ -226,7 +226,7 @@ function connecting() {
     const index = getIndexOfRenderState(states, renderTime)
     if (index >= 0) {
         connectionInfo.visible = false
-        state = play
+        onGameUpdate = play
     }
 }
 
@@ -264,7 +264,7 @@ function getInterpolatedState(from, to, renderTime) {
     if (total === 0 || progress === 0)
         return from
     const fraction = progress / total
-    let state = JSON.parse(JSON.stringify(from)).actors
+    const state = JSON.parse(JSON.stringify(from)).actors
     for (let id of Object.keys(state)) {
         const actor = state[id]
         const toActor = to[id]
