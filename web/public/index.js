@@ -50,8 +50,6 @@ function connect(address) {
                 state.actors = msg.payload
                 state.timestamp = Date.now()
                 states.push(state)
-                // Todo: Exchange for real queue library
-                setTimeout(states.shift, 100)
                 break;
             default:
                 throw 'Received invalid opcode: ' + msg.opcode
@@ -224,7 +222,7 @@ function connecting() {
         connectionInfo.visible = true
     }
 
-    const renderTime = getRenderTime(getOwnPing())
+    const renderTime = getRenderTime()
     const index = getIndexOfRenderState(states, renderTime)
     if (index >= 0) {
         connectionInfo.visible = false
@@ -238,19 +236,20 @@ function play() {
 
 
 function render(states) {
-    const renderTime = getRenderTime(getOwnPing())
+    const renderTime = getRenderTime()
     const index = getIndexOfRenderState(states, renderTime)
     if (index < 0)
         return
-    let interpolatedState = getInterpolatedState(states[index], states[index + 1], renderTime)
+    states.splice(0, index);
+    let interpolatedState = getInterpolatedState(states[0], states[1], renderTime)
     setWorld(interpolatedState)
 }
 
-function getRenderTime(ping) {
+function getRenderTime() {
+    const lerp_ratio = 2
+    const update_rate = 30
+    const delay = Math.floor(lerp_ratio * 1000 / update_rate)
     const now = new Date().getTime()
-    const minDelay = 100
-    const maxDelay = 300
-    const delay = Math.max(minDelay, Math.min(maxDelay, ping))
     return now - delay
 }
 
