@@ -50,6 +50,9 @@ function connect(address) {
                 state.actors = msg.payload.actors
                 state.timestamp = Date.now()
                 states.push(state)
+                const index = unconfirmedInputs.findIndex((input) => input.id === msg.payload.last_input) + 1
+                if (index > 0)
+                    unconfirmedInputs.splice(0, index)
                 break;
             default:
                 throw 'Received invalid opcode: ' + msg.opcode
@@ -92,7 +95,7 @@ function incrementWait() {
 }
 
 function send(data) {
-    if (io && io.readystate === 1) {
+    if (io && io.readyState === 1) {
         console.log('sending data: ', data)
         io.send(JSON.stringify(data))
     }
@@ -140,8 +143,8 @@ function sendKeyWithVal(key, val) {
     }
 }
 
-let msgId = 0
-
+let msgId = 1
+const unconfirmedInputs = []
 function sendIfNew(key, val) {
     if (keyPressed[key] !== val) {
         keyPressed[key] = val
@@ -151,6 +154,7 @@ function sendIfNew(key, val) {
             pressed: val
         }
         msgId++
+        unconfirmedInputs.push(msg)
         send(msg)
     }
 }
