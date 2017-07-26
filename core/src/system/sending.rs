@@ -75,13 +75,10 @@ fn handle_new_connections(
     for new_connection in new_connections {
         let (new_entity, new_actor) = new_connection;
         connect.remove(new_entity);
-        let connection = ClientMessage {
-            opcode: OpCode::Connect,
-            payload: new_actor,
-        };
+        let msg = ClientMessage::new_connection(&new_actor);
         for (player, entity) in (player, entities).join() {
             if entity != new_entity {
-                send(player, &connection);
+                send(player, &msg);
             }
         }
     }
@@ -93,12 +90,9 @@ fn handle_disconnects(
     disconnect: &ReadStorage<Disconnect>,
 ) {
     for (actor, _) in (actor, disconnect).join() {
-        let disconnect = ClientMessage {
-            opcode: OpCode::Disconnect,
-            payload: actor.id,
-        };
+        let msg = ClientMessage::new_disconnect(&actor.id);
         for player in (player).join() {
-            send(player, &disconnect);
+            send(player, &msg);
         }
     }
 
