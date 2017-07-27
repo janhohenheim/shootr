@@ -98,7 +98,7 @@ fn send_world_updates(
     player: &ReadStorage<PlayerComp>,
     actor: &ReadStorage<Actor>,
     pos: &ReadStorage<Pos>,
-    vel: &ReadStorage<Vel>
+    vel: &ReadStorage<Vel>,
 ) {
     let mut serialized_actors = HashMap::new();
     for actor in (actor).join() {
@@ -118,13 +118,14 @@ fn send_world_updates(
     let json_actors = json!(serialized_actors);
     for player in (player).join() {
         let last_input = json!(player.last_input);
-        let payload = hashmap!(
+        let payload =
+            hashmap!(
             "last_input" => &last_input,
             "actors" => &json_actors
         );
         let world_state = ClientMessage {
             opcode: OpCode::WorldUpdate,
-            payload: &payload
+            payload: &payload,
         };
         send(player, &world_state);
     }
