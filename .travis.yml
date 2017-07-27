@@ -28,7 +28,7 @@ before_script:
   - cargo install --list | grep clippy || cargo install clippy
   - cargo install --list | grep rustfmt || cargo install rustfmt
   - cargo install --list | grep cargo-update || cargo install cargo-update
-  - cargo install --list | grep cargo-travis || cargo install cargo-travis
+  - cargo install --list | grep cargo-tarpaulin || cargo install cargo-tarpaulin
 
   # Update all tools
   - cargo install-update -a || true # sometimes nightly breaks stuff, that's okay
@@ -40,4 +40,4 @@ before_script:
 after_success:
   - cargo clippy -- -Z no-trans -D clippy # clippy really loves to break, so it's okay if it fails
   - cd ..
-  - cargo coveralls --all
+  - cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
