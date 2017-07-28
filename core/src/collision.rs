@@ -509,7 +509,14 @@ fn multiple_containing() {
         height: 100,
     };
     world.insert(id_a, bounds_a.clone());
-    let id_b = 2;
+    let not_containing = Bounds {
+        x: 0,
+        y: 0,
+        width: 3,
+        height: 6,
+    };
+    world.insert(2, not_containing);
+    let id_b = 3;
     let bounds_b = Bounds {
         x: 6,
         y: 6,
