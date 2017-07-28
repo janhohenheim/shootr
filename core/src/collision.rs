@@ -58,8 +58,8 @@ impl World {
         }
     }
     pub fn query_contains<T>(&self, bounds: &Bounds, mut cb: T)
-        where
-            T: FnMut(Id, &Bounds),
+    where
+        T: FnMut(Id, &Bounds),
     {
         for (id, entity) in &self.entities {
             if entity.contains(bounds) {
@@ -561,4 +561,3 @@ fn multiple_containing() {
         assert_eq!(bounds_a, *coll_bounds);
     }
 }
-
