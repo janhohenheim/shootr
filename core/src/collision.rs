@@ -11,14 +11,14 @@ pub struct Bounds {
 }
 impl Bounds {
     pub fn intersects(&self, other: &Self) -> bool {
-        ((self.x - other.x).abs() * 2 < (self.width + other.width))&&
+        ((self.x - other.x).abs() * 2 < (self.width + other.width)) &&
             ((self.y - other.y).abs() * 2 < (self.height + other.height))
     }
     pub fn contains(&self, other: &Self) -> bool {
         other.x - other.width / 2 >= self.x - self.width / 2 &&
-        other.y - other.height / 2 >= self.y - self.height / 2 &&
-        other.x + other.width / 2 <= self.x + self.width / 2 &&
-        other.y + other.height / 2 <= self.y + self.height / 2
+            other.y - other.height / 2 >= self.y - self.height / 2 &&
+            other.x + other.width / 2 <= self.x + self.width / 2 &&
+            other.y + other.height / 2 <= self.y + self.height / 2
     }
 }
 
@@ -30,19 +30,27 @@ pub struct World {
 
 impl World {
     pub fn new(width: i32, height: i32) -> Self {
-        World {width, height, entities: HashMap::new()}
+        World {
+            width,
+            height,
+            entities: HashMap::new(),
+        }
     }
     pub fn insert(&mut self, id: Id, bounds: Bounds) -> Option<Bounds> {
-        assert!(bounds.x + bounds.width / 2 > 0 &&
-                bounds.y + bounds.height / 2 > 0 &&
+        assert!(
+            bounds.x + bounds.width / 2 > 0 && bounds.y + bounds.height / 2 > 0 &&
                 bounds.x - bounds.width / 2 < self.width &&
-                bounds.y - bounds.height / 2 < self.height);
+                bounds.y - bounds.height / 2 < self.height
+        );
         self.entities.insert(id, bounds)
     }
     pub fn remove(&mut self, id: Id) -> Option<Bounds> {
         self.entities.remove(&id)
     }
-    pub fn query_intersects<T>(&self, bounds: &Bounds, mut cb: T) where T: FnMut(Id, &Bounds) {
+    pub fn query_intersects<T>(&self, bounds: &Bounds, mut cb: T)
+    where
+        T: FnMut(Id, &Bounds),
+    {
         for (id, entity) in self.entities.iter() {
             if entity.intersects(bounds) {
                 cb(*id, entity);
@@ -54,57 +62,132 @@ impl World {
 
 #[test]
 fn intersects() {
-    let a = Bounds{x: 0, y: 0, width: 10, height: 10};
-    let b = Bounds{x: 5, y: 5, width: 10, height: 10};
+    let a = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    let b = Bounds {
+        x: 5,
+        y: 5,
+        width: 10,
+        height: 10,
+    };
     assert!(a.intersects(&b));
 }
 
 #[test]
 fn doesnt_intersect() {
-    let a = Bounds{x: 0, y: 0, width: 10, height: 10};
-    let b = Bounds{x: 50, y: 50, width: 10, height: 10};
+    let a = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    let b = Bounds {
+        x: 50,
+        y: 50,
+        width: 10,
+        height: 10,
+    };
     assert!(!a.intersects(&b));
 }
 
 #[test]
 fn doesnt_intersect_edge() {
-    let a = Bounds{x: 0, y: 0, width: 10, height: 10};
-    let b = Bounds{x: 15, y: 0, width: 10, height: 10};
+    let a = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    let b = Bounds {
+        x: 15,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
     assert!(!a.intersects(&b));
 }
 
 #[test]
 fn contains() {
-    let a = Bounds{x: 0, y: 0, width: 100, height: 100};
-    let b = Bounds{x: 2, y: 2, width: 10, height: 10};
+    let a = Bounds {
+        x: 0,
+        y: 0,
+        width: 100,
+        height: 100,
+    };
+    let b = Bounds {
+        x: 2,
+        y: 2,
+        width: 10,
+        height: 10,
+    };
     assert!(a.contains(&b));
 }
 
 #[test]
 fn doesnt_contain() {
-    let a = Bounds{x: 0, y: 0, width: 10, height: 10};
-    let b = Bounds{x: 50, y: 50, width: 10, height: 10};
+    let a = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    let b = Bounds {
+        x: 50,
+        y: 50,
+        width: 10,
+        height: 10,
+    };
     assert!(!a.contains(&b));
 }
 
 #[test]
 fn doesnt_contain_when_intersecting() {
-    let a = Bounds{x: 0, y: 0, width: 10, height: 10};
-    let b = Bounds{x: 5, y: 5, width: 10, height: 10};
+    let a = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    let b = Bounds {
+        x: 5,
+        y: 5,
+        width: 10,
+        height: 10,
+    };
     assert!(!a.contains(&b));
 }
 
 
 #[test]
 fn contains_edge() {
-    let a = Bounds{x: 0, y: 0, width: 10, height: 10};
-    let b = Bounds{x: 10, y: 10, width: 0, height: 0};
+    let a = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    let b = Bounds {
+        x: 10,
+        y: 10,
+        width: 0,
+        height: 0,
+    };
     assert!(!a.contains(&b));
 }
 
 #[test]
 fn contains_self() {
-    let a = Bounds{x: 0, y: 0, width: 10, height: 10};
+    let a = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
     assert!(a.contains(&a));
 }
 
@@ -295,7 +378,10 @@ fn one_collision() {
         height: 10,
     };
     let mut collisions = Vec::new();
-    world.query_intersects(&bounds_b, |id, bounds| collisions.push((id, bounds.clone())));
+    world.query_intersects(
+        &bounds_b,
+        |id, bounds| collisions.push((id, bounds.clone())),
+    );
     assert_eq!(1, collisions.len());
     let &(coll_id, ref coll_bounds) = collisions.first().unwrap();
     assert_eq!(id, coll_id);
