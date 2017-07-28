@@ -26,8 +26,7 @@ pub fn elapsed_ms(from: DateTime<Utc>, to: DateTime<Utc>) -> Result<u64, ()> {
 pub fn timestamp() -> u64 {
     let now = SystemTime::now();
     let elapsed = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
-    let in_ms = elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1_000_000;
-    in_ms
+    elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1_000_000
 }
 
 
@@ -43,14 +42,11 @@ where
 }
 
 pub type SeqId = u32;
+#[derive(Default)]
 pub struct SeqIdGen {
     curr_id: SeqId,
 }
 impl SeqIdGen {
-    pub fn new() -> Self {
-        SeqIdGen { curr_id: 0 }
-    }
-
     pub fn gen(&mut self) -> SeqId {
         self.curr_id += 1;
         self.curr_id
@@ -186,7 +182,7 @@ fn clamp_more_than_max() {
 
 #[test]
 fn seq_id_gen_sequential() {
-    let mut id_gen = SeqIdGen::new();
+    let mut id_gen = SeqIdGen::default();
     let ids_count = 1000;
     for i in 0..ids_count {
         assert_eq!(i + 1, id_gen.gen());

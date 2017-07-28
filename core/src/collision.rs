@@ -51,7 +51,7 @@ impl World {
     where
         T: FnMut(Id, &Bounds),
     {
-        for (id, entity) in self.entities.iter() {
+        for (id, entity) in &self.entities {
             if entity.intersects(bounds) {
                 cb(*id, entity);
             }

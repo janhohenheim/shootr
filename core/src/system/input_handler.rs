@@ -23,7 +23,7 @@ impl<'a> System<'a> for InputHandler {
             if let Some(mut key_states) = inputs.get_mut(&actor.id) {
                 for key_state in key_states.drain(..) {
                     update_player_inputs(&mut player, &key_state);
-                    handle_key_state(&player, &mut acc, &key_state);
+                    handle_key_state(player, &mut acc, &key_state);
                 }
                 let bufferlen = 10;
                 let len = player.inputs.len();
@@ -38,7 +38,7 @@ impl<'a> System<'a> for InputHandler {
 
 fn update_player_inputs(player: &mut Player, key_state: &KeyState) {
     let mut input = HashMap::new();
-    if let Some(ref last_input) = player.inputs.last() {
+    if let Some(last_input) = player.inputs.last() {
         input.clone_from(last_input);
         input.insert(key_state.key.clone(), key_state.pressed);
     }

@@ -59,9 +59,9 @@ fn handle_new_connections(
 ) {
     let mut new_connections = Vec::new();
     for (new_player, entity, new_actor, _) in (player, entities, actor, &mut *connect).join() {
-        new_connections.push((entity.clone(), new_actor.clone()));
+        new_connections.push((entity, new_actor.clone()));
         let mut actors = Vec::new();
-        for actor in (&actor).join() {
+        for actor in (actor).join() {
             actors.push(actor);
         }
         let msg = ClientMessage::new_greeting(&new_actor.id, &actors);

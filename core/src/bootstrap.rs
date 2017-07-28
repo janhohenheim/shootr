@@ -54,5 +54,5 @@ fn add_constraints(world: &mut World) {
 }
 
 fn add_utils(world: &mut World) {
-    world.add_resource(RwLock::new(SeqIdGen::new()));
+    world.add_resource(RwLock::new(SeqIdGen::default()));
 }

@@ -74,12 +74,12 @@ fn manage_delays(player: &mut Player) {
     let mut delays = Vec::new();
     let mut expired = Vec::new();
     let now = timestamp();
-    for (ping_id, &timestamps) in player.pingpongs.iter() {
+    for (ping_id, &timestamps) in &player.pingpongs {
         let (ping_time, pong_time) = timestamps;
         if let Some(pong_time) = pong_time {
             delays.push(pong_time as usize - ping_time as usize);
             if now - pong_time > DELAY_BUFFER_TIME {
-                expired.push(ping_id.clone());
+                expired.push(*ping_id);
             }
         }
     }

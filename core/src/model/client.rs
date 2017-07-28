@@ -24,7 +24,7 @@ where
     pub payload: T,
 }
 impl Message<Vec<Value>> {
-    pub fn new_greeting(own_id: &Id, actors: &Vec<&Actor>) -> Self {
+    pub fn new_greeting(own_id: &Id, actors: &[&Actor]) -> Self {
         Message {
             opcode: OpCode::Greeting,
             payload: vec![json!(own_id), json!(actors)],

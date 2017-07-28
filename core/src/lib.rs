@@ -11,7 +11,6 @@ extern crate specs;
 
 #[macro_use]
 extern crate derive_more;
-#[allow(unused_imports)]
 #[macro_use]
 extern crate maplit;
 

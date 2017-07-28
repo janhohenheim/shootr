@@ -6,6 +6,7 @@ use model::game::Vector;
 
 pub struct Spawn;
 impl<'a> System<'a> for Spawn {
+    #[allow(type_complexity)]
     type SystemData = (Entities<'a>,
      ReadStorage<'a, Connect>,
 

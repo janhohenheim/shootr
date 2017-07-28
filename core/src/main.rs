@@ -64,7 +64,7 @@ impl Handler {
 
 
     fn handle_text(&self, id: Id, msg: &str) {
-        if let Ok(key_state) = serde_json::from_str::<KeyState>(&msg) {
+        if let Ok(key_state) = serde_json::from_str::<KeyState>(msg) {
             let mut inputs = self.inputs.write().unwrap();
             let has_already_inputs = inputs.get(&id).is_some();
             if has_already_inputs {
@@ -77,7 +77,7 @@ impl Handler {
         }
     }
 
-    fn handle_pong(&self, id: Id, data: &Vec<u8>) {
+    fn handle_pong(&self, id: Id, data: &[u8]) {
         let timestamp = timestamp();
 
         let mut rdr = Cursor::new(data);
@@ -103,7 +103,7 @@ impl Handler {
                     kind: ActorKind::Player,
                 })
                 .build();
-            id_entity.insert(id, entity.clone());
+            id_entity.insert(id, entity);
         }
 
         let mut to_despawn = self.to_despawn.write().unwrap();
@@ -116,7 +116,7 @@ impl Handler {
 
     fn register_pings(&self, world: &mut World) {
         for (_, entity) in self.id_entity.read().unwrap().iter() {
-            world.write::<Ping>().insert(entity.clone(), Ping {});
+            world.write::<Ping>().insert(*entity, Ping {});
         }
     }
 
@@ -127,7 +127,7 @@ impl Handler {
             let (player_id, ping_id, timestamp) = pong;
             if let Some(entity) = id_entity.get(&player_id) {
                 world.write::<Pong>().insert(
-                    entity.clone(),
+                    *entity,
                     Pong { ping_id, timestamp },
                 );
             }
