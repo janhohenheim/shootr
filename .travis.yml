@@ -33,6 +33,9 @@ before_script:
   # Update all tools
   - cargo install-update -a || true # sometimes nightly breaks stuff, that's okay
 
+  - echo "Installed rust utils:"
+  - cargo install --list
+
   # Lint
   - cd core
   - cargo fmt -- --write-mode=diff
