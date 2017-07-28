@@ -57,6 +57,16 @@ impl World {
             }
         }
     }
+    pub fn query_contains<T>(&self, bounds: &Bounds, mut cb: T)
+        where
+            T: FnMut(Id, &Bounds),
+    {
+        for (id, entity) in &self.entities {
+            if entity.contains(bounds) {
+                cb(*id, entity);
+            }
+        }
+    }
 }
 
 
@@ -387,3 +397,55 @@ fn one_collision() {
     assert_eq!(id, coll_id);
     assert_eq!(bounds_a, *coll_bounds);
 }
+
+
+#[test]
+fn multiple_collision() {
+    let mut world = World::new(1000, 1000);
+    let id_a = 1;
+    let bounds_a = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    world.insert(id_a, bounds_a.clone());
+    let id_b = 2;
+    let bounds_b = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    world.insert(id_b, bounds_b.clone());
+    let bounds_c = Bounds {
+        x: 5,
+        y: 5,
+        width: 10,
+        height: 10,
+    };
+    let mut collisions = Vec::new();
+    world.query_intersects(
+        &bounds_c,
+        |id, bounds| collisions.push((id, bounds.clone())),
+    );
+    assert_eq!(2, collisions.len());
+    let (coll_id, ref coll_bounds) = collisions[0];
+    let first_is_a = id_a == coll_id;
+    if first_is_a {
+        assert_eq!(id_a, coll_id);
+        assert_eq!(bounds_a, *coll_bounds);
+    } else {
+        assert_eq!(id_b, coll_id);
+        assert_eq!(bounds_b, *coll_bounds);
+    }
+    let (coll_id, ref coll_bounds) = collisions[1];
+    if first_is_a {
+        assert_eq!(id_b, coll_id);
+        assert_eq!(bounds_b, *coll_bounds);
+    } else {
+        assert_eq!(id_a, coll_id);
+        assert_eq!(bounds_a, *coll_bounds);
+    }
+}
+
