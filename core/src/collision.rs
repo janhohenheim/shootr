@@ -449,3 +449,102 @@ fn multiple_collision() {
     }
 }
 
+#[test]
+fn no_containing() {
+    let mut world = World::new(1000, 1000);
+    let id = 1;
+    let bounds_a = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    world.insert(id, bounds_a.clone());
+    let bounds_b = Bounds {
+        x: 40,
+        y: 40,
+        width: 10,
+        height: 10,
+    };
+    world.query_contains(&bounds_b, |_, _| panic!());
+}
+
+#[test]
+fn one_containing() {
+    let mut world = World::new(1000, 1000);
+    let id = 1;
+    let bounds_a = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    world.insert(id, bounds_a.clone());
+    let bounds_b = Bounds {
+        x: 2,
+        y: 2,
+        width: 3,
+        height: 3,
+    };
+    let mut containing = Vec::new();
+    world.query_contains(
+        &bounds_b,
+        |id, bounds| containing.push((id, bounds.clone())),
+    );
+    assert_eq!(1, containing.len());
+    let &(coll_id, ref coll_bounds) = containing.first().unwrap();
+    assert_eq!(id, coll_id);
+    assert_eq!(bounds_a, *coll_bounds);
+}
+
+
+#[test]
+fn multiple_containing() {
+    let mut world = World::new(1000, 1000);
+    let id_a = 1;
+    let bounds_a = Bounds {
+        x: 4,
+        y: 4,
+        width: 100,
+        height: 100,
+    };
+    world.insert(id_a, bounds_a.clone());
+    let id_b = 2;
+    let bounds_b = Bounds {
+        x: 6,
+        y: 6,
+        width: 2,
+        height: 2,
+    };
+    world.insert(id_b, bounds_b.clone());
+    let bounds_c = Bounds {
+        x: 5,
+        y: 5,
+        width: 1,
+        height: 1,
+    };
+    let mut containing = Vec::new();
+    world.query_contains(
+        &bounds_c,
+        |id, bounds| containing.push((id, bounds.clone())),
+    );
+    assert_eq!(2, containing.len());
+    let (coll_id, ref coll_bounds) = containing[0];
+    let first_is_a = id_a == coll_id;
+    if first_is_a {
+        assert_eq!(id_a, coll_id);
+        assert_eq!(bounds_a, *coll_bounds);
+    } else {
+        assert_eq!(id_b, coll_id);
+        assert_eq!(bounds_b, *coll_bounds);
+    }
+    let (coll_id, ref coll_bounds) = containing[1];
+    if first_is_a {
+        assert_eq!(id_b, coll_id);
+        assert_eq!(bounds_b, *coll_bounds);
+    } else {
+        assert_eq!(id_a, coll_id);
+        assert_eq!(bounds_a, *coll_bounds);
+    }
+}
+
