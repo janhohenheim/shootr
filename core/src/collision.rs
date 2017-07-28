@@ -404,13 +404,20 @@ fn multiple_collision() {
     let mut world = World::new(1000, 1000);
     let id_a = 1;
     let bounds_a = Bounds {
-        x: 0,
-        y: 0,
+        x: 3,
+        y: 5,
         width: 10,
-        height: 10,
+        height: 70,
     };
     world.insert(id_a, bounds_a.clone());
-    let id_b = 2;
+    let not_containing = Bounds {
+        x: 54,
+        y: 60,
+        width: 3,
+        height: 6,
+    };
+    world.insert(2, not_containing);
+    let id_b = 3;
     let bounds_b = Bounds {
         x: 0,
         y: 0,
