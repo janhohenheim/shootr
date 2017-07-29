@@ -1,7 +1,6 @@
 use std::collections::HashMap;
+use std::hash::Hash;
 use model::game::Vector;
-
-pub type Id = u32;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Bounds {
@@ -23,17 +22,20 @@ impl Bounds {
     }
 }
 
-type Bucket = Vec<Id>;
 type SpatialHash = Vector;
-pub struct World {
+type Bucket<Id> = Vec<Id>;
+pub struct World<Id> {
     width: i32,
     height: i32,
     cell_size: i32,
     entities: HashMap<Id, (Bounds, SpatialHash)>,
-    grid: HashMap<SpatialHash, Bucket>,
+    grid: HashMap<SpatialHash, Bucket<Id>>,
 }
 
-impl World {
+impl<Id> World<Id>
+where
+    Id: Hash + PartialEq + Eq + Clone,
+{
     pub fn new(width: i32, height: i32) -> Self {
         let mut grid = HashMap::new();
         let cell_size: i32 = 100;
@@ -60,7 +62,10 @@ impl World {
         let x = bounds.x / self.cell_size;
         let y = bounds.y / self.cell_size;
         let spatial_hash = Vector { x, y };
-        let old = self.entities.insert(id, (bounds, spatial_hash.clone()));
+        let old = self.entities.insert(
+            id.clone(),
+            (bounds, spatial_hash.clone()),
+        );
         if old.is_none() {
             self.grid
                 .entry(spatial_hash)
@@ -72,7 +77,7 @@ impl World {
             if spatial_hash != old_spatial_hash {
                 {
                     let mut old_bucket = self.grid.get_mut(&old_spatial_hash).unwrap();
-                    let pos = old_bucket.iter().position(|&x| x == id).unwrap();
+                    let pos = old_bucket.iter().position(|x| *x == id).unwrap();
                     old_bucket.remove(pos);
                 }
                 self.grid
@@ -89,7 +94,7 @@ impl World {
                 let bucket = self.grid.get_mut(&spatial_hash).expect(
                     "Removed id from entity list but didn't find its spatial hash in grid",
                 );
-                let pos = bucket.iter().position(|&x| x == id).expect(
+                let pos = bucket.iter().position(|x| *x == id).expect(
                     "Didn't find id in bucket",
                 );
                 bucket.remove(pos);
@@ -100,34 +105,34 @@ impl World {
     }
     pub fn query_intersects<T>(&self, bounds: &Bounds, mut cb: T)
     where
-        T: FnMut(Id, &Bounds),
+        T: FnMut(&Id, &Bounds),
     {
         let neighbors = self.get_neighbors(bounds);
         for bucket in neighbors {
             for id in bucket {
                 let &(ref entity, _) = &self.entities[id];
                 if entity.intersects(bounds) {
-                    cb(*id, entity);
+                    cb(id, entity);
                 }
             }
         }
     }
     pub fn query_contains<T>(&self, bounds: &Bounds, mut cb: T)
     where
-        T: FnMut(Id, &Bounds),
+        T: FnMut(&Id, &Bounds),
     {
         let neighbors = self.get_neighbors(bounds);
         for bucket in neighbors {
             for id in bucket {
                 let &(ref entity, _) = &self.entities[id];
                 if entity.contains(bounds) {
-                    cb(*id, entity);
+                    cb(id, entity);
                 }
             }
         }
     }
 
-    fn get_neighbors(&self, bounds: &Bounds) -> Vec<&Bucket> {
+    fn get_neighbors(&self, bounds: &Bounds) -> Vec<&Bucket<Id>> {
         let x = bounds.x / self.cell_size;
         let y = bounds.y / self.cell_size;
         let spatial_hash = Vector { x, y };
@@ -285,7 +290,7 @@ fn contains_self() {
 
 #[test]
 fn init() {
-    World::new(1000, 1000);
+    World::<i32>::new(1000, 1000);
 }
 
 #[test]
@@ -472,7 +477,7 @@ fn one_collision() {
     let mut collisions = Vec::new();
     world.query_intersects(
         &bounds_b,
-        |id, bounds| collisions.push((id, bounds.clone())),
+        |&id, bounds| collisions.push((id, bounds.clone())),
     );
     assert_eq!(1, collisions.len());
     let &(coll_id, ref coll_bounds) = collisions.first().unwrap();
@@ -516,7 +521,7 @@ fn multiple_collision() {
     let mut collisions = Vec::new();
     world.query_intersects(
         &bounds_c,
-        |id, bounds| collisions.push((id, bounds.clone())),
+        |&id, bounds| collisions.push((id, bounds.clone())),
     );
     assert_eq!(2, collisions.len());
     let (coll_id, ref coll_bounds) = collisions[0];
@@ -578,7 +583,7 @@ fn one_containing() {
     let mut containing = Vec::new();
     world.query_contains(
         &bounds_b,
-        |id, bounds| containing.push((id, bounds.clone())),
+        |&id, bounds| containing.push((id, bounds.clone())),
     );
     assert_eq!(1, containing.len());
     let &(coll_id, ref coll_bounds) = containing.first().unwrap();
@@ -622,7 +627,7 @@ fn multiple_containing() {
     let mut containing = Vec::new();
     world.query_contains(
         &bounds_c,
-        |id, bounds| containing.push((id, bounds.clone())),
+        |&id, bounds| containing.push((id, bounds.clone())),
     );
     assert_eq!(2, containing.len());
     let (coll_id, ref coll_bounds) = containing[0];
