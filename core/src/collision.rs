@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use model::game::Vector;
 
 pub type Id = u32;
 
@@ -22,18 +23,32 @@ impl Bounds {
     }
 }
 
+type Bucket = Vec<Id>;
+type SpatialHash = Vector;
 pub struct World {
     width: i32,
     height: i32,
-    entities: HashMap<Id, Bounds>,
+    cell_size: i32,
+    entities: HashMap<Id, (Bounds, SpatialHash)>,
+    grid: HashMap<SpatialHash, Bucket>,
 }
 
 impl World {
     pub fn new(width: i32, height: i32) -> Self {
+        let mut grid = HashMap::new();
+        let cell_size: i32 = 100;
+        for i in 0..width / cell_size {
+            for j in 0..height / cell_size {
+                grid.insert(Vector { x: i, y: j }, Bucket::new());
+            }
+        }
+
         World {
             width,
             height,
+            cell_size,
             entities: HashMap::new(),
+            grid,
         }
     }
     pub fn insert(&mut self, id: Id, bounds: Bounds) -> Option<Bounds> {
@@ -42,18 +57,58 @@ impl World {
                 bounds.x - bounds.width / 2 < self.width &&
                 bounds.y - bounds.height / 2 < self.height
         );
-        self.entities.insert(id, bounds)
+        let x = bounds.x / self.cell_size;
+        let y = bounds.y / self.cell_size;
+        let spatial_hash = Vector { x, y };
+        let old = self.entities.insert(id, (bounds, spatial_hash.clone()));
+        if old.is_none() {
+            self.grid
+                .entry(spatial_hash)
+                .or_insert_with(Bucket::new)
+                .push(id);
+            None
+        } else {
+            let (old_bounds, old_spatial_hash) = old.unwrap();
+            if spatial_hash != old_spatial_hash {
+                {
+                    let mut old_bucket = self.grid.get_mut(&old_spatial_hash).unwrap();
+                    let pos = old_bucket.iter().position(|&x| x == id).unwrap();
+                    old_bucket.remove(pos);
+                }
+                self.grid
+                    .entry(spatial_hash)
+                    .or_insert_with(Bucket::new)
+                    .push(id);
+            }
+            Some(old_bounds)
+        }
     }
     pub fn remove(&mut self, id: Id) -> Option<Bounds> {
-        self.entities.remove(&id)
+        match self.entities.remove(&id) {
+            Some((bounds, spatial_hash)) => {
+                let bucket = self.grid.get_mut(&spatial_hash).expect(
+                    "Removed id from entity list but didn't find its spatial hash in grid",
+                );
+                let pos = bucket.iter().position(|&x| x == id).expect(
+                    "Didn't find id in bucket",
+                );
+                bucket.remove(pos);
+                Some(bounds)
+            }
+            None => None,
+        }
     }
     pub fn query_intersects<T>(&self, bounds: &Bounds, mut cb: T)
     where
         T: FnMut(Id, &Bounds),
     {
-        for (id, entity) in &self.entities {
-            if entity.intersects(bounds) {
-                cb(*id, entity);
+        let neighbors = self.get_neighbors(bounds);
+        for bucket in neighbors {
+            for id in bucket {
+                let &(ref entity, _) = &self.entities[id];
+                if entity.intersects(bounds) {
+                    cb(*id, entity);
+                }
             }
         }
     }
@@ -61,11 +116,38 @@ impl World {
     where
         T: FnMut(Id, &Bounds),
     {
-        for (id, entity) in &self.entities {
-            if entity.contains(bounds) {
-                cb(*id, entity);
+        let neighbors = self.get_neighbors(bounds);
+        for bucket in neighbors {
+            for id in bucket {
+                let &(ref entity, _) = &self.entities[id];
+                if entity.contains(bounds) {
+                    cb(*id, entity);
+                }
             }
         }
+    }
+
+    fn get_neighbors(&self, bounds: &Bounds) -> Vec<&Bucket> {
+        let x = bounds.x / self.cell_size;
+        let y = bounds.y / self.cell_size;
+        let spatial_hash = Vector { x, y };
+
+        let mut neighbors = Vec::new();
+        let own_bucket = &self.grid[&spatial_hash];
+        neighbors.push(own_bucket);
+        if let Some(up) = self.grid.get(&SpatialHash { x, y: y - 1 }) {
+            neighbors.push(up);
+        }
+        if let Some(upper_left) = self.grid.get(&SpatialHash { x: x - 1, y: y - 1 }) {
+            neighbors.push(upper_left);
+        }
+        if let Some(left) = self.grid.get(&SpatialHash { x: x - 1, y }) {
+            neighbors.push(left);
+        }
+        if let Some(lower_left) = self.grid.get(&SpatialHash { x: x - 1, y: y + 1 }) {
+            neighbors.push(lower_left);
+        }
+        neighbors
     }
 }
 

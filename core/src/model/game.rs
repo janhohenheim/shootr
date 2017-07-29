@@ -3,7 +3,7 @@ use self::uuid::Uuid;
 
 pub type Id = Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Add, AddAssign)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Add, AddAssign, Hash)]
 pub struct Vector {
     pub x: i32,
     pub y: i32,
@@ -20,6 +20,7 @@ macro_rules! vectype {
             Serialize,
             Add,
             AddAssign,
+            Hash,
             Component
         );
     };
