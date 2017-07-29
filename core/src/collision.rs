@@ -4,10 +4,10 @@ use model::game::Vector;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Bounds {
-    x: i32,
-    y: i32,
-    width: i32,
-    height: i32,
+    pub x: i32,
+    pub y: i32,
+    pub width: i32,
+    pub height: i32,
 }
 impl Bounds {
     pub fn intersects(&self, other: &Self) -> bool {
@@ -103,11 +103,11 @@ where
             None => None,
         }
     }
-    pub fn query_intersects<T>(&self, bounds: &Bounds, mut cb: T)
+    pub fn query_intersects_other<T>(&self, bounds: &Bounds, mut cb: T)
     where
         T: FnMut(&Id, &Bounds),
     {
-        let neighbors = self.get_neighbors(bounds);
+        let neighbors = self.get_all_neighbors(bounds);
         for bucket in neighbors {
             for id in bucket {
                 let &(ref entity, _) = &self.entities[id];
@@ -117,11 +117,11 @@ where
             }
         }
     }
-    pub fn query_contains<T>(&self, bounds: &Bounds, mut cb: T)
+    pub fn query_contains_other<T>(&self, bounds: &Bounds, mut cb: T)
     where
         T: FnMut(&Id, &Bounds),
     {
-        let neighbors = self.get_neighbors(bounds);
+        let neighbors = self.get_all_neighbors(bounds);
         for bucket in neighbors {
             for id in bucket {
                 let &(ref entity, _) = &self.entities[id];
@@ -132,7 +132,7 @@ where
         }
     }
 
-    fn get_neighbors(&self, bounds: &Bounds) -> Vec<&Bucket<Id>> {
+    fn get_half_neighbors(&self, bounds: &Bounds) -> Vec<&Bucket<Id>> {
         let x = bounds.x / self.cell_size;
         let y = bounds.y / self.cell_size;
         let spatial_hash = Vector { x, y };
@@ -140,6 +140,7 @@ where
         let mut neighbors = Vec::new();
         let own_bucket = &self.grid[&spatial_hash];
         neighbors.push(own_bucket);
+
         if let Some(up) = self.grid.get(&SpatialHash { x, y: y - 1 }) {
             neighbors.push(up);
         }
@@ -151,6 +152,26 @@ where
         }
         if let Some(lower_left) = self.grid.get(&SpatialHash { x: x - 1, y: y + 1 }) {
             neighbors.push(lower_left);
+        }
+        neighbors
+    }
+
+    fn get_all_neighbors(&self, bounds: &Bounds) -> Vec<&Bucket<Id>> {
+        let x = bounds.x / self.cell_size;
+        let y = bounds.y / self.cell_size;
+        let mut neighbors = self.get_half_neighbors(bounds);
+
+        if let Some(lower) = self.grid.get(&SpatialHash { x, y: y + 1 }) {
+            neighbors.push(lower);
+        }
+        if let Some(lower_right) = self.grid.get(&SpatialHash { x: x + 1, y: y + 1 }) {
+            neighbors.push(lower_right);
+        }
+        if let Some(right) = self.grid.get(&SpatialHash { x: x + 1, y }) {
+            neighbors.push(right);
+        }
+        if let Some(upper_right) = self.grid.get(&SpatialHash { x: x + 1, y: y - 1 }) {
+            neighbors.push(upper_right);
         }
         neighbors
     }
@@ -454,7 +475,7 @@ fn no_collisions() {
         width: 10,
         height: 10,
     };
-    world.query_intersects(&bounds_b, |_, _| panic!());
+    world.query_intersects_other(&bounds_b, |_, _| panic!());
 }
 
 #[test]
@@ -475,7 +496,7 @@ fn one_collision() {
         height: 10,
     };
     let mut collisions = Vec::new();
-    world.query_intersects(
+    world.query_intersects_other(
         &bounds_b,
         |&id, bounds| collisions.push((id, bounds.clone())),
     );
@@ -519,7 +540,7 @@ fn multiple_collision() {
         height: 10,
     };
     let mut collisions = Vec::new();
-    world.query_intersects(
+    world.query_intersects_other(
         &bounds_c,
         |&id, bounds| collisions.push((id, bounds.clone())),
     );
@@ -560,7 +581,7 @@ fn no_containing() {
         width: 10,
         height: 10,
     };
-    world.query_contains(&bounds_b, |_, _| panic!());
+    world.query_contains_other(&bounds_b, |_, _| panic!());
 }
 
 #[test]
@@ -581,7 +602,7 @@ fn one_containing() {
         height: 3,
     };
     let mut containing = Vec::new();
-    world.query_contains(
+    world.query_contains_other(
         &bounds_b,
         |&id, bounds| containing.push((id, bounds.clone())),
     );
@@ -625,7 +646,7 @@ fn multiple_containing() {
         height: 1,
     };
     let mut containing = Vec::new();
-    world.query_contains(
+    world.query_contains_other(
         &bounds_c,
         |&id, bounds| containing.push((id, bounds.clone())),
     );
