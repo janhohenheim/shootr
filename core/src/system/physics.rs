@@ -3,7 +3,10 @@ extern crate specs;
 use self::specs::{Join, WriteStorage, ReadStorage, System, Fetch};
 
 use model::comp::{Pos, Vel, Acc, Bounds, Friction};
+use model::game::Id;
 use util::clamp;
+use collision::World;
+use std::sync::RwLock;
 
 pub struct Physics;
 impl<'a> System<'a> for Physics {
@@ -13,9 +16,13 @@ impl<'a> System<'a> for Physics {
      ReadStorage<'a, Acc>,
      ReadStorage<'a, Friction>,
      Fetch<'a, Bounds<Vel>>,
-     Fetch<'a, Bounds<Pos>>);
+     Fetch<'a, Bounds<Pos>>,
+     Fetch<'a, RwLock<World<Id>>>);
 
-    fn run(&mut self, (mut pos, mut vel, acc, friction, vel_bounds, pos_bounds): Self::SystemData) {
+    fn run(
+        &mut self,
+        (mut pos, mut vel, acc, friction, vel_bounds, pos_bounds, _): Self::SystemData,
+    ) {
         for (mut vel, acc) in (&mut vel, &acc).join() {
             vel.x = clamp(vel.x + acc.x, vel_bounds.min.x, vel_bounds.max.x);
             vel.y = clamp(vel.y + acc.y, vel_bounds.min.y, vel_bounds.max.y);

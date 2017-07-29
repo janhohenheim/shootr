@@ -20,6 +20,7 @@ use shootr::model::client::KeyState;
 use shootr::model::game::{Vector, Id};
 use shootr::system::*;
 use shootr::bootstrap;
+use shootr::collision::World as CollisionWorld;
 
 use std::sync::{Arc, RwLock};
 use std::thread::sleep;
@@ -48,6 +49,7 @@ impl Handler {
     fn prepare_world(&self, world: &mut World) {
         bootstrap::prepare_world(world);
         world.add_resource(self.inputs.clone());
+        world.add_resource(RwLock::new(CollisionWorld::<Id>::new(1000, 1000)));
 
         // Create ball
         world
