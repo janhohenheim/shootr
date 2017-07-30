@@ -3,8 +3,9 @@ extern crate specs;
 use self::specs::{Fetch, Join, WriteStorage, ReadStorage, System};
 
 use model::comp::{Pos, Vel, Bounciness, Bounds, Actor};
-use model::game::Id;
+use model::game::{Id, Vector};
 use collision::World;
+use util::angle;
 use std::sync::RwLock;
 
 pub struct Bounce;
@@ -32,15 +33,27 @@ fn handle_movement(
     bounds: &Bounds<Pos>,
     world: &World<Id>,
 ) {
-    world.query_intersects_id(&actor.id, |_| {
-        println!("bounce!");
+    world.query_intersects_id(&actor.id, |other| {
+        let own: Vector = Vector {
+            x: pos.x,
+            y: pos.y,
+        };
+        let other = Vector {
+            x: other.bounds.x,
+            y: other.bounds.y,
+        };
+        let angle = angle(&own, &other);
+        if angle > 270.0 || angle < 90.0 {
+            vel.x = -vel.x.abs();
+        } else {
+            vel.x = vel.x.abs();
+        }
     });
     let next_x = pos.x + vel.x;
     let next_y = pos.y + vel.y;
     if next_x > bounds.max.x || next_x < bounds.min.x {
-        vel.x = -vel.x;
+        // Score and respawn
     }
-
     if next_y > bounds.max.y || next_y < bounds.min.y {
         vel.y = -vel.y;
     }
