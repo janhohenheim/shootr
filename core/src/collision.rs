@@ -68,7 +68,10 @@ where
         );
         let spatial_hash = self.hash_bounds(&bounds);
         let old = self.entities.insert(id.clone(), bounds);
-        assert!(old.is_none());
+        assert!(
+            old.is_none(),
+            "Failed to add new entity: Id already registered"
+        );
         self.grid
             .entry(spatial_hash)
             .or_insert_with(Bucket::new)

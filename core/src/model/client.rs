@@ -10,8 +10,8 @@ use std::fmt::Debug;
 #[derive(Debug, Clone, Serialize)]
 pub enum OpCode {
     Greeting,
-    Connect,
-    Disconnect,
+    Spawn,
+    Despawn,
     WorldUpdate,
 }
 
@@ -32,15 +32,15 @@ impl Message<Vec<Value>> {
     }
 }
 impl Message<Value> {
-    pub fn new_connection(new_actor: &Actor) -> Self {
+    pub fn new_spawn(new_actor: &Actor) -> Self {
         Message {
-            opcode: OpCode::Connect,
+            opcode: OpCode::Spawn,
             payload: json!(new_actor),
         }
     }
-    pub fn new_disconnect(id: &Id) -> Self {
+    pub fn new_despawn(id: &Id) -> Self {
         Message {
-            opcode: OpCode::Disconnect,
+            opcode: OpCode::Despawn,
             payload: json!(id),
         }
     }

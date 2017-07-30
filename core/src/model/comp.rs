@@ -34,9 +34,9 @@ pub struct Actor {
 }
 
 #[derive(Component)]
-pub struct Connect;
+pub struct ToSpawn;
 #[derive(Component)]
-pub struct Disconnect;
+pub struct ToDespawn;
 #[derive(Component)]
 pub struct Ping;
 #[derive(Component)]

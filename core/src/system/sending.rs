@@ -9,7 +9,7 @@ use self::futures::{Future, Sink};
 use self::websocket_server::Message;
 use self::serde::ser::Serialize;
 
-use model::comp::{Pos, Vel, Connect, Disconnect, Player as PlayerComp, Actor};
+use model::comp::{Pos, Vel, ToSpawn, ToDespawn, Player as PlayerComp, Actor};
 use model::client::{Message as ClientMessage, OpCode};
 
 use std::collections::HashMap;
@@ -22,8 +22,8 @@ impl<'a> System<'a> for Sending {
      ReadStorage<'a, Vel>,
      ReadStorage<'a, PlayerComp>,
      ReadStorage<'a, Actor>,
-     WriteStorage<'a, Connect>,
-     ReadStorage<'a, Disconnect>,
+     WriteStorage<'a, ToSpawn>,
+     ReadStorage<'a, ToDespawn>,
      Entities<'a>);
 
     fn run(
@@ -55,26 +55,27 @@ fn handle_new_connections(
     player: &ReadStorage<PlayerComp>,
     entities: &EntitiesRes,
     actor: &ReadStorage<Actor>,
-    connect: &mut WriteStorage<Connect>,
+    spawn: &mut WriteStorage<ToSpawn>,
 ) {
     let mut new_connections = Vec::new();
-    for (new_player, entity, new_actor, _) in (player, entities, actor, &mut *connect).join() {
-        new_connections.push((entity, new_actor.clone()));
-        let mut actors = Vec::new();
-        for actor in (actor).join() {
-            actors.push(actor);
-        }
-        let msg = ClientMessage::new_greeting(&new_actor.id, &actors);
-        send(new_player, &msg);
+    for (entity, actor, _) in (entities, actor, &mut *spawn).join() {
+        new_connections.push((entity, actor.clone()));
     }
 
+    let mut actors = Vec::new();
+    for actor in (actor).join() {
+        actors.push(actor);
+    }
     for new_connection in new_connections {
         let (new_entity, new_actor) = new_connection;
-        connect.remove(new_entity);
-        let msg = ClientMessage::new_connection(&new_actor);
+        spawn.remove(new_entity);
+        let greeting_msg = ClientMessage::new_greeting(&new_actor.id, &actors);
+        let other_spawn_msg = ClientMessage::new_spawn(&new_actor);
         for (player, entity) in (player, entities).join() {
-            if entity != new_entity {
-                send(player, &msg);
+            if entity == new_entity {
+                send(player, &greeting_msg);
+            } else {
+                send(player, &other_spawn_msg);
             }
         }
     }
@@ -83,10 +84,10 @@ fn handle_new_connections(
 fn handle_disconnects(
     player: &ReadStorage<PlayerComp>,
     actor: &ReadStorage<Actor>,
-    disconnect: &ReadStorage<Disconnect>,
+    disconnect: &ReadStorage<ToDespawn>,
 ) {
     for (actor, _) in (actor, disconnect).join() {
-        let msg = ClientMessage::new_disconnect(&actor.id);
+        let msg = ClientMessage::new_despawn(&actor.id);
         for player in (player).join() {
             send(player, &msg);
         }

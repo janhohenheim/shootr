@@ -14,10 +14,9 @@ use dotenv::dotenv;
 use byteorder::{BigEndian, ReadBytesExt};
 
 use shootr::util::{read_env_var, elapsed_ms, timestamp, SeqId};
-use shootr::model::comp::{Vel, Pos, Bounciness, Connect, Disconnect, Player, Ping, Pong, Actor,
-                          ActorKind};
+use shootr::model::comp::{ToSpawn, ToDespawn, Player, Ping, Pong, Actor, ActorKind};
 use shootr::model::client::KeyState;
-use shootr::model::game::{Vector, Id};
+use shootr::model::game::Id;
 use shootr::system::*;
 use shootr::bootstrap;
 use shootr::collision::World as CollisionWorld;
@@ -52,16 +51,17 @@ impl Handler {
         world.add_resource(RwLock::new(CollisionWorld::<Id>::new(1000, 1000)));
 
         // Create ball
-        world
+        let id = Id::new_v4();
+        println!("Ball id: {}", id);
+        let entity = world
             .create_entity()
-            .with(Vel::from(Vector { x: 15, y: 10 }))
-            .with(Pos::from(Vector { x: 500, y: 500 }))
+            .with(ToSpawn {})
             .with(Actor {
-                id: Id::new_v4(),
+                id,
                 kind: ActorKind::Ball,
             })
-            .with(Bounciness {})
             .build();
+        self.id_entity.write().unwrap().insert(id, entity);
     }
 
 
@@ -92,13 +92,13 @@ impl Handler {
     }
 
 
-    fn register_spawns(&self, world: &mut World) {
+    fn register_player_spawns(&self, world: &mut World) {
         let mut id_entity = self.id_entity.write().unwrap();
         let mut to_spawn = self.to_spawn.write().unwrap();
         for (id, send_channel) in to_spawn.drain() {
             let entity = world
                 .create_entity()
-                .with(Connect {})
+                .with(ToSpawn {})
                 .with(Player::new(send_channel))
                 .with(Actor {
                     id,
@@ -111,7 +111,7 @@ impl Handler {
         let mut to_despawn = self.to_despawn.write().unwrap();
         for id in to_despawn.drain() {
             if let Some(entity) = id_entity.remove(&id) {
-                world.write::<Disconnect>().insert(entity, Disconnect {});
+                world.write::<ToDespawn>().insert(entity, ToDespawn {});
             }
         }
     }
@@ -155,10 +155,10 @@ impl EventHandler for Handler {
 
         let mut updater = DispatcherBuilder::new()
             .add(InputHandler, "input_handler", &[])
-            .add(Physics, "physics", &["input_handler"])
+            .add(Spawn, "spawn", &["input_handler"])
+            .add(Physics, "physics", &["spawn"])
             .add(Bounce, "bounce", &["physics"])
-            .add(Spawn, "spawn", &["physics", "bounce"])
-            .add(Despawn, "despawn", &["spawn"])
+            .add(Despawn, "despawn", &["physics"])
             .build();
         let mut sender = DispatcherBuilder::new()
             .add(Sending, "sending", &[])
@@ -186,7 +186,7 @@ impl EventHandler for Handler {
                 ping_timer = 0;
             }
             self.register_pongs(&mut world);
-            self.register_spawns(&mut world);
+            self.register_player_spawns(&mut world);
 
             while lag >= ms_per_update {
                 updater.dispatch(&mut world.res);

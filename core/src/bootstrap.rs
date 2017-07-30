@@ -30,8 +30,8 @@ fn register_components(world: &mut World) {
         Bounciness,
         Player,
         Friction,
-        Connect,
-        Disconnect,
+        ToSpawn,
+        ToDespawn,
         Actor,
         Ping,
         Pong
