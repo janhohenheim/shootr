@@ -1,3 +1,5 @@
+First of all, thank you very much for being a part of the project :)
+
 # Contributing to shootr
 The commit messages should be in accordance to [these common guidelines](https://github.com/erlang/otp/wiki/writing-good-commit-messages)  
 TL;DR: Write them as a description of what happens to the codebase once they're applied.  
