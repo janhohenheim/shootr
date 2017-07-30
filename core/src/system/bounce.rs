@@ -2,23 +2,43 @@ extern crate specs;
 
 use self::specs::{Fetch, Join, WriteStorage, ReadStorage, System};
 
-use model::comp::{Pos, Vel, Bounciness, Bounds};
+use model::comp::{Pos, Vel, Bounciness, Bounds, Actor};
+use model::game::Id;
+use collision::World;
+use std::sync::RwLock;
 
 pub struct Bounce;
 impl<'a> System<'a> for Bounce {
     type SystemData = (ReadStorage<'a, Pos>,
      WriteStorage<'a, Vel>,
+     ReadStorage<'a, Actor>,
      ReadStorage<'a, Bounciness>,
-     Fetch<'a, Bounds<Pos>>);
+     Fetch<'a, Bounds<Pos>>,
+     Fetch<'a, RwLock<World<Id>>>);
 
-    fn run(&mut self, (pos, mut vel, bounciness, pos_bounds): Self::SystemData) {
-        for (pos, mut vel, _) in (&pos, &mut vel, &bounciness).join() {
-            handle_movement(pos, &mut vel, &pos_bounds);
+    fn run(&mut self, (pos, mut vel, actor, bounciness, pos_bounds, world): Self::SystemData) {
+        let world = world.read().unwrap();
+        for (pos, mut vel, actor, _) in (&pos, &mut vel, &actor, &bounciness).join() {
+            handle_movement(actor, pos, &mut vel, &pos_bounds, &world);
         }
     }
 }
 
-fn handle_movement(pos: &Pos, vel: &mut Vel, bounds: &Bounds<Pos>) {
+fn handle_movement(
+    actor: &Actor,
+    pos: &Pos,
+    vel: &mut Vel,
+    bounds: &Bounds<Pos>,
+    world: &World<Id>,
+) {
+    let mut right = false;
+    let mut down = false;
+    let mut left = false;
+    let mut up = false;
+    world.query_intersects_id(&actor.id, |other| {
+        let d_x = other.bounds.x - pos.x;
+        let d_y = other.bounds.y = pos.y;
+    });
     let next_x = pos.x + vel.x;
     let next_y = pos.y + vel.y;
     if next_x > bounds.max.x || next_x < bounds.min.x {
