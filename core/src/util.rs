@@ -31,7 +31,7 @@ pub fn timestamp() -> u64 {
 }
 
 pub fn angle(a: &Vector, b: &Vector) -> f64 {
-    assert!(*a != *b);
+    assert_ne!(*a, *b);
     let d_x = b.x as f64 - a.x as f64;
     // swapped because a positive y means down for us
     let d_y = a.y as f64 - b.y as f64;

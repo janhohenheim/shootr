@@ -8,6 +8,7 @@ use std::sync::RwLock;
 
 pub struct Despawn;
 impl<'a> System<'a> for Despawn {
+    #[allow(type_complexity)]
     type SystemData = (Entities<'a>,
      ReadStorage<'a, Actor>,
      ReadStorage<'a, ToDespawn>,

@@ -37,7 +37,7 @@ impl<'a> System<'a> for Spawn {
                 ActorKind::Player => {
                     spawn_player(
                         entity,
-                        &actor,
+                        actor,
                         &mut acc,
                         &mut vel,
                         &mut pos,
@@ -48,7 +48,7 @@ impl<'a> System<'a> for Spawn {
                 ActorKind::Ball => {
                     spawn_ball(
                         entity,
-                        &actor,
+                        actor,
                         &mut vel,
                         &mut pos,
                         &mut bounciness,

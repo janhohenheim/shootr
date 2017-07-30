@@ -9,6 +9,7 @@ use std::sync::RwLock;
 
 pub struct Bounce;
 impl<'a> System<'a> for Bounce {
+    #[allow(type_complexity)]
     type SystemData = (ReadStorage<'a, Pos>,
      WriteStorage<'a, Vel>,
      ReadStorage<'a, Actor>,
@@ -31,9 +32,8 @@ fn handle_movement(
     bounds: &Bounds<Pos>,
     world: &World<Id>,
 ) {
-    world.query_intersects_id(&actor.id, |other| {
-        let d_x = other.bounds.x - pos.x;
-        let d_y = other.bounds.y - pos.y;
+    world.query_intersects_id(&actor.id, |_| {
+        println!("bounce!");
     });
     let next_x = pos.x + vel.x;
     let next_y = pos.y + vel.y;

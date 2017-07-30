@@ -115,7 +115,7 @@ where
     }
 
     pub fn remove(&mut self, id: &Id) -> Option<Bounds> {
-        match self.entities.remove(&id) {
+        match self.entities.remove(id) {
             Some(bounds) => {
                 let spatial_hash = self.hash_bounds(&bounds);
                 let bucket = self.grid.get_mut(&spatial_hash).expect(
@@ -197,7 +197,7 @@ where
         let bounds = self.entities.get(id).expect(
             "Failed to query for id: Id not registered",
         );
-        self.query_other(&bounds, |other| if *id != *other.id &&
+        self.query_other(bounds, |other| if *id != *other.id &&
             bounds.intersects(other.bounds)
         {
             cb(other);

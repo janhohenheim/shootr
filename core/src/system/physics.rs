@@ -48,7 +48,7 @@ impl<'a> System<'a> for Physics {
         for (mut pos, vel, actor) in (&mut pos, &vel, &actor).join() {
             pos.x = clamp(pos.x + vel.x, pos_bounds.min.x, pos_bounds.max.x);
             pos.y = clamp(pos.y + vel.y, pos_bounds.min.y, pos_bounds.max.y);
-            world.place(&actor.id, &pos);
+            world.place(&actor.id, pos);
         }
     }
 }
