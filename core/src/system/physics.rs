@@ -2,7 +2,7 @@ extern crate specs;
 
 use self::specs::{Join, WriteStorage, ReadStorage, System, Fetch};
 
-use model::comp::{Pos, Vel, Acc, Bounds, Friction};
+use model::comp::{Pos, Vel, Acc, Bounds, Friction, Actor};
 use model::game::Id;
 use util::clamp;
 use collision::World;
@@ -15,13 +15,14 @@ impl<'a> System<'a> for Physics {
      WriteStorage<'a, Vel>,
      ReadStorage<'a, Acc>,
      ReadStorage<'a, Friction>,
+     ReadStorage<'a, Actor>,
      Fetch<'a, Bounds<Vel>>,
      Fetch<'a, Bounds<Pos>>,
      Fetch<'a, RwLock<World<Id>>>);
 
     fn run(
         &mut self,
-        (mut pos, mut vel, acc, friction, vel_bounds, pos_bounds, _): Self::SystemData,
+        (mut pos, mut vel, acc, friction, actor, vel_bounds, pos_bounds, world): Self::SystemData,
     ) {
         for (mut vel, acc) in (&mut vel, &acc).join() {
             vel.x = clamp(vel.x + acc.x, vel_bounds.min.x, vel_bounds.max.x);
@@ -43,9 +44,11 @@ impl<'a> System<'a> for Physics {
             }
         }
 
-        for (mut pos, vel) in (&mut pos, &vel).join() {
+        let mut world = world.write().unwrap();
+        for (mut pos, vel, actor) in (&mut pos, &vel, &actor).join() {
             pos.x = clamp(pos.x + vel.x, pos_bounds.min.x, pos_bounds.max.x);
             pos.y = clamp(pos.y + vel.y, pos_bounds.min.y, pos_bounds.max.y);
+            world.place(&actor.id, &pos);
         }
     }
 }

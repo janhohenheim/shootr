@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use model::game::Vector;
+use model::comp::Pos;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Bounds {
@@ -59,7 +60,7 @@ where
             grid,
         }
     }
-    pub fn insert(&mut self, id: Id, bounds: Bounds) -> Option<Bounds> {
+    pub fn add(&mut self, id: Id, bounds: Bounds) {
         assert!(
             bounds.x + bounds.width / 2 > 0 && bounds.y + bounds.height / 2 > 0 &&
                 bounds.x - bounds.width / 2 < self.width &&
@@ -67,37 +68,57 @@ where
         );
         let spatial_hash = self.hash_bounds(&bounds);
         let old = self.entities.insert(id.clone(), bounds);
-        if old.is_none() {
+        assert!(old.is_none());
+        self.grid
+            .entry(spatial_hash)
+            .or_insert_with(Bucket::new)
+            .push(id);
+    }
+
+    pub fn place(&mut self, id: &Id, pos: &Pos) {
+        let mut bounds = self.entities
+            .get(id)
+            .expect("Failed to place entity: Id doesn't exist")
+            .clone();
+        let old_spatial_hash = self.hash_bounds(&bounds);
+
+        // Create new bounds
+        bounds.x = pos.x;
+        bounds.y = pos.y;
+        assert!(
+            bounds.x + bounds.width / 2 > 0 && bounds.y + bounds.height / 2 > 0 &&
+                bounds.x - bounds.width / 2 < self.width &&
+                bounds.y - bounds.height / 2 < self.height
+        );
+
+        let new_spatial_hash = self.hash_bounds(&bounds);
+        self.entities.insert(id.clone(), bounds);
+
+        if old_spatial_hash != new_spatial_hash {
+            let id = {
+                let mut bucket = self.grid.get_mut(&old_spatial_hash).expect(
+                    "Failed to place entity: Didn't find bucket with existing spatial hash",
+                );
+                let pos = bucket.iter().position(|x| *x == *id).expect(
+                    "Failed to place entity: Didn't find id in bucket",
+                );
+                bucket.remove(pos)
+            };
             self.grid
-                .entry(spatial_hash)
+                .entry(new_spatial_hash)
                 .or_insert_with(Bucket::new)
                 .push(id);
-            None
-        } else {
-            let old_bounds = old.unwrap();
-            let old_spatial_hash = self.hash_bounds(&old_bounds);
-            if spatial_hash != old_spatial_hash {
-                {
-                    let mut old_bucket = self.grid.get_mut(&old_spatial_hash).unwrap();
-                    let pos = old_bucket.iter().position(|x| *x == id).unwrap();
-                    old_bucket.remove(pos);
-                }
-                self.grid
-                    .entry(spatial_hash)
-                    .or_insert_with(Bucket::new)
-                    .push(id);
-            }
-            Some(old_bounds)
         }
     }
-    pub fn remove(&mut self, id: Id) -> Option<Bounds> {
+
+    pub fn remove(&mut self, id: &Id) -> Option<Bounds> {
         match self.entities.remove(&id) {
             Some(bounds) => {
                 let spatial_hash = self.hash_bounds(&bounds);
                 let bucket = self.grid.get_mut(&spatial_hash).expect(
                     "Removed id from entity list but didn't find its spatial hash in grid",
                 );
-                let pos = bucket.iter().position(|x| *x == id).expect(
+                let pos = bucket.iter().position(|x| *x == *id).expect(
                     "Didn't find id in bucket",
                 );
                 bucket.remove(pos);
@@ -397,7 +418,7 @@ fn init() {
 }
 
 #[test]
-fn insert_new() {
+fn add() {
     let mut world = World::new(1000, 1000);
     let bounds = Bounds {
         x: 0,
@@ -405,13 +426,12 @@ fn insert_new() {
         width: 10,
         height: 10,
     };
-    let old = world.insert(1, bounds);
-    assert!(old.is_none());
+    world.add(1, bounds);
 }
 
 #[test]
 #[should_panic]
-fn insert_too_low() {
+fn add_too_low() {
     let mut world = World::new(1000, 1000);
     let bounds = Bounds {
         x: -10,
@@ -419,12 +439,12 @@ fn insert_too_low() {
         width: 1,
         height: 1,
     };
-    world.insert(1, bounds);
+    world.add(1, bounds);
 }
 
 #[test]
 #[should_panic]
-fn insert_too_low_edge() {
+fn add_too_low_edge() {
     let mut world = World::new(1000, 1000);
     let bounds = Bounds {
         x: -10,
@@ -432,13 +452,13 @@ fn insert_too_low_edge() {
         width: 5,
         height: 5,
     };
-    world.insert(1, bounds);
+    world.add(1, bounds);
 }
 
 
 #[test]
 #[should_panic]
-fn insert_too_high() {
+fn add_too_high() {
     let mut world = World::new(1000, 1000);
     let bounds = Bounds {
         x: 2000,
@@ -446,13 +466,13 @@ fn insert_too_high() {
         width: 1,
         height: 1,
     };
-    world.insert(1, bounds);
+    world.add(1, bounds);
 }
 
 
 #[test]
 #[should_panic]
-fn insert_too_high_edge() {
+fn add_too_high_edge() {
     let mut world = World::new(1000, 1000);
     let bounds = Bounds {
         x: 0,
@@ -460,11 +480,12 @@ fn insert_too_high_edge() {
         width: 1,
         height: 5,
     };
-    world.insert(1, bounds);
+    world.add(1, bounds);
 }
 
 #[test]
-fn insert_existing() {
+#[should_panic]
+fn add_existing() {
     let mut world = World::new(1000, 1000);
     let id = 1;
     let bounds_a = Bounds {
@@ -473,17 +494,80 @@ fn insert_existing() {
         width: 10,
         height: 10,
     };
-    let old = world.insert(id, bounds_a.clone());
-    assert!(old.is_none());
+    world.add(id, bounds_a.clone());
     let bounds_b = Bounds {
         x: 1,
         y: 1,
         width: 10,
         height: 10,
     };
-    let old = world.insert(id, bounds_b);
-    assert_eq!(bounds_a, old.unwrap())
+    world.add(id, bounds_b);
 }
+
+
+#[test]
+fn place() {
+    let mut world = World::new(1000, 1000);
+    let id = 1;
+    let bounds = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    world.add(id, bounds.clone());
+    world.place(&id, &Vector { x: 30, y: 50 }.into());
+}
+
+
+#[test]
+#[should_panic]
+fn place_too_low() {
+    let mut world = World::new(1000, 1000);
+    let id = 1;
+    let bounds = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    world.add(id, bounds.clone());
+    world.place(&id, &Vector { x: -999, y: 50 }.into());
+}
+
+
+#[test]
+#[should_panic]
+fn place_deleted() {
+    let mut world = World::new(1000, 1000);
+    let id = 1;
+    let bounds = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    world.add(id, bounds.clone());
+    world.remove(&id);
+    world.place(&id, &Vector { x: 30, y: 50 }.into());
+}
+
+
+#[test]
+#[should_panic]
+fn place_nonexistant() {
+    let mut world = World::new(1000, 1000);
+    let id = 1;
+    let bounds = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    world.add(id, bounds.clone());
+    world.place(&(id + 1), &Vector { x: 30, y: 50 }.into());
+}
+
 
 #[test]
 fn remove() {
@@ -495,11 +579,9 @@ fn remove() {
         width: 10,
         height: 10,
     };
-    world.insert(id, bounds.clone());
-    let removed_bounds = world.remove(id);
-    assert_eq!(bounds, removed_bounds.unwrap());
-    let old = world.insert(id, bounds);
-    assert!(old.is_none());
+    world.add(id, bounds.clone());
+    world.remove(&id);
+    world.add(id, bounds)
 }
 
 #[test]
@@ -511,15 +593,15 @@ fn remove_nonexistant() {
         width: 10,
         height: 10,
     };
-    world.insert(1, bounds);
-    let removed = world.remove(2);
+    world.add(1, bounds);
+    let removed = world.remove(&2);
     assert!(removed.is_none())
 }
 
 #[test]
 fn remove_empty() {
     let mut world = World::new(1000, 1000);
-    let removed = world.remove(1);
+    let removed = world.remove(&1);
     assert!(removed.is_none())
 }
 
@@ -533,17 +615,17 @@ fn remove_twice() {
         width: 10,
         height: 10,
     };
-    world.insert(id, bounds.clone());
-    let removed = world.remove(id);
+    world.add(id, bounds.clone());
+    let removed = world.remove(&id);
     assert_eq!(bounds, removed.unwrap());
-    let removed = world.remove(id);
+    let removed = world.remove(&id);
     assert!(removed.is_none());
 }
 
 #[test]
 fn no_collisions() {
     let mut world = World::new(1000, 1000);
-    world.insert(
+    world.add(
         1,
         Bounds {
             x: 0,
@@ -552,7 +634,7 @@ fn no_collisions() {
             height: 10,
         },
     );
-    world.insert(
+    world.add(
         2,
         Bounds {
             x: 40,
@@ -574,7 +656,7 @@ fn one_collision() {
         width: 10,
         height: 10,
     };
-    world.insert(id_a, bounds_a.clone());
+    world.add(id_a, bounds_a.clone());
     let id_b = 2;
     let bounds_b = Bounds {
         x: 5,
@@ -582,7 +664,7 @@ fn one_collision() {
         width: 10,
         height: 10,
     };
-    world.insert(id_b, bounds_b.clone());
+    world.add(id_b, bounds_b.clone());
 
     let mut collisions = Vec::<(CollisionObjectClone<i32>, CollisionObjectClone<i32>)>::new();
     world.query_intersects(|a, b| collisions.push((a.into(), b.into())));
@@ -606,14 +688,14 @@ fn multiple_collisions() {
         width: 10,
         height: 70,
     };
-    world.insert(id_a, bounds_a.clone());
+    world.add(id_a, bounds_a.clone());
     let not_containing = Bounds {
         x: 54,
         y: 60,
         width: 3,
         height: 6,
     };
-    world.insert(2, not_containing);
+    world.add(2, not_containing);
     let id_b = 3;
     let bounds_b = Bounds {
         x: 0,
@@ -621,7 +703,7 @@ fn multiple_collisions() {
         width: 10,
         height: 10,
     };
-    world.insert(id_b, bounds_b.clone());
+    world.add(id_b, bounds_b.clone());
     let id_c = 4;
     let bounds_c = Bounds {
         x: 5,
@@ -629,7 +711,7 @@ fn multiple_collisions() {
         width: 10,
         height: 10,
     };
-    world.insert(id_c, bounds_c.clone());
+    world.add(id_c, bounds_c.clone());
     let mut collisions = Vec::<(CollisionObjectClone<i32>, CollisionObjectClone<i32>)>::new();
     world.query_intersects(|a, b| collisions.push((a.into(), b.into())));
     assert_eq!(3, collisions.len());
@@ -674,7 +756,7 @@ fn no_collisions_other() {
         width: 10,
         height: 10,
     };
-    world.insert(id, bounds_a.clone());
+    world.add(id, bounds_a.clone());
     let bounds_b = Bounds {
         x: 40,
         y: 40,
@@ -694,7 +776,7 @@ fn one_collision_other() {
         width: 10,
         height: 10,
     };
-    world.insert(id, bounds_a.clone());
+    world.add(id, bounds_a.clone());
     let bounds_b = Bounds {
         x: 5,
         y: 5,
@@ -722,14 +804,14 @@ fn multiple_collision_other() {
         width: 10,
         height: 70,
     };
-    world.insert(id_a, bounds_a.clone());
+    world.add(id_a, bounds_a.clone());
     let not_containing = Bounds {
         x: 54,
         y: 60,
         width: 3,
         height: 6,
     };
-    world.insert(2, not_containing);
+    world.add(2, not_containing);
     let id_b = 3;
     let bounds_b = Bounds {
         x: 0,
@@ -737,7 +819,7 @@ fn multiple_collision_other() {
         width: 10,
         height: 10,
     };
-    world.insert(id_b, bounds_b.clone());
+    world.add(id_b, bounds_b.clone());
     let bounds_c = Bounds {
         x: 5,
         y: 5,
@@ -769,7 +851,7 @@ fn no_containing_other() {
         width: 10,
         height: 10,
     };
-    world.insert(id, bounds_a.clone());
+    world.add(id, bounds_a.clone());
     let bounds_b = Bounds {
         x: 40,
         y: 40,
@@ -789,7 +871,7 @@ fn one_containing_other() {
         width: 10,
         height: 10,
     };
-    world.insert(id, bounds_a.clone());
+    world.add(id, bounds_a.clone());
     let bounds_b = Bounds {
         x: 2,
         y: 2,
@@ -817,14 +899,14 @@ fn multiple_containing_other() {
         width: 100,
         height: 100,
     };
-    world.insert(id_a, bounds_a.clone());
+    world.add(id_a, bounds_a.clone());
     let not_containing = Bounds {
         x: 0,
         y: 0,
         width: 3,
         height: 6,
     };
-    world.insert(2, not_containing);
+    world.add(2, not_containing);
     let id_b = 3;
     let bounds_b = Bounds {
         x: 6,
@@ -832,7 +914,7 @@ fn multiple_containing_other() {
         width: 2,
         height: 2,
     };
-    world.insert(id_b, bounds_b.clone());
+    world.add(id_b, bounds_b.clone());
     let bounds_c = Bounds {
         x: 5,
         y: 5,

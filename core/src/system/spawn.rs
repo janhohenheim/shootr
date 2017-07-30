@@ -42,7 +42,7 @@ impl<'a> System<'a> for Spawn {
                     height: 10,
                 },
             };
-            world.write().unwrap().insert(actor.id, bounds);
+            world.write().unwrap().add(actor.id, bounds);
         }
     }
 }
