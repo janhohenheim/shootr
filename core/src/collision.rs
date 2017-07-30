@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
-use std::fmt::Debug;
 use model::game::Vector;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -35,13 +34,13 @@ pub struct World<Id> {
     width: i32,
     height: i32,
     cell_size: i32,
-    entities: HashMap<Id, (Bounds, SpatialHash)>,
+    entities: HashMap<Id, Bounds>,
     grid: HashMap<SpatialHash, Bucket<Id>>,
 }
 
 impl<Id> World<Id>
 where
-    Id: Hash + PartialEq + Eq + Clone + Debug,
+    Id: Hash + PartialEq + Eq + Clone,
 {
     pub fn new(width: i32, height: i32) -> Self {
         let mut grid = HashMap::new();
@@ -67,10 +66,7 @@ where
                 bounds.y - bounds.height / 2 < self.height
         );
         let spatial_hash = self.hash_bounds(&bounds);
-        let old = self.entities.insert(
-            id.clone(),
-            (bounds, spatial_hash.clone()),
-        );
+        let old = self.entities.insert(id.clone(), bounds);
         if old.is_none() {
             self.grid
                 .entry(spatial_hash)
@@ -78,7 +74,8 @@ where
                 .push(id);
             None
         } else {
-            let (old_bounds, old_spatial_hash) = old.unwrap();
+            let old_bounds = old.unwrap();
+            let old_spatial_hash = self.hash_bounds(&old_bounds);
             if spatial_hash != old_spatial_hash {
                 {
                     let mut old_bucket = self.grid.get_mut(&old_spatial_hash).unwrap();
@@ -95,7 +92,8 @@ where
     }
     pub fn remove(&mut self, id: Id) -> Option<Bounds> {
         match self.entities.remove(&id) {
-            Some((bounds, spatial_hash)) => {
+            Some(bounds) => {
+                let spatial_hash = self.hash_bounds(&bounds);
                 let bucket = self.grid.get_mut(&spatial_hash).expect(
                     "Removed id from entity list but didn't find its spatial hash in grid",
                 );
@@ -120,12 +118,12 @@ where
             // Collisions in own bucket
             let mut already_handled = HashSet::new();
             for id in own_bucket {
-                let &(ref bounds, _) = &self.entities[id];
+                let bounds = &self.entities[id];
                 for other_id in own_bucket {
                     if *id == *other_id || already_handled.contains(&(id, other_id)) {
                         continue;
                     }
-                    let &(ref other_bounds, _) = &self.entities[other_id];
+                    let other_bounds = &self.entities[other_id];
                     if bounds.intersects(other_bounds) {
                         cb(
                             CollisionObject { id, bounds },
@@ -141,9 +139,9 @@ where
             // Collisions in neighbors
             for neighbor_bucket in neighbors {
                 for id in bucket {
-                    let &(ref bounds, _) = &self.entities[id];
+                    let bounds = &self.entities[id];
                     for neighbor_id in neighbor_bucket {
-                        let &(ref neighbor_bounds, _) = &self.entities[neighbor_id];
+                        let neighbor_bounds = &self.entities[neighbor_id];
                         if neighbor_bounds.intersects(bounds) {
                             cb(
                                 CollisionObject { id, bounds },
@@ -187,7 +185,7 @@ where
         neighbors.push(own_bucket);
         for bucket in neighbors {
             for id in bucket {
-                let &(ref bounds, _) = &self.entities[id];
+                let bounds = &self.entities[id];
                 cb(CollisionObject { id, bounds })
             }
         }
