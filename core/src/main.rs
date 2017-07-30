@@ -52,7 +52,6 @@ impl Handler {
 
         // Create ball
         let id = Id::new_v4();
-        println!("Ball id: {}", id);
         let entity = world
             .create_entity()
             .with(ToSpawn {})
@@ -160,6 +159,9 @@ impl EventHandler for Handler {
             .add(Bounce, "bounce", &["physics"])
             .add(Despawn, "despawn", &["physics"])
             .build();
+        // Initial update
+        updater.dispatch(&mut world.res);
+
         let mut sender = DispatcherBuilder::new()
             .add(Sending, "sending", &[])
             .build();

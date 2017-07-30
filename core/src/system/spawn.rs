@@ -33,7 +33,6 @@ impl<'a> System<'a> for Spawn {
              world) = data;
         let mut world = world.write().unwrap();
         for (entity, actor, _) in (&*entities, &actor, &to_spawn).join() {
-            println!("Spawning: {:?}", actor);
             match actor.kind {
                 ActorKind::Player => {
                     spawn_player(
@@ -104,6 +103,5 @@ fn spawn_ball(
         width: 10,
         height: 10,
     };
-    println!("hai");
     world.add(actor.id, bounds);
 }
