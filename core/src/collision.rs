@@ -634,8 +634,35 @@ fn multiple_collisions() {
     world.insert(id_c, bounds_c.clone());
     let mut collisions = Vec::<(CollisionObjectClone<i32>, CollisionObjectClone<i32>)>::new();
     world.query_intersects(|a, b| collisions.push((a.into(), b.into())));
-    assert_eq!(2, collisions.len());
-    let (ref a, ref b) = collisions[0];
+    assert_eq!(3, collisions.len());
+    let a_b_pos = collisions
+        .iter()
+        .position(|&(ref lhs, ref rhs)| {
+            (lhs.id == id_a && lhs.bounds == bounds_a && rhs.id == id_b &&
+                rhs.bounds == bounds_b) ||
+                (rhs.id == id_a && rhs.bounds == bounds_a && lhs.id == id_b &&
+                     lhs.bounds == bounds_b)
+        })
+        .unwrap();
+    let a_c_pos = collisions
+        .iter()
+        .position(|&(ref lhs, ref rhs)| {
+            (lhs.id == id_a && lhs.bounds == bounds_a && rhs.id == id_c &&
+                rhs.bounds == bounds_c) ||
+                (rhs.id == id_a && rhs.bounds == bounds_a && lhs.id == id_c &&
+                     lhs.bounds == bounds_c)
+        })
+        .unwrap();
+    let b_c_pos = collisions
+        .iter()
+        .position(|&(ref lhs, ref rhs)| {
+            (lhs.id == id_b && lhs.bounds == bounds_b && rhs.id == id_c &&
+                rhs.bounds == bounds_c) ||
+                (rhs.id == id_b && rhs.bounds == bounds_b && lhs.id == id_c &&
+                     lhs.bounds == bounds_c)
+        })
+        .unwrap();
+    assert!(a_b_pos != a_c_pos && a_b_pos != b_c_pos && a_c_pos != b_c_pos);
 }
 
 
