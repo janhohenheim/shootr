@@ -4,7 +4,8 @@ extern crate chrono;
 use self::chrono::{DateTime, Utc};
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
-
+use model::game::Vector;
+use std::f64::consts;
 
 pub fn read_env_var(var: &str) -> String {
     env::var_os(var)
@@ -29,6 +30,17 @@ pub fn timestamp() -> u64 {
     elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1_000_000
 }
 
+pub fn angle(a: &Vector, b: &Vector) -> f64 {
+    assert!(*a != *b);
+    let d_x = b.x as f64 - a.x as f64;
+    // swapped because a positive y means down for us
+    let d_y = a.y as f64 - b.y as f64;
+    let mut rad = d_y.atan2(d_x);
+    while rad < 0.0 {
+        rad += consts::PI * 2.0
+    }
+    rad.to_degrees()
+}
 
 pub fn clamp<T>(val: T, min: T, max: T) -> T
 where
@@ -148,6 +160,47 @@ fn timestamp_wait() {
     let b = timestamp();
     assert!(b - a >= delta)
 }
+
+
+#[test]
+#[should_panic]
+fn angle_same() {
+    let a = Vector { x: 0, y: 0 };
+    let b = a.clone();
+    angle(&a, &b);
+}
+
+#[test]
+fn angle_right() {
+    let a = Vector { x: 0, y: 0 };
+    let b = Vector { x: 1, y: 0 };
+    assert_eq!(0.0, angle(&a, &b));
+}
+
+
+#[test]
+fn angle_down() {
+    let a = Vector { x: 0, y: 0 };
+    let b = Vector { x: 0, y: 1 };
+    assert_eq!(270.0, angle(&a, &b));
+}
+
+
+#[test]
+fn angle_left() {
+    let a = Vector { x: 0, y: 0 };
+    let b = Vector { x: -1, y: 0 };
+    assert_eq!(180.0, angle(&a, &b));
+}
+
+
+#[test]
+fn angle_up() {
+    let a = Vector { x: 0, y: 0 };
+    let b = Vector { x: 0, y: -1 };
+    assert_eq!(90.0, angle(&a, &b));
+}
+
 
 #[test]
 fn clamp_in_range() {
