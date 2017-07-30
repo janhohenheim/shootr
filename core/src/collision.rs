@@ -190,6 +190,20 @@ where
         });
     }
 
+    pub fn query_intersects_id<T>(&self, id: &Id, mut cb: T)
+    where
+        T: FnMut(CollisionObject<Id>),
+    {
+        let bounds = self.entities.get(id).expect(
+            "Failed to query for id: Id not registered",
+        );
+        self.query_other(&bounds, |other| if *id != *other.id &&
+            bounds.intersects(other.bounds)
+        {
+            cb(other);
+        });
+    }
+
     pub fn query_contains_other<T>(&self, bounds: &Bounds, mut cb: T)
     where
         T: FnMut(CollisionObject<Id>),
@@ -750,6 +764,109 @@ fn multiple_collisions() {
 
 
 #[test]
+fn no_collisions_id() {
+    let mut world = World::new(1000, 1000);
+    world.add(
+        1,
+        Bounds {
+            x: 0,
+            y: 0,
+            width: 10,
+            height: 10,
+        },
+    );
+    world.add(
+        2,
+        Bounds {
+            x: 40,
+            y: 40,
+            width: 10,
+            height: 10,
+        },
+    );
+    world.query_intersects_id(&1, |_| panic!());
+}
+
+#[test]
+fn one_collision_id() {
+    let mut world = World::new(1000, 1000);
+    let id_a = 1;
+    let bounds_a = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    world.add(id_a, bounds_a.clone());
+    let id_b = 2;
+    let bounds_b = Bounds {
+        x: 5,
+        y: 5,
+        width: 10,
+        height: 10,
+    };
+    world.add(id_b, bounds_b.clone());
+
+    let mut collisions = Vec::<CollisionObjectClone<i32>>::new();
+    world.query_intersects_id(&id_a, |b| collisions.push(b.into()));
+
+    assert_eq!(1, collisions.len());
+    let b = collisions.first().unwrap();
+    assert_eq!(id_b, b.id);
+    assert_eq!(bounds_b, b.bounds);
+}
+
+
+#[test]
+fn multiple_collisions_id() {
+    let mut world = World::new(1000, 1000);
+    let id_a = 1;
+    let bounds_a = Bounds {
+        x: 3,
+        y: 5,
+        width: 10,
+        height: 70,
+    };
+    world.add(id_a, bounds_a.clone());
+    let not_containing = Bounds {
+        x: 54,
+        y: 60,
+        width: 3,
+        height: 6,
+    };
+    world.add(2, not_containing);
+    let id_b = 3;
+    let bounds_b = Bounds {
+        x: 0,
+        y: 0,
+        width: 10,
+        height: 10,
+    };
+    world.add(id_b, bounds_b.clone());
+    let id_c = 4;
+    let bounds_c = Bounds {
+        x: 5,
+        y: 5,
+        width: 10,
+        height: 10,
+    };
+    world.add(id_c, bounds_c.clone());
+    let mut collisions = Vec::<CollisionObjectClone<i32>>::new();
+    world.query_intersects_id(&id_c, |b| collisions.push(b.into()));
+    assert_eq!(2, collisions.len());
+    let a_c_pos = collisions
+        .iter()
+        .position(|a| a.id == id_a && a.bounds == bounds_a)
+        .unwrap();
+    let b_c_pos = collisions
+        .iter()
+        .position(|b| b.id == id_b && b.bounds == bounds_b)
+        .unwrap();
+    assert!(a_c_pos != b_c_pos);
+}
+
+
+#[test]
 fn no_collisions_other() {
     let mut world = World::new(1000, 1000);
     let id = 1;
@@ -841,7 +958,6 @@ fn multiple_collision_other() {
     let (coll_id, ref coll_bounds) = collisions[1];
     assert_eq!(id_b, coll_id);
     assert_eq!(bounds_b, *coll_bounds);
-
 }
 
 #[test]
