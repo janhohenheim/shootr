@@ -25,7 +25,7 @@ cache: cargo
 
 before_script:
   # Install tools if not already installed
-  - cargo install --list | grep clippy || cargo install clippy
+  - cargo install --list | grep clippy || cargo install clippy || true # clippy really loves to break, so it's okay if it fails
   - cargo install --list | grep rustfmt || cargo install rustfmt
   - cargo install --list | grep cargo-update || cargo install cargo-update
   - cargo install --list | grep tarpaulin || cargo install cargo-tarpaulin
