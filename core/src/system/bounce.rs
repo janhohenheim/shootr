@@ -34,10 +34,7 @@ fn handle_movement(
     world: &World<Id>,
 ) {
     world.query_intersects_id(&actor.id, |other| {
-        let own: Vector = Vector {
-            x: pos.x,
-            y: pos.y,
-        };
+        let own: Vector = Vector { x: pos.x, y: pos.y };
         let other = Vector {
             x: other.bounds.x,
             y: other.bounds.y,
