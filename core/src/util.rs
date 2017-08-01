@@ -103,141 +103,143 @@ macro_rules! add_impl {
      };
 }
 
-
 #[cfg(test)]
-use util::chrono::TimeZone;
+mod test {
+    use super::*;
+    use util::chrono::TimeZone;
 
-#[test]
-fn read_string_envvar() {
-    env::set_var("TEST", "foo");
-    assert_eq!("foo", &read_env_var("TEST"));
-}
+    #[test]
+    fn read_string_envvar() {
+        env::set_var("TEST", "foo");
+        assert_eq!("foo", &read_env_var("TEST"));
+    }
 
-#[test]
-#[should_panic]
-fn read_empty_envvar() {
-    env::remove_var("EMPTY");
-    read_env_var("EMPTY");
-}
-
-
-#[test]
-fn one_elapsed_ms() {
-    let a = Utc.ymd(1970, 1, 1).and_hms_milli(0, 0, 0, 0);
-    let b = Utc.ymd(1970, 1, 1).and_hms_milli(0, 0, 0, 1);
-    assert_eq!(1, elapsed_ms(a, b).unwrap());
-}
-
-#[test]
-fn one_elapsed_second() {
-    let a = Utc.ymd(1970, 1, 1).and_hms_milli(0, 0, 0, 0);
-    let b = Utc.ymd(1970, 1, 1).and_hms(0, 0, 1);
-    assert_eq!(1000, elapsed_ms(a, b).unwrap());
-}
-
-#[test]
-fn no_elapsed_time() {
-    let a = Utc.ymd(1970, 1, 1).and_hms(0, 0, 1);
-    assert_eq!(0, elapsed_ms(a, a).unwrap());
-}
+    #[test]
+    #[should_panic]
+    fn read_empty_envvar() {
+        env::remove_var("EMPTY");
+        read_env_var("EMPTY");
+    }
 
 
-#[test]
-fn negative_elapsed_time() {
-    let a = Utc.ymd(1970, 1, 1).and_hms(0, 0, 1);
-    let b = Utc.ymd(1970, 1, 1).and_hms(0, 0, 0);
-    assert!(elapsed_ms(a, b).is_err());
-}
+    #[test]
+    fn one_elapsed_ms() {
+        let a = Utc.ymd(1970, 1, 1).and_hms_milli(0, 0, 0, 0);
+        let b = Utc.ymd(1970, 1, 1).and_hms_milli(0, 0, 0, 1);
+        assert_eq!(1, elapsed_ms(a, b).unwrap());
+    }
 
-#[test]
-fn timestamp_wait() {
-    use std::thread;
-    use std::time::Duration;
+    #[test]
+    fn one_elapsed_second() {
+        let a = Utc.ymd(1970, 1, 1).and_hms_milli(0, 0, 0, 0);
+        let b = Utc.ymd(1970, 1, 1).and_hms(0, 0, 1);
+        assert_eq!(1000, elapsed_ms(a, b).unwrap());
+    }
 
-    let a = timestamp();
-    let delta = 420;
-    thread::sleep(Duration::from_millis(delta + 10));
-    let b = timestamp();
-    assert!(b - a >= delta)
-}
-
-
-#[test]
-#[should_panic]
-fn angle_same() {
-    let a = Vector { x: 0, y: 0 };
-    let b = a.clone();
-    angle(&a, &b);
-}
-
-#[test]
-fn angle_right() {
-    let a = Vector { x: 0, y: 0 };
-    let b = Vector { x: 1, y: 0 };
-    assert_eq!(0.0, angle(&a, &b));
-}
+    #[test]
+    fn no_elapsed_time() {
+        let a = Utc.ymd(1970, 1, 1).and_hms(0, 0, 1);
+        assert_eq!(0, elapsed_ms(a, a).unwrap());
+    }
 
 
-#[test]
-fn angle_down() {
-    let a = Vector { x: 0, y: 0 };
-    let b = Vector { x: 0, y: 1 };
-    assert_eq!(270.0, angle(&a, &b));
-}
+    #[test]
+    fn negative_elapsed_time() {
+        let a = Utc.ymd(1970, 1, 1).and_hms(0, 0, 1);
+        let b = Utc.ymd(1970, 1, 1).and_hms(0, 0, 0);
+        assert!(elapsed_ms(a, b).is_err());
+    }
+
+    #[test]
+    fn timestamp_wait() {
+        use std::thread;
+        use std::time::Duration;
+
+        let a = timestamp();
+        let delta = 420;
+        thread::sleep(Duration::from_millis(delta + 10));
+        let b = timestamp();
+        assert!(b - a >= delta)
+    }
 
 
-#[test]
-fn angle_left() {
-    let a = Vector { x: 0, y: 0 };
-    let b = Vector { x: -1, y: 0 };
-    assert_eq!(180.0, angle(&a, &b));
-}
+    #[test]
+    #[should_panic]
+    fn angle_same() {
+        let a = Vector { x: 0, y: 0 };
+        let b = a.clone();
+        angle(&a, &b);
+    }
+
+    #[test]
+    fn angle_right() {
+        let a = Vector { x: 0, y: 0 };
+        let b = Vector { x: 1, y: 0 };
+        assert_eq!(0.0, angle(&a, &b));
+    }
 
 
-#[test]
-fn angle_up() {
-    let a = Vector { x: 0, y: 0 };
-    let b = Vector { x: 0, y: -1 };
-    assert_eq!(90.0, angle(&a, &b));
-}
+    #[test]
+    fn angle_down() {
+        let a = Vector { x: 0, y: 0 };
+        let b = Vector { x: 0, y: 1 };
+        assert_eq!(270.0, angle(&a, &b));
+    }
 
 
-#[test]
-fn clamp_in_range() {
-    let res = clamp(1, 0, 2);
-    assert_eq!(1, res);
-}
-
-#[test]
-fn clamp_min() {
-    let res = clamp(-2, -2, 2);
-    assert_eq!(-2, res);
-}
-
-#[test]
-fn clamp_max() {
-    let res = clamp(0, -2, 0);
-    assert_eq!(0, res);
-}
-
-#[test]
-fn clamp_less_than_min() {
-    let res = clamp(-1, 0, 2);
-    assert_eq!(0, res);
-}
-
-#[test]
-fn clamp_more_than_max() {
-    let res = clamp(999, 9, 10);
-    assert_eq!(10, res);
-}
+    #[test]
+    fn angle_left() {
+        let a = Vector { x: 0, y: 0 };
+        let b = Vector { x: -1, y: 0 };
+        assert_eq!(180.0, angle(&a, &b));
+    }
 
 
-#[test]
-fn seq_id_gen_sequential() {
-    let mut id_gen = SeqIdGen::default();
-    let ids_count = 1000;
-    for i in 0..ids_count {
-        assert_eq!(i + 1, id_gen.gen());
+    #[test]
+    fn angle_up() {
+        let a = Vector { x: 0, y: 0 };
+        let b = Vector { x: 0, y: -1 };
+        assert_eq!(90.0, angle(&a, &b));
+    }
+
+
+    #[test]
+    fn clamp_in_range() {
+        let res = clamp(1, 0, 2);
+        assert_eq!(1, res);
+    }
+
+    #[test]
+    fn clamp_min() {
+        let res = clamp(-2, -2, 2);
+        assert_eq!(-2, res);
+    }
+
+    #[test]
+    fn clamp_max() {
+        let res = clamp(0, -2, 0);
+        assert_eq!(0, res);
+    }
+
+    #[test]
+    fn clamp_less_than_min() {
+        let res = clamp(-1, 0, 2);
+        assert_eq!(0, res);
+    }
+
+    #[test]
+    fn clamp_more_than_max() {
+        let res = clamp(999, 9, 10);
+        assert_eq!(10, res);
+    }
+
+
+    #[test]
+    fn seq_id_gen_sequential() {
+        let mut id_gen = SeqIdGen::default();
+        let ids_count = 1000;
+        for i in 0..ids_count {
+            assert_eq!(i + 1, id_gen.gen());
+        }
     }
 }
