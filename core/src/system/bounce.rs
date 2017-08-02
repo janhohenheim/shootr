@@ -43,7 +43,7 @@ fn handle_movement(
             vel.x = -vel.x;
         } else {
             let angle = angle(&own, &other);
-            if angle < 270.0 || angle > 90.0 {
+            if angle > 270.0 || angle < 90.0 {
                 vel.x = -vel.x.abs();
             } else {
                 vel.x = vel.x.abs();
