@@ -295,16 +295,18 @@ function setWorld(state) {
         liveActor.x = stateActor.pos.x
         liveActor.y = stateActor.pos.y
         if (stateActor.vel)
-            addBlur(liveActor, stateActor.vel)
+            setBlur(liveActor, stateActor.vel)
     }
 }
 
-function addBlur(obj, vel) {
-    const maxVel = Math.max(vel.x, vel.y)
+function setBlur(obj, vel) {
+    const maxVel = Math.max(Math.abs(vel.x), Math.abs(vel.y))
     const strength = Math.pow(Math.atan(Math.pow((maxVel / 10), 1.5)), 2) - 0.2
     if (strength > 0.5) {
         const blurFilter = new PIXI.filters.BlurFilter(strength, 1, 1)
         obj.filters = [blurFilter]
+    } else {
+        obj.filters = []
     }
 }
 
