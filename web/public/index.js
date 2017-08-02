@@ -38,11 +38,10 @@ function connect(address) {
                     spawnActor(actor)
                 }
                 break;
-            case 'Connect':
-                const player = {id: msg.payload.id, kind: "Player"}
-                spawnActor(player)
+            case 'Spawn':
+                spawnActor(msg.payload)
                 break;
-            case 'Disconnect':
+            case 'Despawn':
                 removeActor(msg.payload)
                 break;
             case 'WorldUpdate':
@@ -312,18 +311,26 @@ function addBlur(obj, vel) {
 
 function spawnActor(actor) {
     let texture
+    let height 
+    let width
     switch (actor.kind) {
         case "Player":
             texture = 'fancy-paddle-green.png'
+            height = 75
+            width = 15
             break;
         case "Ball":
             texture = 'fancy-ball.png'
+            height = 15
+            width = 15
             break;
         default:
             throw 'Tried to spawn invalid kind of actor: ' + actor.kind
     }
     const sprite = new Sprite(resources.pong.textures[texture])
     sprite.anchor.set(0.5)
+    sprite.width = width
+    sprite.height = height
     app.stage.addChild(sprite)
     actors[actor.id] = sprite
 }
