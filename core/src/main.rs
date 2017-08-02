@@ -157,13 +157,13 @@ impl EventHandler for Handler {
             .add(Spawn, "spawn", &["input_handler"])
             .add(Physics, "physics", &["spawn"])
             .add(Bounce, "bounce", &["physics"])
-            .add(Despawn, "despawn", &["physics"])
             .build();
         // Initial update
         updater.dispatch(&mut world.res);
 
         let mut sender = DispatcherBuilder::new()
             .add(Sending, "sending", &[])
+            .add(Despawn, "despawn", &["sending"])
             .build();
         let mut delay = DispatcherBuilder::new().add(Delay, "delay", &[]).build();
 
