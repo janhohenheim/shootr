@@ -192,10 +192,10 @@ impl EventHandler for Handler {
 
             while lag >= ms_per_update {
                 updater.dispatch(&mut world.res);
+                world.maintain();
                 lag -= ms_per_update;
             }
             sender.dispatch(&mut world.res);
-            world.maintain();
 
             sleep(Duration::from_millis(ms_per_update - lag));
         }

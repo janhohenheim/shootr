@@ -15,14 +15,10 @@ impl<'a> System<'a> for Despawn {
      Fetch<'a, RwLock<World<Id>>>);
 
     fn run(&mut self, (entities, actor, despawn, world): Self::SystemData) {
-        let mut to_despawn = Vec::new();
         let mut world = world.write().unwrap();
         for (entity, actor, _) in (&*entities, &actor, &despawn).join() {
-            to_despawn.push(entity);
-            world.remove(&actor.id);
-        }
-        for entity in to_despawn.drain(..) {
             entities.delete(entity);
+            world.remove(&actor.id);
         }
     }
 }

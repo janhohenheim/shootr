@@ -39,11 +39,15 @@ fn handle_movement(
             x: other.bounds.x,
             y: other.bounds.y,
         };
-        let angle = angle(&own, &other);
-        if angle < 270.0 || angle > 90.0 {
-            vel.x = -vel.x.abs();
+        if own == other {
+            vel.x = -vel.x;
         } else {
-            vel.x = vel.x.abs();
+            let angle = angle(&own, &other);
+            if angle < 270.0 || angle > 90.0 {
+                vel.x = -vel.x.abs();
+            } else {
+                vel.x = vel.x.abs();
+            }
         }
     });
     let next_x = pos.x + vel.x;

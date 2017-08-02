@@ -31,9 +31,13 @@ pub fn timestamp() -> u64 {
 }
 
 pub fn angle(a: &Vector, b: &Vector) -> f64 {
-    assert_ne!(*a, *b);
+    assert_ne!(
+        *a,
+        *b,
+        "Failed to calculate angle between two points: Points are equivalent"
+    );
     let d_x = b.x as f64 - a.x as f64;
-    // swapped because a positive y means down for us
+    // Swapped because a positive y means down for us
     let d_y = a.y as f64 - b.y as f64;
     let mut rad = d_y.atan2(d_x);
     while rad < 0.0 {

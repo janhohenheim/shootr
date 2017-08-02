@@ -78,8 +78,8 @@ fn spawn_player(
     let bounds = Bounds {
         x,
         y,
-        width: 10,
-        height: 50,
+        width: 15,
+        height: 75,
     };
     world.add(actor.id, bounds);
 }
@@ -100,8 +100,8 @@ fn spawn_ball(
     let bounds = Bounds {
         x,
         y,
-        width: 10,
-        height: 10,
+        width: 15,
+        height: 15,
     };
     world.add(actor.id, bounds);
 }
