@@ -203,14 +203,16 @@ function setup() {
 
 
 function getDelay() {
-    if (states.length === 0 || !players || !ownId) {
-        const noDelay = {
-            ping: 0,
-            clock: 0,
-        }
-        return noDelay
+    const noDelay = {
+        ping: 0,
+        clock: 0,
     }
+    if (states.length === 0 || !ownId) 
+        return noDelay
+    
     const players = states[states.length - 1].actors
+    if (!players[ownId])
+        return noDelay
     return players[ownId].delay
 }
 
