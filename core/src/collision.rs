@@ -340,8 +340,8 @@ mod test {
     }
 
     impl<'a, Id> From<CollisionObject<'a, Id>> for CollisionObjectClone<Id>
-        where
-            Id: Clone,
+    where
+        Id: Clone,
     {
         fn from(obj: CollisionObject<'a, Id>) -> Self {
             CollisionObjectClone {
@@ -738,27 +738,27 @@ mod test {
             .iter()
             .position(|&(ref lhs, ref rhs)| {
                 (lhs.id == id_a && lhs.bounds == bounds_a && rhs.id == id_b &&
-                    rhs.bounds == bounds_b) ||
+                     rhs.bounds == bounds_b) ||
                     (rhs.id == id_a && rhs.bounds == bounds_a && lhs.id == id_b &&
-                        lhs.bounds == bounds_b)
+                         lhs.bounds == bounds_b)
             })
             .unwrap();
         let a_c_pos = collisions
             .iter()
             .position(|&(ref lhs, ref rhs)| {
                 (lhs.id == id_a && lhs.bounds == bounds_a && rhs.id == id_c &&
-                    rhs.bounds == bounds_c) ||
+                     rhs.bounds == bounds_c) ||
                     (rhs.id == id_a && rhs.bounds == bounds_a && lhs.id == id_c &&
-                        lhs.bounds == bounds_c)
+                         lhs.bounds == bounds_c)
             })
             .unwrap();
         let b_c_pos = collisions
             .iter()
             .position(|&(ref lhs, ref rhs)| {
                 (lhs.id == id_b && lhs.bounds == bounds_b && rhs.id == id_c &&
-                    rhs.bounds == bounds_c) ||
+                     rhs.bounds == bounds_c) ||
                     (rhs.id == id_b && rhs.bounds == bounds_b && lhs.id == id_c &&
-                        lhs.bounds == bounds_c)
+                         lhs.bounds == bounds_c)
             })
             .unwrap();
         assert!(a_b_pos != a_c_pos && a_b_pos != b_c_pos && a_c_pos != b_c_pos);
