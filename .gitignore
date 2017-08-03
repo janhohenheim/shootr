@@ -58,3 +58,7 @@ typings/
 
 # dotenv environment variables file
 .env
+
+# built javascript
+/web/client/public/*.js
+/web/client/public/*.js.map
