@@ -27,7 +27,7 @@ before_install:
 - nvm install node
 
 install:
-- cd web/client && npm install
+- (cd web/client && npm install)
 
 before_script:
   # Install tools if not already installed
