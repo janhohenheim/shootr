@@ -42,7 +42,19 @@ pub struct Ping;
 #[derive(Component)]
 pub struct Pong {
     pub ping_id: PingId,
-    pub timestamp: u64,
+    pub timestamps: PongTimestamps,
+}
+
+#[derive(Debug, Clone)]
+pub struct PongTimestamps {
+    pub server: u64,
+    pub client: u64,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Delay {
+    pub ping: usize,
+    pub clock: i32,
 }
 
 pub type KeyboardState = HashMap<Key, bool>;
@@ -51,8 +63,8 @@ pub struct Player {
     pub send_channel: SendChannel,
     pub inputs: Vec<KeyboardState>,
     pub last_input: u32,
-    pub delay: usize,
-    pub pingpongs: HashMap<PingId, (u64, Option<u64>)>,
+    pub delay: Delay,
+    pub pingpongs: HashMap<PingId, (u64, Option<PongTimestamps>)>,
 }
 impl Player {
     pub fn new(send_channel: SendChannel) -> Self {
@@ -60,7 +72,7 @@ impl Player {
             send_channel,
             inputs: Vec::new(),
             last_input: 0,
-            delay: 0,
+            delay: Delay { ping: 0, clock: 0 },
             pingpongs: HashMap::new(),
         }
     }

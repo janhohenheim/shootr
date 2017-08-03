@@ -47,11 +47,18 @@ function connect(address) {
             case 'WorldUpdate':
                 const state = {}
                 state.actors = msg.payload.actors
-                state.timestamp = Date.now()
+                state.timestamp = msg.timestamp + getDelay().clock
                 states.push(state)
                 const index = unconfirmedInputs.findIndex((input) => input.id === msg.payload.last_input) + 1
                 if (index > 0)
                     unconfirmedInputs.splice(0, index)
+                break;
+            case 'Ping':
+                const pong =  {
+                    id: msg.payload,
+                    timestamp: Date.now(),
+                }
+                send(pong);
                 break;
             default:
                 throw 'Received invalid opcode: ' + msg.opcode
@@ -94,10 +101,8 @@ function incrementWait() {
 }
 
 function send(data) {
-    if (io && io.readyState === 1) {
-        console.log('sending data: ', data)
+    if (io && io.readyState === 1) 
         io.send(JSON.stringify(data))
-    }
 }
 
 const Application = PIXI.Application,
@@ -190,15 +195,21 @@ function setup() {
     resize()
     window.addEventListener('resize', resize);
 
-    setInterval(() => setPingInfo(getOwnPing()), 1000)
+    setInterval(() => setPingInfo(getDelay().ping), 1000)
     const addr = window.location.hostname === 'localhost' ? 'ws://localhost:8081' : 'wss://beta.jnferner.com/socket'
     connect(addr)
     app.ticker.add(gameLoop)
 }
 
-function getOwnPing() {
-    if (states.length === 0 || !ownId)
-        return 0
+
+function getDelay() {
+    if (states.length === 0 || !players || !ownId) {
+        const noDelay = {
+            ping: 0,
+            clock: 0,
+        }
+        return noDelay
+    }
     const players = states[states.length - 1].actors
     return players[ownId].delay
 }
@@ -241,8 +252,10 @@ function play() {
 function render(states) {
     const renderTime = getRenderTime()
     const index = getIndexOfRenderState(states, renderTime)
-    if (index < 0)
+    if (index < 0) {
+        console.log("Waiting for more recent snapshot")
         return
+    }
     states.splice(0, index);
     let interpolatedState = getInterpolatedState(states[0], states[1], renderTime)
     setWorld(interpolatedState)

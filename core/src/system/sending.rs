@@ -11,6 +11,7 @@ use self::serde::ser::Serialize;
 
 use model::comp::{Pos, Vel, ToSpawn, ToDespawn, Player as PlayerComp, Actor};
 use model::client::{Message as ClientMessage, OpCode};
+use util::timestamp;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -43,8 +44,12 @@ fn send<T>(player: &PlayerComp, msg: &ClientMessage<T>)
 where
     T: Serialize + Debug,
 {
-    let msg = serde_json::to_string(&msg).expect(&format!("Failed to serialize object {:?}", msg));
+    let mut msg =
+        serde_json::to_string(&msg).expect(&format!("Failed to serialize object {:?}", msg));
     let send_channel = player.send_channel.clone();
+    let timestamp = format!(",\"timestamp\":{}", timestamp());
+    let json_end_pos = msg.len() - 1;
+    msg.insert_str(json_end_pos, &timestamp);
     send_channel.send(Message::Text(msg)).wait().expect(
         "Failed to send message",
     );

@@ -5,17 +5,15 @@ extern crate chrono;
 extern crate serde_json;
 extern crate websocket_server;
 extern crate dotenv;
-extern crate byteorder;
 
 use specs::{DispatcherBuilder, World, Entity};
 use chrono::prelude::*;
 use websocket_server::{start as start_server, EventHandler, SendChannel, Message};
 use dotenv::dotenv;
-use byteorder::{BigEndian, ReadBytesExt};
 
-use shootr::util::{read_env_var, elapsed_ms, timestamp, SeqId};
-use shootr::model::comp::{ToSpawn, ToDespawn, Player, Ping, Pong, Actor, ActorKind};
-use shootr::model::client::KeyState;
+use shootr::util::{read_env_var, elapsed_ms, timestamp};
+use shootr::model::comp::{ToSpawn, ToDespawn, Player, Ping, Pong, PongTimestamps, Actor, ActorKind};
+use shootr::model::client::{KeyState, Pong as PongMsg};
 use shootr::model::game::Id;
 use shootr::system::*;
 use shootr::bootstrap;
@@ -26,7 +24,6 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::collections::{HashMap, HashSet};
 use std::net::SocketAddr;
-use std::io::Cursor;
 
 fn main() {
     dotenv().ok();
@@ -41,7 +38,7 @@ struct Handler {
     to_spawn: RwLock<HashMap<Id, SendChannel>>,
     to_despawn: RwLock<HashSet<Id>>,
     inputs: Arc<RwLock<HashMap<Id, Vec<KeyState>>>>,
-    pongs: Arc<RwLock<Vec<(Id, SeqId, u64)>>>,
+    pongs: Arc<RwLock<Vec<(Id, Pong)>>>,
 }
 
 impl Handler {
@@ -64,7 +61,7 @@ impl Handler {
     }
 
 
-    fn handle_text(&self, id: Id, msg: &str) {
+    fn handle_msg(&self, id: Id, msg: &str) {
         if let Ok(key_state) = serde_json::from_str::<KeyState>(msg) {
             let mut inputs = self.inputs.write().unwrap();
             let has_already_inputs = inputs.get(&id).is_some();
@@ -73,23 +70,19 @@ impl Handler {
             } else {
                 inputs.insert(id, vec![key_state]);
             }
+        } else if let Ok(pong_msg) = serde_json::from_str::<PongMsg>(msg) {
+            let pong = Pong {
+                ping_id: pong_msg.id,
+                timestamps: PongTimestamps {
+                    server: timestamp(),
+                    client: pong_msg.timestamp,
+                },
+            };
+            self.pongs.write().unwrap().push((id, pong));
         } else {
             println!("Client {}: Sent invalid message: {}", id, msg);
         }
     }
-
-    fn handle_pong(&self, id: Id, data: &[u8]) {
-        let timestamp = timestamp();
-
-        let mut rdr = Cursor::new(data);
-        if let Ok(data) = rdr.read_u32::<BigEndian>() {
-            let mut pongs = self.pongs.write().unwrap();
-            pongs.push((id, data, timestamp));
-        } else {
-            println!("Client {}: Sent pong with invalid bytes {:?}", id, data);
-        }
-    }
-
 
     fn register_player_spawns(&self, world: &mut World) {
         let mut id_entity = self.id_entity.write().unwrap();
@@ -125,12 +118,9 @@ impl Handler {
         let id_entity = self.id_entity.read().unwrap();
         let mut pongs = self.pongs.write().unwrap();
         for pong in pongs.drain(..) {
-            let (player_id, ping_id, timestamp) = pong;
+            let (player_id, pong) = pong;
             if let Some(entity) = id_entity.get(&player_id) {
-                world.write::<Pong>().insert(
-                    *entity,
-                    Pong { ping_id, timestamp },
-                );
+                world.write::<Pong>().insert(*entity, pong);
             }
         }
     }
@@ -203,8 +193,7 @@ impl EventHandler for Handler {
 
     fn on_message(&self, id: Self::Id, msg: Message) {
         match msg {
-            Message::Text(ref txt) => self.handle_text(id, txt),
-            Message::Pong(ref data) => self.handle_pong(id, data),
+            Message::Text(ref txt) => self.handle_msg(id, txt),
             _ => {}
         };
     }

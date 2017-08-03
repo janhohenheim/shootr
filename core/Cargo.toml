@@ -4,7 +4,6 @@ name = "shootr"
 version = "0.2.0"
 
 [dependencies]
-byteorder = "1"
 chrono = "0.4"
 derive_more = "0.6.0"
 dotenv = "0.10"
