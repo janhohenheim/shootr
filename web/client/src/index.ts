@@ -16,6 +16,19 @@ type Input = {
   pressed: any // TODO: idk what type that should be
 }
 
+enum OpCode {
+    Greeting = 'Greeting',
+    Spawn = 'Spawn',
+    Despawn = 'Despawn',
+    WorldUpdate = 'WorldUpdate',
+    Ping = 'Ping',
+}
+
+enum ActorKind {
+    Player = 'Player',
+    Ball = 'Ball',
+}
+
 function setPingInfo(ping) {
     pingInfo.text = 'Ping: ' + ping
     let fill
@@ -40,7 +53,7 @@ function connect(address) {
         const msg = JSON.parse(serializedMsg.data, (key, value) => value === "" ? 0 : value)
 
         switch (msg.opcode) {
-            case 'Greeting':
+            case OpCode.Greeting:
                 ownId = msg.payload[0]
                 const actors = msg.payload[1]
 
@@ -48,13 +61,13 @@ function connect(address) {
                     spawnActor(actor)
                 }
                 break;
-            case 'Spawn':
+            case OpCode.Spawn:
                 spawnActor(msg.payload)
                 break;
-            case 'Despawn':
+            case OpCode.Despawn:
                 removeActor(msg.payload)
                 break;
-            case 'WorldUpdate':
+            case OpCode.WorldUpdate:
                 const state = {
                     actors: msg.payload.actors,
                     timestamp: msg.timestamp + getDelay().clock
@@ -64,7 +77,7 @@ function connect(address) {
                 if (index > 0)
                     unconfirmedInputs.splice(0, index)
                 break;
-            case 'Ping':
+            case OpCode.Ping:
                 const pong =  {
                     id: msg.payload,
                     timestamp: Date.now(),
@@ -72,7 +85,7 @@ function connect(address) {
                 send(pong);
                 break;
             default:
-                throw 'Received invalid opcode: ' + msg.opcode
+                throw new Error(`Received invalid opcode: ${msg.opcode}`)
         }
     }
 
@@ -344,18 +357,18 @@ function spawnActor(actor) {
     let height
     let width
     switch (actor.kind) {
-        case "Player":
+        case ActorKind.Player:
             texture = 'fancy-paddle-green.png'
             height = 75
             width = 15
             break;
-        case "Ball":
+        case ActorKind.Ball:
             texture = 'fancy-ball.png'
             height = 15
             width = 15
             break;
         default:
-            throw 'Tried to spawn invalid kind of actor: ' + actor.kind
+            throw new Error(`Tried to spawn invalid kind of actor: ${actor.kind}`)
     }
     // TODO: i'm sorry for this too
     const sprite = new Sprite(resources.pong && resources.pong.textures && resources.pong.textures[texture])
