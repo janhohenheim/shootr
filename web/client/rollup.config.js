@@ -1,5 +1,6 @@
 import typescript from 'rollup-plugin-typescript'
 import babel from 'rollup-plugin-babel'
+import uglify from 'rollup-plugin-uglify-es'
 
 export default {
   entry: './src/index.ts',
@@ -10,6 +11,7 @@ export default {
     typescript({
       typescript: require('typescript')
     }),
-    babel()
+    babel(),
+    uglify()
   ]
 }

@@ -2,6 +2,7 @@
 
 echo "Compiling release binaries"
 (cd core/ && cargo build --release);
+(cd web/client && npm run build);
 
 echo "stopping services..."
 ssh jnf service shootr stop;

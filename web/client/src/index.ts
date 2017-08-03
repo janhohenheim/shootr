@@ -1,19 +1,19 @@
 'use strict'
 
-let io
-let connectionInfo
-let pingInfo
+let io: WebSocket | null
+let connectionInfo: PIXI.Text
+let pingInfo: PIXI.Text
 let states: Array<State> = []
 
 type State = {
-    actors: any, // TODO: idk what type that should be
+    actors: any, // TODO: Add type
     timestamp: number
 }
 
 type Input = {
-  id: any, // TODO: idk what type that should be
-  key: any, // TODO: idk what type that should be
-  pressed: any // TODO: idk what type that should be
+  id: number,
+  key: string,
+  pressed: boolean
 }
 
 enum OpCode {
@@ -31,7 +31,7 @@ enum ActorKind {
 
 function setPingInfo(ping) {
     pingInfo.text = 'Ping: ' + ping
-    let fill
+    let fill: number
     if (ping < 100)
         fill = 0x57fc20
     else if (ping < 200)
@@ -41,7 +41,7 @@ function setPingInfo(ping) {
     pingInfo.style.fill = fill
 }
 
-let ownId
+let ownId: number
 function connect(address) {
     io = new WebSocket(address)
     io.onopen = () => {
@@ -104,8 +104,10 @@ function connect(address) {
         connectionInfo.visible = true
         for (let id of Object.keys(actors))
             removeActor(id)
-        io.close()
-        io = null
+        if (io) {
+            io.close()
+            io = null
+        }
     };
 }
 
@@ -353,9 +355,9 @@ function setBlur(obj, vel) {
 
 
 function spawnActor(actor) {
-    let texture
-    let height
-    let width
+    let texture: string
+    let height: number
+    let width: number
     switch (actor.kind) {
         case ActorKind.Player:
             texture = 'fancy-paddle-green.png'

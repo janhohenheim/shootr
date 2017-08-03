@@ -6,16 +6,16 @@ const dotenv = require('dotenv')
 let result = dotenv.config()
 if (result.error) {
     result = dotenv.config({
-        path: '../.env'
+        path: '../../.env'
     })
     if (result.error)
         throw result.error
 }
 
 const app = express()
-const port = read_env_var("SITE_PORT")
+const port = readEnvVar('SITE_PORT')
 
-app.use(express.static('public'))
+app.use(express.static('../client/public'))
 
 app.get('/', (req, res) => {
     res.sendFile('index.html')
@@ -25,7 +25,7 @@ app.listen(port, () => {
     console.log('listening on port', port)
 })
 
-function read_env_var(envvar) {
+function readEnvVar(envvar) {
     const val = process.env[envvar]
     if (!val)
         throw envvar + " must be specified. \
