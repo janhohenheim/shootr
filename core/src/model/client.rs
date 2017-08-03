@@ -72,5 +72,4 @@ pub struct KeyState {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Pong {
     pub id: PingId,
-    pub timestamp: u64,
 }

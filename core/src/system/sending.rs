@@ -4,17 +4,18 @@ extern crate serde;
 extern crate serde_json;
 extern crate websocket_server;
 
-use self::specs::{Join, ReadStorage, WriteStorage, System, Entities, EntitiesRes};
+use self::specs::{Join, ReadStorage, WriteStorage, System, Entities, EntitiesRes, Fetch};
 use self::futures::{Future, Sink};
 use self::websocket_server::Message;
 use self::serde::ser::Serialize;
 
 use model::comp::{Pos, Vel, ToSpawn, ToDespawn, Player as PlayerComp, Actor};
 use model::client::{Message as ClientMessage, OpCode};
-use util::timestamp;
+use util::StopWatch;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::sync::RwLock;
 
 pub struct Sending;
 impl<'a> System<'a> for Sending {
@@ -25,29 +26,29 @@ impl<'a> System<'a> for Sending {
      ReadStorage<'a, Actor>,
      WriteStorage<'a, ToSpawn>,
      ReadStorage<'a, ToDespawn>,
+     Fetch<'a, RwLock<StopWatch>>,
      Entities<'a>);
 
-    fn run(
-        &mut self,
-        (pos, vel, player, actor, mut connect, disconnect, entities): Self::SystemData,
-    ) {
+    fn run(&mut self, data: Self::SystemData) {
+        let (pos, vel, player, actor, mut connect, disconnect, server_clock, entities) = data;
+        let server_clock = server_clock.read().unwrap();
 
-        handle_new_connections(&player, &*entities, &actor, &mut connect);
-        handle_disconnects(&player, &actor, &disconnect);
+        handle_new_connections(&player, &server_clock, &*entities, &actor, &mut connect);
+        handle_disconnects(&player, &server_clock, &actor, &disconnect);
 
-        send_world_updates(&player, &actor, &pos, &vel);
+        send_world_updates(&player, &server_clock, &actor, &pos, &vel);
     }
 }
 
 
-fn send<T>(player: &PlayerComp, msg: &ClientMessage<T>)
+fn send<T>(player: &PlayerComp, server_clock: &StopWatch, msg: &ClientMessage<T>)
 where
     T: Serialize + Debug,
 {
     let mut msg =
         serde_json::to_string(&msg).expect(&format!("Failed to serialize object {:?}", msg));
     let send_channel = player.send_channel.clone();
-    let timestamp = format!(",\"timestamp\":{}", timestamp());
+    let timestamp = format!(",\"server_time\":{}", server_clock.get_ms());
     let json_end_pos = msg.len() - 1;
     msg.insert_str(json_end_pos, &timestamp);
     send_channel.send(Message::Text(msg)).wait().expect(
@@ -58,6 +59,7 @@ where
 
 fn handle_new_connections(
     player: &ReadStorage<PlayerComp>,
+    server_clock: &StopWatch,
     entities: &EntitiesRes,
     actor: &ReadStorage<Actor>,
     spawn: &mut WriteStorage<ToSpawn>,
@@ -78,9 +80,9 @@ fn handle_new_connections(
         let other_spawn_msg = ClientMessage::new_spawn(&new_actor);
         for (player, entity) in (player, entities).join() {
             if entity == new_entity {
-                send(player, &greeting_msg);
+                send(player, server_clock, &greeting_msg);
             } else {
-                send(player, &other_spawn_msg);
+                send(player, server_clock, &other_spawn_msg);
             }
         }
     }
@@ -88,13 +90,14 @@ fn handle_new_connections(
 
 fn handle_disconnects(
     player: &ReadStorage<PlayerComp>,
+    server_clock: &StopWatch,
     actor: &ReadStorage<Actor>,
     disconnect: &ReadStorage<ToDespawn>,
 ) {
     for (actor, _) in (actor, disconnect).join() {
         let msg = ClientMessage::new_despawn(&actor.id);
         for player in (player).join() {
-            send(player, &msg);
+            send(player, server_clock, &msg);
         }
     }
 
@@ -102,6 +105,7 @@ fn handle_disconnects(
 
 fn send_world_updates(
     player: &ReadStorage<PlayerComp>,
+    server_clock: &StopWatch,
     actor: &ReadStorage<Actor>,
     pos: &ReadStorage<Pos>,
     vel: &ReadStorage<Vel>,
@@ -133,6 +137,6 @@ fn send_world_updates(
             opcode: OpCode::WorldUpdate,
             payload: &payload,
         };
-        send(player, &world_state);
+        send(player, server_clock, &world_state);
     }
 }

@@ -19,16 +19,36 @@ pub fn read_env_var(var: &str) -> String {
 }
 
 
-pub fn elapsed_ms(from: DateTime<Utc>, to: DateTime<Utc>) -> Result<u64, ()> {
+pub type Time = u64;
+pub fn elapsed_ms(from: DateTime<Utc>, to: DateTime<Utc>) -> Result<Time, ()> {
     let ms = to.signed_duration_since(from).num_milliseconds();
-    if ms >= 0 { Ok(ms as u64) } else { Err(()) }
+    if ms >= 0 { Ok(ms as Time) } else { Err(()) }
 }
 
-pub fn timestamp() -> u64 {
+pub fn timestamp() -> Time {
     let now = SystemTime::now();
     let elapsed = now.duration_since(UNIX_EPOCH).expect("Time went backwards");
-    elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as u64 / 1_000_000
+    elapsed.as_secs() * 1000 + elapsed.subsec_nanos() as Time / 1_000_000
 }
+
+
+#[derive(Debug)]
+pub struct StopWatch {
+    start: Time,
+}
+
+impl StopWatch {
+    pub fn new() -> Self {
+        StopWatch { start: timestamp() }
+    }
+    pub fn reset(&mut self) {
+        self.start = timestamp();
+    }
+    pub fn get_ms(&self) -> Time {
+        timestamp() - self.start
+    }
+}
+
 
 pub fn angle(a: &Vector, b: &Vector) -> f64 {
     assert_ne!(
@@ -111,6 +131,8 @@ macro_rules! add_impl {
 mod test {
     use super::*;
     use util::chrono::TimeZone;
+    use std::thread;
+    use std::time::Duration;
 
     #[test]
     fn read_string_envvar() {
@@ -156,9 +178,6 @@ mod test {
 
     #[test]
     fn timestamp_wait() {
-        use std::thread;
-        use std::time::Duration;
-
         let a = timestamp();
         let delta = 420;
         thread::sleep(Duration::from_millis(delta + 10));
@@ -166,6 +185,30 @@ mod test {
         assert!(b - a >= delta)
     }
 
+
+    #[test]
+    fn stopwatch_init() {
+        StopWatch::new();
+    }
+
+    #[test]
+    fn stopwatch_wait() {
+        let delta = 123;
+        let clock = StopWatch::new();
+        thread::sleep(Duration::from_millis(delta + 10));
+        assert!(clock.get_ms() >= delta);
+    }
+
+    #[test]
+    fn stopwatch_reset() {
+        let mut clock = StopWatch::new();
+        thread::sleep(Duration::from_millis(222));
+        let old = clock.get_ms();
+        clock.reset();
+        thread::sleep(Duration::from_millis(111));
+        let new = clock.get_ms();
+        assert!(old > new);
+    }
 
     #[test]
     #[should_panic]

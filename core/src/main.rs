@@ -11,8 +11,8 @@ use chrono::prelude::*;
 use websocket_server::{start as start_server, EventHandler, SendChannel, Message};
 use dotenv::dotenv;
 
-use shootr::util::{read_env_var, elapsed_ms, timestamp};
-use shootr::model::comp::{ToSpawn, ToDespawn, Player, Ping, Pong, PongTimestamps, Actor, ActorKind};
+use shootr::util::{read_env_var, elapsed_ms, timestamp, StopWatch};
+use shootr::model::comp::{ToSpawn, ToDespawn, Player, Ping, Pong, Actor, ActorKind};
 use shootr::model::client::{KeyState, Pong as PongMsg};
 use shootr::model::game::Id;
 use shootr::system::*;
@@ -46,6 +46,7 @@ impl Handler {
         bootstrap::prepare_world(world);
         world.add_resource(self.inputs.clone());
         world.add_resource(RwLock::new(CollisionWorld::<Id>::new(1000, 1000)));
+        world.add_resource(RwLock::new(StopWatch::new()));
 
         // Create ball
         let id = Id::new_v4();
@@ -73,10 +74,7 @@ impl Handler {
         } else if let Ok(pong_msg) = serde_json::from_str::<PongMsg>(msg) {
             let pong = Pong {
                 ping_id: pong_msg.id,
-                timestamps: PongTimestamps {
-                    server: timestamp(),
-                    client: pong_msg.timestamp,
-                },
+                timestamp: timestamp(),
             };
             self.pongs.write().unwrap().push((id, pong));
         } else {
