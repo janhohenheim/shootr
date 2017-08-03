@@ -1,0 +1,29 @@
+{
+  "name": "shootr-client",
+  "version": "0.2.0",
+  "description": "Website and client for shootr",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "rollup -c",
+    "tsc": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SirRade/shootr.git"
+  },
+  "author": "Jan Nils Ferner",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/SirRade/shootr/issues"
+  },
+  "homepage": "https://github.com/SirRade/shootr#readme",
+  "devDependencies": {
+    "@types/pixi.js": "^4.5.2",
+    "babel-plugin-external-helpers": "^6.22.0",
+    "babel-preset-env": "^1.6.0",
+    "rollup": "^0.45.2",
+    "rollup-plugin-babel": "^2.7.1",
+    "rollup-plugin-typescript": "^0.8.1",
+    "typescript": "^2.4.2"
+  }
+}

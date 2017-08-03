@@ -1,5 +1,5 @@
 {
-  "name": "shootr",
+  "name": "shootr-server",
   "version": "0.2.0",
   "description": "Website and client for shootr",
   "main": "app.js",

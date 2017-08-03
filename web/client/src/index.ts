@@ -1,10 +1,20 @@
 'use strict'
 
-let io = null
+let io
 let connectionInfo
 let pingInfo
-let states = []
+let states: Array<State> = []
 
+type State = {
+    actors: any, // TODO: idk what type that should be
+    timestamp: number
+}
+
+type Input = {
+  id: any, // TODO: idk what type that should be
+  key: any, // TODO: idk what type that should be
+  pressed: any // TODO: idk what type that should be
+}
 
 function setPingInfo(ping) {
     pingInfo.text = 'Ping: ' + ping
@@ -45,9 +55,10 @@ function connect(address) {
                 removeActor(msg.payload)
                 break;
             case 'WorldUpdate':
-                const state = {}
-                state.actors = msg.payload.actors
-                state.timestamp = msg.timestamp + getDelay().clock
+                const state = {
+                    actors: msg.payload.actors,
+                    timestamp: msg.timestamp + getDelay().clock
+                }
                 states.push(state)
                 const index = unconfirmedInputs.findIndex((input) => input.id === msg.payload.last_input) + 1
                 if (index > 0)
@@ -101,7 +112,7 @@ function incrementWait() {
 }
 
 function send(data) {
-    if (io && io.readyState === 1) 
+    if (io && io.readyState === 1)
         io.send(JSON.stringify(data))
 }
 
@@ -148,7 +159,7 @@ function sendKeyWithVal(key, val) {
 }
 
 let msgId = 1
-const unconfirmedInputs = []
+const unconfirmedInputs: Array<Input> = []
 function sendIfNew(key, val) {
     if (keyPressed[key] !== val) {
         keyPressed[key] = val
@@ -171,7 +182,8 @@ function loadProgressHandler(loader, resource) {
 }
 
 function setup() {
-    const background = new Sprite(resources.pong.textures['fancy-court.png'])
+    // TODO: i'm sorry for this: resources.pong && resources.pong.textures && resources.pong.textures['fancy-court.png']
+    const background = new Sprite(resources.pong && resources.pong.textures && resources.pong.textures['fancy-court.png'])
     background.width = GAME_WIDTH
     background.height = GAME_HEIGHT
     app.stage.addChild(background)
@@ -207,9 +219,9 @@ function getDelay() {
         ping: 0,
         clock: 0,
     }
-    if (states.length === 0 || !ownId) 
+    if (states.length === 0 || !ownId)
         return noDelay
-    
+
     const players = states[states.length - 1].actors
     if (!players[ownId])
         return noDelay
@@ -220,15 +232,16 @@ function resize() {
     let ratio = window.innerWidth / GAME_WIDTH
     if (GAME_HEIGHT * ratio > window.innerHeight)
         ratio = window.innerHeight / GAME_HEIGHT
-    app.width = app.stage.width = GAME_WIDTH * ratio
-    app.height = app.stage.height = GAME_HEIGHT * ratio
+    // TODO: types say that width and height don't exist (workaround with square brackets used)
+    app['width'] = app.stage.width = GAME_WIDTH * ratio
+    app['height'] = app.stage.height = GAME_HEIGHT * ratio
 }
 
 
 let onGameUpdate = connecting
 
 function gameLoop(delta) {
-    onGameUpdate(delta)
+    onGameUpdate()
 }
 
 function connecting() {
@@ -328,7 +341,7 @@ function setBlur(obj, vel) {
 
 function spawnActor(actor) {
     let texture
-    let height 
+    let height
     let width
     switch (actor.kind) {
         case "Player":
@@ -344,7 +357,8 @@ function spawnActor(actor) {
         default:
             throw 'Tried to spawn invalid kind of actor: ' + actor.kind
     }
-    const sprite = new Sprite(resources.pong.textures[texture])
+    // TODO: i'm sorry for this too
+    const sprite = new Sprite(resources.pong && resources.pong.textures && resources.pong.textures[texture])
     sprite.anchor.set(0.5)
     sprite.width = width
     sprite.height = height
