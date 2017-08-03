@@ -40,5 +40,4 @@ before_script:
 
 after_success:
   - cargo clippy -- -Z no-trans -D clippy # clippy really loves to break, so it's okay if it fails
-  - cd ..
   - cargo tarpaulin --ciserver travis-ci --coveralls $TRAVIS_JOB_ID
