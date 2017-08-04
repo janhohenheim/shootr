@@ -50,7 +50,7 @@ function connect(address) {
     };
 
     io.onmessage = (serializedMsg) => {
-        const msg = JSON.parse(serializedMsg.data, (key, value) => value === "" ? 0 : value)
+        const msg = JSON.parse(serializedMsg.data, (_, value) => value === "" ? 0 : value)
 
         switch (msg.opcode) {
             case OpCode.Greeting:
@@ -255,7 +255,7 @@ function resize() {
 
 let onGameUpdate = connecting
 
-function gameLoop(delta) {
+function gameLoop() {
     onGameUpdate()
 }
 
