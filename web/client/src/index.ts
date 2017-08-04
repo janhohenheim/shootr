@@ -42,6 +42,14 @@ function setPingInfo(ping) {
 }
 
 let ownId: number
+let localClockOffset: number
+
+type ServerMessage = {
+    opcode: OpCode,
+    payload: any,
+    server_time: number
+}
+
 function connect(address) {
     io = new WebSocket(address)
     io.onopen = () => {
@@ -50,12 +58,13 @@ function connect(address) {
     };
 
     io.onmessage = (serializedMsg) => {
-        const msg = JSON.parse(serializedMsg.data, (_, value) => value === "" ? 0 : value)
+        const msg: ServerMessage = JSON.parse(serializedMsg.data, (_, value) => value === "" ? 0 : value)
 
         switch (msg.opcode) {
             case OpCode.Greeting:
                 ownId = msg.payload[0]
                 const actors = msg.payload[1]
+                localClockOffset = msg.server_time - Math.floor(performance.now())
 
                 for (let actor of actors) {
                     spawnActor(actor)
@@ -70,7 +79,7 @@ function connect(address) {
             case OpCode.WorldUpdate:
                 const state = {
                     actors: msg.payload.actors,
-                    timestamp: msg.timestamp + getDelay().clock
+                    timestamp: msg.server_time + localClockOffset
                 }
                 states.push(state)
                 const index = unconfirmedInputs.findIndex((input) => input.id === msg.payload.last_input) + 1
@@ -80,7 +89,6 @@ function connect(address) {
             case OpCode.Ping:
                 const pong =  {
                     id: msg.payload,
-                    timestamp: Date.now(),
                 }
                 send(pong);
                 break;
@@ -248,8 +256,9 @@ function resize() {
     if (GAME_HEIGHT * ratio > window.innerHeight)
         ratio = window.innerHeight / GAME_HEIGHT
     // TODO: types say that width and height don't exist (workaround with square brackets used)
-    app['width'] = app.stage.width = GAME_WIDTH * ratio
-    app['height'] = app.stage.height = GAME_HEIGHT * ratio
+    const width = app.stage.width = GAME_WIDTH * ratio
+    const height = app.stage.height = GAME_HEIGHT * ratio
+    app.renderer.resize(width, height)
 }
 
 
@@ -295,7 +304,7 @@ function getRenderTime() {
     const lerp_ratio = 2
     const update_rate = 30
     const delay = Math.floor(lerp_ratio * 1000 / update_rate)
-    const now = new Date().getTime()
+    const now = Math.floor(performance.now())
     return now - delay
 }
 
