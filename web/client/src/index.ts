@@ -1,4 +1,4 @@
-'use strict'
+"use strict"
 
 let io: WebSocket | null
 let connectionInfo: PIXI.Text
@@ -17,20 +17,20 @@ interface IInput {
 }
 
 enum OpCode {
-    Greeting = 'Greeting',
-    Spawn = 'Spawn',
-    Despawn = 'Despawn',
-    WorldUpdate = 'WorldUpdate',
-    Ping = 'Ping',
+    Greeting = "Greeting",
+    Spawn = "Spawn",
+    Despawn = "Despawn",
+    WorldUpdate = "WorldUpdate",
+    Ping = "Ping",
 }
 
 enum ActorKind {
-    Player = 'Player',
-    Ball = 'Ball',
+    Player = "Player",
+    Ball = "Ball",
 }
 
 function setPingInfo (ping) {
-    pingInfo.text = 'Ping: ' + ping
+    pingInfo.text = "Ping: " + ping
     let fill: number
     if (ping < 100) {
         fill = 0x57fc20
@@ -63,7 +63,7 @@ function connect (address) {
     }
 
     io.onmessage = (serializedMsg) => {
-        const msg: IServerMessage = JSON.parse(serializedMsg.data, (_, value) => value === '' ? 0 : value)
+        const msg: IServerMessage = JSON.parse(serializedMsg.data, (_, value) => value === "" ? 0 : value)
 
         switch (msg.opcode) {
         case OpCode.Greeting:
@@ -102,7 +102,7 @@ function connect (address) {
     }
 
     io.onclose = () => {
-        connectionInfo.text = 'Attempting to reconnect'
+        connectionInfo.text = "Attempting to reconnect"
         connectionInfo.visible = true
         io = null
         setTimeout(() => {
@@ -112,7 +112,7 @@ function connect (address) {
     }
 
     io.onerror = () => {
-        connectionInfo.text = 'Lost connection to server'
+        connectionInfo.text = "Lost connection to server"
         connectionInfo.visible = true
         for (const id of Object.keys(actors)) { removeActor(id) }
         if (io) {
@@ -148,21 +148,21 @@ document.body.appendChild(app.view)
 
 PIXI.loader
     .add([{
-        name: 'pong',
-        url: 'assets/pong.json',
+        name: "pong",
+        url: "assets/pong.json",
     } ])
-    .on('progress', loadProgressHandler)
+    .on("progress", loadProgressHandler)
     .load(setup)
 
-let validKeys = ['ArrowUp', 'ArrowDown']
+let validKeys = ["ArrowUp", "ArrowDown"]
 let keyPressed = {
     ArrowLeft: false,
     ArrowRight: false,
 }
-document.addEventListener('keydown', (event) => {
+document.addEventListener("keydown", (event) => {
     sendKeyWithVal(event.key, true)
 })
-document.addEventListener('keyup', (event) => {
+document.addEventListener("keyup", (event) => {
     sendKeyWithVal(event.key, false)
 })
 
@@ -188,22 +188,22 @@ function sendIfNew (key, val) {
 }
 
 function loadProgressHandler (loader, resource) {
-    console.log('loading: ' + resource.name + ' (' + resource.url + ')')
-    console.log('progress: ' + loader.progress + '%')
+    console.log("loading: " + resource.name + " (" + resource.url + ")")
+    console.log("progress: " + loader.progress + "%")
     if (resource.error) { console.error(resource.error) }
 }
 
 const resources = PIXI.loader.resources
 function setup () {
     if (!(resources.pong && resources.pong.textures)) {
-        throw new Error('Failed to setup stage: PIXI was not initialized properly')
+        throw new Error("Failed to setup stage: PIXI was not initialized properly")
     }
-    const background = new PIXI.Sprite(resources.pong.textures['fancy-court.png'])
+    const background = new PIXI.Sprite(resources.pong.textures["fancy-court.png"])
     background.width = GAME_WIDTH
     background.height = GAME_HEIGHT
     app.stage.addChild(background)
 
-    connectionInfo = new PIXI.Text('')
+    connectionInfo = new PIXI.Text("")
     connectionInfo.style.fill = 0xe3e3ed
     connectionInfo.style.dropShadow = true
     connectionInfo.style.dropShadowAlpha = 0.7
@@ -211,7 +211,7 @@ function setup () {
     connectionInfo.x = GAME_WIDTH - 300
     app.stage.addChild(connectionInfo)
 
-    pingInfo = new PIXI.Text('Ping: Calculating...')
+    pingInfo = new PIXI.Text("Ping: Calculating...")
     pingInfo.style.fill = 0xe3e3ed
     pingInfo.style.dropShadow = true
     pingInfo.style.dropShadowAlpha = 0.7
@@ -220,10 +220,10 @@ function setup () {
     app.stage.addChild(pingInfo)
 
     resize()
-    window.addEventListener('resize', resize)
+    window.addEventListener("resize", resize)
 
     setInterval(() => setPingInfo(getDelay().ping), 1000)
-    const addr = window.location.hostname === 'localhost' ? 'ws://localhost:8081' : 'wss://beta.jnferner.com/socket'
+    const addr = window.location.hostname === "localhost" ? "ws://localhost:8081" : "wss://beta.jnferner.com/socket"
     connect(addr)
     app.ticker.add(gameLoop)
 }
@@ -260,7 +260,7 @@ function gameLoop () {
 }
 
 function connecting () {
-    const txt = 'Connecting...'
+    const txt = "Connecting..."
     if (connectionInfo.text !== txt) {
         connectionInfo.text = txt
         connectionInfo.visible = true
@@ -282,7 +282,7 @@ function render () {
     const renderTime = getRenderTime()
     const index = getIndexOfRenderState(renderTime)
     if (index < 0) {
-        console.log('Waiting for more recent snapshot')
+        console.log("Waiting for more recent snapshot")
         return
     }
     states.splice(0, index)
@@ -352,12 +352,12 @@ function spawnActor (actor) {
     let width: number
     switch (actor.kind) {
     case ActorKind.Player:
-        texture = 'fancy-paddle-green.png'
+        texture = "fancy-paddle-green.png"
         height = 75
         width = 15
         break
     case ActorKind.Ball:
-        texture = 'fancy-ball.png'
+        texture = "fancy-ball.png"
         height = 15
         width = 15
         break

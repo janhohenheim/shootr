@@ -10,7 +10,13 @@
     "rules": {
         "trailing-comma": [true, {"multiline": "always", "singleline": "never"}],
         "no-console": [false],
-        "ter-indent": [true, 4]
+        "ter-indent": [true, 4],
+        "quotemark": [
+            true,
+            "double",
+            "avoid-escape",
+            "jsx-single"
+        ]
     },
     "rulesDirectory": []
 }
