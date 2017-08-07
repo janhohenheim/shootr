@@ -9,7 +9,8 @@
     "jsRules": {},
     "rules": {
         "trailing-comma": [true, {"multiline": "always", "singleline": "never"}],
-        "no-console": [false]
+        "no-console": [false],
+        "ter-indent": [true, 4]
     },
     "rulesDirectory": []
 }
