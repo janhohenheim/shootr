@@ -2,11 +2,10 @@
   "compilerOptions": {
     "target": "es6",
     "module": "es2015",
+
     "strict": true,
     "noImplicitAny": false,
-
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    "noImplicitThis": true,
     "noImplicitReturns": true
   }
 }

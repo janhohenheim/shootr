@@ -46,6 +46,9 @@ interface IServerMessage {
 }
 
 const unconfirmedInputs: IInput[] = []
+const MIN_WAIT = 100
+let wait = MIN_WAIT
+let actors = {}
 function connect (address) {
   io = new WebSocket(address)
   io.onopen = () => {
@@ -112,9 +115,6 @@ function connect (address) {
     }
   }
 }
-
-const MIN_WAIT = 100
-let wait = MIN_WAIT
 
 function resetWait () {
   wait = MIN_WAIT
@@ -318,7 +318,6 @@ function getInterpolatedState (from, to, renderTime) {
   return state
 }
 
-let actors = {}
 function setWorld (state) {
   for (const id of Object.keys(state)) {
     const liveActor = actors[id]

@@ -4,9 +4,7 @@
   "description": "Website and client for shootr",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "rollup -c",
-    "tsc": "tsc",
-    "fmt": "tslint --fix --type-check -p tslint.json 'src/**/*.ts'"
+    "build": "tslint --fix -p tsconfig.json 'src/**/*.ts' && rollup -c"
   },
   "repository": {
     "type": "git",
