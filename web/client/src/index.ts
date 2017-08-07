@@ -7,13 +7,13 @@ let states: IState[] = []
 
 interface IState {
   actors: any, // TODO: Add type
-  timestamp: number
+  timestamp: number,
 }
 
 interface IInput {
   id: number,
   key: string,
-  pressed: boolean
+  pressed: boolean,
 }
 
 enum OpCode {
@@ -32,7 +32,13 @@ enum ActorKind {
 function setPingInfo (ping) {
   pingInfo.text = 'Ping: ' + ping
   let fill: number
-  if (ping < 100) { fill = 0x57fc20 } else if (ping < 200) { fill = 0xfc9520 } else { fill = 0xef1c2a }
+  if (ping < 100) {
+    fill = 0x57fc20
+  } else if (ping < 200) {
+    fill = 0xfc9520
+  } else {
+    fill = 0xef1c2a
+  }
   pingInfo.style.fill = fill
 }
 
