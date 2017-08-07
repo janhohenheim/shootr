@@ -60,7 +60,7 @@ function connect (address) {
       case OpCode.Greeting:
         ownId = msg.payload[0]
         const presentActors = msg.payload[1]
-        localClockOffset = msg.server_time - Math.floor(performance.now())
+        localClockOffset = performance.now() - msg.server_time
 
         for (const actor of presentActors) {
           spawnActor(actor)
