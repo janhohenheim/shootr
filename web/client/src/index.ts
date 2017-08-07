@@ -222,24 +222,21 @@ function setup () {
     resize()
     window.addEventListener("resize", resize)
 
-    setInterval(() => setPingInfo(getDelay().ping), 1000)
+    setInterval(() => setPingInfo(getDelay()), 1000)
     const addr = window.location.hostname === "localhost" ? "ws://localhost:8081" : "wss://beta.jnferner.com/socket"
     connect(addr)
     app.ticker.add(gameLoop)
 }
 
 function getDelay () {
-    const noDelay = {
-        clock: 0,
-        ping: 0,
-    }
+    const defaultDelay = 0
     if (states.length === 0 || !ownId) {
-        return noDelay
+        return defaultDelay
     }
 
     const players = states[states.length - 1].actors
     if (!players[ownId]) {
-        return noDelay
+        return defaultDelay
     }
     return players[ownId].delay
 }
