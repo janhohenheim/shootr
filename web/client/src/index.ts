@@ -6,8 +6,18 @@ let pingInfo: PIXI.Text
 let states: IState[] = []
 
 interface IState {
-    actors: any, // TODO: Add type
+    actors: IActor,
     timestamp: number,
+}
+
+type Id = string
+interface IActor {
+    id: Id,
+    kind: ActorKind
+}
+enum ActorKind {
+    Player = "Player",
+    Ball = "Ball",
 }
 
 interface IInput {
@@ -24,12 +34,7 @@ enum OpCode {
     Ping = "Ping",
 }
 
-enum ActorKind {
-    Player = "Player",
-    Ball = "Ball",
-}
-
-function setPingInfo (ping) {
+function setPingInfo (ping: number): void {
     pingInfo.text = "Ping: " + ping
     let fill: number
     if (ping < 100) {
@@ -54,8 +59,8 @@ interface IServerMessage {
 const unconfirmedInputs: IInput[] = []
 const MIN_WAIT = 100
 let wait = MIN_WAIT
-let actors = {}
-function connect (address) {
+let actors = new Map<Id, PIXI.Sprite>()
+function connect (address: string): void {
     io = new WebSocket(address)
     io.onopen = () => {
         resetWait()
@@ -114,7 +119,9 @@ function connect (address) {
     io.onerror = () => {
         connectionInfo.text = "Lost connection to server"
         connectionInfo.visible = true
-        for (const id of Object.keys(actors)) { removeActor(id) }
+        for (const [id, _] of actors) {
+            removeActor(id)
+        }
         if (io) {
             io.close()
             io = null
@@ -122,17 +129,23 @@ function connect (address) {
     }
 }
 
-function resetWait () {
+function resetWait (): void {
     wait = MIN_WAIT
 }
 
-function incrementWait () {
+function incrementWait (): void {
     const MAX_WAIT = 2000
-    if (wait < MAX_WAIT) { wait *= 1.25 } else { wait = MAX_WAIT }
+    if (wait < MAX_WAIT) {
+        wait *= 1.25
+    } else {
+        wait = MAX_WAIT
+    }
 }
 
-function send (data) {
-    if (io && io.readyState === 1) { io.send(JSON.stringify(data)) }
+function send (data): void {
+    if (io && io.readyState === 1) {
+        io.send(JSON.stringify(data))
+    }
 }
 
 const GAME_WIDTH = 1000
@@ -166,14 +179,14 @@ document.addEventListener("keyup", (event) => {
     sendKeyWithVal(event.key, false)
 })
 
-function sendKeyWithVal (key, val) {
+function sendKeyWithVal (key: string, val: boolean): void {
     if (validKeys.indexOf(key) > -1) {
         sendIfNew(key, val)
     }
 }
 
 let msgId = 1
-function sendIfNew (key, val) {
+function sendIfNew (key: string, val: boolean): void {
     if (keyPressed[key] !== val) {
         keyPressed[key] = val
         const msg = {
@@ -187,14 +200,16 @@ function sendIfNew (key, val) {
     }
 }
 
-function loadProgressHandler (loader, resource) {
+function loadProgressHandler (loader: PIXI.loaders.Loader, resource: PIXI.loaders.Resource): void {
     console.log("loading: " + resource.name + " (" + resource.url + ")")
     console.log("progress: " + loader.progress + "%")
-    if (resource.error) { console.error(resource.error) }
+    if (resource.error) {
+        console.error(resource.error)
+    }
 }
 
 const resources = PIXI.loader.resources
-function setup () {
+function setup (): void {
     if (!(resources.pong && resources.pong.textures)) {
         throw new Error("Failed to setup stage: PIXI was not initialized properly")
     }
@@ -228,7 +243,7 @@ function setup () {
     app.ticker.add(gameLoop)
 }
 
-function getDelay () {
+function getDelay (): number {
     const defaultDelay = 0
     if (states.length === 0 || !ownId) {
         return defaultDelay
@@ -241,7 +256,7 @@ function getDelay () {
     return players[ownId].delay
 }
 
-function resize () {
+function resize (): void {
     let ratio = window.innerWidth / GAME_WIDTH
     if (GAME_HEIGHT * ratio > window.innerHeight) { ratio = window.innerHeight / GAME_HEIGHT }
     // TODO: types say that width and height don't exist (workaround with square brackets used)
@@ -252,11 +267,11 @@ function resize () {
 
 let onGameUpdate = connecting
 
-function gameLoop () {
+function gameLoop (): void {
     onGameUpdate()
 }
 
-function connecting () {
+function connecting (): void {
     const txt = "Connecting..."
     if (connectionInfo.text !== txt) {
         connectionInfo.text = txt
@@ -271,11 +286,11 @@ function connecting () {
     }
 }
 
-function play () {
+function play (): void {
     render()
 }
 
-function render () {
+function render (): void {
     const renderTime = getRenderTime()
     const index = getIndexOfRenderState(renderTime)
     if (index < 0) {
@@ -287,7 +302,7 @@ function render () {
     setWorld(interpolatedState)
 }
 
-function getRenderTime () {
+function getRenderTime (): number {
     const lerpRatio = 2
     const updateRate = 30
     const delay = Math.floor(lerpRatio * 1000 / updateRate)
@@ -295,12 +310,12 @@ function getRenderTime () {
     return now - delay
 }
 
-function getIndexOfRenderState (renderTime) {
+function getIndexOfRenderState (renderTime: number): number {
     const found = states.findIndex((state) => state.timestamp >= renderTime)
     return found - 1
 }
 
-function getInterpolatedState (from, to, renderTime) {
+function getInterpolatedState (from: IState, to: IState, renderTime: number): IState {
     const total = to.timestamp - from.timestamp
     const progress = renderTime - from.timestamp
     if (total === 0 || progress === 0) { return from }
@@ -321,9 +336,9 @@ function getInterpolatedState (from, to, renderTime) {
     return state
 }
 
-function setWorld (state) {
+function setWorld (state: IState): void {
     for (const id of Object.keys(state)) {
-        const liveActor = actors[id]
+        const liveActor = actors.get(id)
         const stateActor = state[id]
         if (!liveActor || !stateActor) { continue }
         liveActor.x = stateActor.pos.x
@@ -332,7 +347,11 @@ function setWorld (state) {
     }
 }
 
-function setBlur (obj, vel) {
+interface IVector {
+    x: number,
+    y: number,
+}
+function setBlur (obj: PIXI.Sprite, vel: IVector): void {
     const maxVel = Math.max(Math.abs(vel.x), Math.abs(vel.y))
     const strength = Math.pow(Math.atan(Math.pow((maxVel / 10), 1.5)), 2) - 0.2
     if (strength > 0.5) {
@@ -343,7 +362,7 @@ function setBlur (obj, vel) {
     }
 }
 
-function spawnActor (actor) {
+function spawnActor (actor: IActor): void {
     let texture: string
     let height: number
     let width: number
@@ -361,17 +380,24 @@ function spawnActor (actor) {
     default:
         throw new Error(`Tried to spawn invalid kind of actor: ${actor.kind}`)
     }
-    // TODO: i'm sorry for this too
-    const sprite = new PIXI.Sprite(resources.pong && resources.pong.textures && resources.pong.textures[texture])
+
+    if (!(resources.pong && resources.pong.textures)) {
+        throw new Error("Failed to spawn actor: PIXI was not initialized properly")
+    }
+
+    const sprite = new PIXI.Sprite(resources.pong.textures[texture])
     sprite.anchor.set(0.5)
     sprite.width = width
     sprite.height = height
     app.stage.addChild(sprite)
-    actors[actor.id] = sprite
+    actors.set(actor.id, sprite)
 }
 
-function removeActor (id) {
-    const actor = actors[id]
+function removeActor (id: Id): void {
+    const actor = actors.get(id)
+    if (!actor) {
+        throw new Error(`Failed to remove actor: No actor found with id ${id}`)
+    }
     app.stage.removeChild(actor)
-    delete actors[id]
+    actors.delete(id)
 }
