@@ -6,7 +6,7 @@ let pingInfo: PIXI.Text
 let states: IState[] = []
 
 interface IState {
-    actors: IActor,
+    actors: IActor[], // TODO: Somehow use a Map for this
     timestamp: number,
 }
 
@@ -47,7 +47,7 @@ function setPingInfo (ping: number): void {
     pingInfo.style.fill = fill
 }
 
-let ownId: number
+let ownId: Id
 let localClockOffset: number
 
 interface IServerMessage {
@@ -87,13 +87,15 @@ function connect (address: string): void {
             removeActor(msg.payload)
             break
         case OpCode.WorldUpdate:
-            const state = {
+            const state: IState = {
                 actors: msg.payload.actors,
                 timestamp: msg.server_time + localClockOffset,
             }
             states.push(state)
             const index = unconfirmedInputs.findIndex((input) => input.id === msg.payload.last_input) + 1
-            if (index > 0) { unconfirmedInputs.splice(0, index) }
+            if (index > 0) {
+                unconfirmedInputs.splice(0, index)
+            }
             break
         case OpCode.Ping:
             const pong = {
@@ -320,12 +322,12 @@ function getInterpolatedState (from: IState, to: IState, renderTime: number): IS
     const progress = renderTime - from.timestamp
     if (total === 0 || progress === 0) { return from }
     const fraction = progress / total
-    const state = JSON.parse(JSON.stringify(from)).actors
-    for (const id of Object.keys(state)) {
-        const actor = state[id]
-        const toActor = to[id]
+    const state: IState = JSON.parse(JSON.stringify(from))
+    for (const id of Object.keys(state.actors)) {
+        const actor = state.actors[id]
+        const toActor = to.actors[id]
         if (!toActor) { continue }
-        const fromActor = from[id]
+        const fromActor = from.actors[id]
 
         actor.pos.x += (toActor.pos.x - fromActor.pos.x) * fraction
         actor.pos.y += (toActor.pos.y - fromActor.pos.y) * fraction
@@ -337,13 +339,17 @@ function getInterpolatedState (from: IState, to: IState, renderTime: number): IS
 }
 
 function setWorld (state: IState): void {
-    for (const id of Object.keys(state)) {
+    for (const id of Object.keys(state.actors)) {
         const liveActor = actors.get(id)
-        const stateActor = state[id]
-        if (!liveActor || !stateActor) { continue }
+        const stateActor = state.actors[id]
+        if (!liveActor || !stateActor) {
+            continue
+        }
         liveActor.x = stateActor.pos.x
         liveActor.y = stateActor.pos.y
-        if (stateActor.vel) { setBlur(liveActor, stateActor.vel) }
+        if (stateActor.vel) {
+            setBlur(liveActor, stateActor.vel)
+        }
     }
 }
 
