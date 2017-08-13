@@ -72,8 +72,8 @@ function connect (address: string): void {
         case OpCode.WorldUpdate:
             const state: IState = {
                 actors: msg.payload.actors,
+                tick: msg.tick,
                 timestamp: performance.now(),
-                tick: msg.tick
             }
             states.push(state)
             const index = unconfirmedInputs.findIndex((input) => input.id === msg.payload.last_input) + 1
