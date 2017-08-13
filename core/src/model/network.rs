@@ -58,5 +58,3 @@ pub struct ClientMsg {
     pub command: Command,
     pub active: bool,
 }
-
-

@@ -13,7 +13,7 @@ use dotenv::dotenv;
 
 use shootr::util::{read_env_var, elapsed_ms, SeqIdGen};
 use shootr::model::comp::{ToSpawn, ToDespawn, Player, Actor, ActorKind};
-use shootr::model::network::{ClientMsg};
+use shootr::model::network::ClientMsg;
 use shootr::model::game::Id;
 use shootr::system::*;
 use shootr::bootstrap;
@@ -97,7 +97,6 @@ impl Handler {
             }
         }
     }
-
 }
 
 impl EventHandler for Handler {

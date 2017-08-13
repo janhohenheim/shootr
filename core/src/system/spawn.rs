@@ -21,26 +21,12 @@ impl<'a> System<'a> for Spawn {
      Fetch<'a, RwLock<World<Id>>>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities,
-             to_spawn,
-             actor,
-             mut pos,
-             mut vel,
-             mut acc,
-             mut bounciness,
-             world) = data;
+        let (entities, to_spawn, actor, mut pos, mut vel, mut acc, mut bounciness, world) = data;
         let mut world = world.write().unwrap();
         for (entity, actor, _) in (&*entities, &actor, &to_spawn).join() {
             match actor.kind {
                 ActorKind::Player => {
-                    spawn_player(
-                        entity,
-                        actor,
-                        &mut acc,
-                        &mut vel,
-                        &mut pos,
-                        &mut world,
-                    )
+                    spawn_player(entity, actor, &mut acc, &mut vel, &mut pos, &mut world)
                 }
                 ActorKind::Ball => {
                     spawn_ball(
