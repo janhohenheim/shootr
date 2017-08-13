@@ -75,7 +75,7 @@ fn spawn_ball(
 ) {
     let x = 500;
     let y = 500;
-    vel.insert(entity, Vel::from(Vector { x: 10, y: 15 }));
+    vel.insert(entity, Vel::from(Vector { x: 7, y: 11 }));
     pos.insert(entity, Pos::from(Vector { x, y: 500 }));
     bounciness.insert(entity, Bounciness {});
     let bounds = Bounds {
