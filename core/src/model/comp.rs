@@ -4,7 +4,7 @@ use self::specs::{Component, DenseVecStorage};
 use self::websocket_server::SendChannel;
 
 use super::game::{Vector, Id as GameId};
-use model::client::Key;
+use model::network::Command;
 use std::ops::{Deref, DerefMut};
 use std::convert::From;
 use std::collections::HashMap;
@@ -38,7 +38,7 @@ pub struct ToSpawn;
 pub struct ToDespawn;
 
 
-pub type KeyboardState = HashMap<Key, bool>;
+pub type KeyboardState = HashMap<Command, bool>;
 #[derive(Component)]
 pub struct Player {
     pub send_channel: SendChannel,

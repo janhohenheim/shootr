@@ -20,17 +20,21 @@ enum ActorKind {
     Ball = "Ball",
 }
 
-interface IInput {
-    id: number,
-    key: string,
-    pressed: boolean,
-}
-
 enum OpCode {
     Greeting = "Greeting",
     Spawn = "Spawn",
     Despawn = "Despawn",
     WorldUpdate = "WorldUpdate",
+}
+
+enum Command {
+    MoveUp = "MoveUp",
+    MoveDown = "MoveDown",
+}
+interface IClientMessage {
+    active: boolean,
+    command: Command,
+    id: number
 }
 
 let ownId: Id
@@ -41,7 +45,7 @@ interface IServerMessage {
     tick: number
 }
 
-const unconfirmedInputs: IInput[] = []
+const unconfirmedInputs: IClientMessage[] = []
 const MIN_WAIT = 100
 let wait = MIN_WAIT
 let actors = new Map<Id, PIXI.Sprite>()
@@ -122,7 +126,7 @@ function incrementWait (): void {
     }
 }
 
-function send (data): void {
+function send (data: IClientMessage): void {
     if (io && io.readyState === 1) {
         io.send(JSON.stringify(data))
     }
@@ -147,34 +151,42 @@ PIXI.loader
     .on("progress", loadProgressHandler)
     .load(setup)
 
-let validKeys = ["ArrowUp", "ArrowDown"]
-let keyPressed = {
-    ArrowLeft: false,
-    ArrowRight: false,
-}
-document.addEventListener("keydown", (event) => {
-    sendKeyWithVal(event.key, true)
-})
-document.addEventListener("keyup", (event) => {
-    sendKeyWithVal(event.key, false)
-})
+let commandState = new Map<Command, boolean>()
 
-function sendKeyWithVal (key: string, val: boolean): void {
-    if (validKeys.indexOf(key) > -1) {
-        sendIfNew(key, val)
+function codeToEvent (code: string): Command | null {
+    switch (code) {
+    case "KeyW":
+    case "ArrowUp":
+        return Command.MoveUp
+    case "KeyS":
+    case "ArrowDown":
+        return Command.MoveDown
+    default:
+        return null
     }
 }
+document.addEventListener("keydown", (event) => {
+    const command = codeToEvent(event.code)
+    if (command) {
+        sendCommand(command, true)
+    }
+})
+document.addEventListener("keyup", (event) => {
+    const command = codeToEvent(event.code)
+    if (command) {
+        sendCommand(command, false)
+    }
+})
 
-let msgId = 1
-function sendIfNew (key: string, val: boolean): void {
-    if (keyPressed[key] !== val) {
-        keyPressed[key] = val
-        const msg = {
-            id: msgId,
-            key,
-            pressed: val,
+let msgId = 0
+function sendCommand (command: Command, active: boolean): void {
+    if (commandState.get(command) !== active) {
+        commandState.set(command, active)
+        const msg: IClientMessage = {
+            active,
+            command,
+            id: msgId++,
         }
-        msgId++
         unconfirmedInputs.push(msg)
         send(msg)
     }

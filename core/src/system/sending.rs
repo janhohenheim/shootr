@@ -10,7 +10,7 @@ use self::websocket_server::Message;
 use self::serde::ser::Serialize;
 
 use model::comp::{Pos, Vel, ToSpawn, ToDespawn, Player as PlayerComp, Actor};
-use model::client::{Message as ClientMessage, OpCode};
+use model::network::{ServerMsg as ClientMessage, OpCode};
 use util::SeqId;
 
 use std::collections::HashMap;

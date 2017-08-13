@@ -3,12 +3,12 @@ use self::specs::{Fetch, Join, WriteStorage, ReadStorage, System};
 
 use model::comp::{Acc, Player, Actor};
 use model::game::Id;
-use model::client::{Key, KeyState};
+use model::network::{Command, ClientMsg};
 
 use std::sync::{Arc, RwLock};
 use std::collections::HashMap;
 
-type InputMap = Arc<RwLock<HashMap<Id, Vec<KeyState>>>>;
+type InputMap = Arc<RwLock<HashMap<Id, Vec<ClientMsg>>>>;
 
 pub struct InputHandler;
 impl<'a> System<'a> for InputHandler {
@@ -36,27 +36,27 @@ impl<'a> System<'a> for InputHandler {
     }
 }
 
-fn update_player_inputs(player: &mut Player, key_state: &KeyState) {
+fn update_player_inputs(player: &mut Player, key_state: &ClientMsg) {
     let mut input = HashMap::new();
     if let Some(last_input) = player.inputs.last() {
         input.clone_from(last_input);
-        input.insert(key_state.key.clone(), key_state.pressed);
+        input.insert(key_state.command.clone(), key_state.active);
     }
     player.inputs.push(input);
     player.last_input = key_state.id;
 }
 
-fn handle_key_state(_: &Player, acc: &mut Acc, key_state: &KeyState) {
-    match key_state.key {
-        Key::ArrowUp => {
-            if key_state.pressed {
+fn handle_key_state(_: &Player, acc: &mut Acc, key_state: &ClientMsg) {
+    match key_state.command {
+        Command::MoveUp => {
+            if key_state.active {
                 acc.y = -5
             } else if acc.y < 0 {
                 acc.y = 0
             }
         }
-        Key::ArrowDown => {
-            if key_state.pressed {
+        Command::MoveDown => {
+            if key_state.active {
                 acc.y = 5
             } else if acc.y > 0 {
                 acc.y = 0

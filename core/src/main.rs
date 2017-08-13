@@ -13,7 +13,7 @@ use dotenv::dotenv;
 
 use shootr::util::{read_env_var, elapsed_ms, SeqIdGen};
 use shootr::model::comp::{ToSpawn, ToDespawn, Player, Actor, ActorKind};
-use shootr::model::client::{KeyState};
+use shootr::model::network::{ClientMsg};
 use shootr::model::game::Id;
 use shootr::system::*;
 use shootr::bootstrap;
@@ -37,7 +37,7 @@ struct Handler {
     id_entity: RwLock<HashMap<Id, Entity>>,
     to_spawn: RwLock<HashMap<Id, SendChannel>>,
     to_despawn: RwLock<HashSet<Id>>,
-    inputs: Arc<RwLock<HashMap<Id, Vec<KeyState>>>>,
+    inputs: Arc<RwLock<HashMap<Id, Vec<ClientMsg>>>>,
 }
 
 impl Handler {
@@ -61,7 +61,7 @@ impl Handler {
 
 
     fn handle_msg(&self, id: Id, msg: &str) {
-        if let Ok(key_state) = serde_json::from_str::<KeyState>(msg) {
+        if let Ok(key_state) = serde_json::from_str::<ClientMsg>(msg) {
             let mut inputs = self.inputs.write().unwrap();
             let has_already_inputs = inputs.get(&id).is_some();
             if has_already_inputs {

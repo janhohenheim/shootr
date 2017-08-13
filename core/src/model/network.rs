@@ -16,30 +16,30 @@ pub enum OpCode {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Message<T>
+pub struct ServerMsg<T>
 where
     T: Serialize + Debug,
 {
     pub opcode: OpCode,
     pub payload: T,
 }
-impl Message<Vec<Value>> {
+impl ServerMsg<Vec<Value>> {
     pub fn new_greeting(own_id: &Id, actors: &[&Actor]) -> Self {
-        Message {
+        ServerMsg {
             opcode: OpCode::Greeting,
             payload: vec![json!(own_id), json!(actors)],
         }
     }
 }
-impl Message<Value> {
+impl ServerMsg<Value> {
     pub fn new_spawn(new_actor: &Actor) -> Self {
-        Message {
+        ServerMsg {
             opcode: OpCode::Spawn,
             payload: json!(new_actor),
         }
     }
     pub fn new_despawn(id: &Id) -> Self {
-        Message {
+        ServerMsg {
             opcode: OpCode::Despawn,
             payload: json!(id),
         }
@@ -47,15 +47,16 @@ impl Message<Value> {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
-pub enum Key {
-    ArrowUp,
-    ArrowDown,
+pub enum Command {
+    MoveUp,
+    MoveDown,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct KeyState {
+pub struct ClientMsg {
     pub id: u32,
-    pub key: Key,
-    pub pressed: bool,
+    pub command: Command,
+    pub active: bool,
 }
+
 
