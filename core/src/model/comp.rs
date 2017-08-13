@@ -4,7 +4,6 @@ use self::specs::{Component, DenseVecStorage};
 use self::websocket_server::SendChannel;
 
 use super::game::{Vector, Id as GameId};
-use util::SeqId as PingId;
 use model::client::Key;
 use std::ops::{Deref, DerefMut};
 use std::convert::From;
@@ -37,13 +36,6 @@ pub struct Actor {
 pub struct ToSpawn;
 #[derive(Component)]
 pub struct ToDespawn;
-#[derive(Component)]
-pub struct Ping;
-#[derive(Component)]
-pub struct Pong {
-    pub ping_id: PingId,
-    pub timestamp: u64,
-}
 
 
 pub type KeyboardState = HashMap<Key, bool>;
@@ -52,8 +44,6 @@ pub struct Player {
     pub send_channel: SendChannel,
     pub inputs: Vec<KeyboardState>,
     pub last_input: u32,
-    pub delay: usize,
-    pub pingpongs: HashMap<PingId, (u64, Option<u64>)>,
 }
 
 impl Player {
@@ -62,8 +52,6 @@ impl Player {
             send_channel,
             inputs: Vec::new(),
             last_input: 0,
-            delay: 0,
-            pingpongs: HashMap::new(),
         }
     }
 }

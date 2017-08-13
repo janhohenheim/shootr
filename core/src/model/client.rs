@@ -5,7 +5,6 @@ use self::serde::ser::Serialize;
 use self::serde_json::Value;
 use model::game::Id;
 use model::comp::Actor;
-use util::SeqId as PingId;
 use std::fmt::Debug;
 
 #[derive(Debug, Clone, Serialize)]
@@ -14,7 +13,6 @@ pub enum OpCode {
     Spawn,
     Despawn,
     WorldUpdate,
-    Ping,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -47,14 +45,6 @@ impl Message<Value> {
         }
     }
 }
-impl Message<u32> {
-    pub fn new_ping(id: PingId) -> Self {
-        Message {
-            opcode: OpCode::Ping,
-            payload: id,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub enum Key {
@@ -69,7 +59,3 @@ pub struct KeyState {
     pub pressed: bool,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub struct Pong {
-    pub id: PingId,
-}

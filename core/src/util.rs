@@ -32,23 +32,6 @@ pub fn timestamp() -> Time {
 }
 
 
-#[derive(Debug)]
-pub struct StopWatch {
-    start: Time,
-}
-
-impl StopWatch {
-    pub fn new() -> Self {
-        StopWatch { start: timestamp() }
-    }
-    pub fn reset(&mut self) {
-        self.start = timestamp();
-    }
-    pub fn get_ms(&self) -> Time {
-        timestamp() - self.start
-    }
-}
-
 
 pub fn angle(a: &Vector, b: &Vector) -> f64 {
     assert_ne!(
@@ -183,31 +166,6 @@ mod test {
         thread::sleep(Duration::from_millis(delta + 10));
         let b = timestamp();
         assert!(b - a >= delta)
-    }
-
-
-    #[test]
-    fn stopwatch_init() {
-        StopWatch::new();
-    }
-
-    #[test]
-    fn stopwatch_wait() {
-        let delta = 123;
-        let clock = StopWatch::new();
-        thread::sleep(Duration::from_millis(delta + 10));
-        assert!(clock.get_ms() >= delta);
-    }
-
-    #[test]
-    fn stopwatch_reset() {
-        let mut clock = StopWatch::new();
-        thread::sleep(Duration::from_millis(222));
-        let old = clock.get_ms();
-        clock.reset();
-        thread::sleep(Duration::from_millis(111));
-        let new = clock.get_ms();
-        assert!(old > new);
     }
 
     #[test]

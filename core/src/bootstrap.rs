@@ -15,7 +15,7 @@ pub fn prepare_world(world: &mut World) {
 
 
 macro_rules! register {
-    (  $world:ident: $( $comp:ty ),+  ) => {
+    (  $world:ident: $( $comp:ty, )+  ) => {
         $ (
             $world.register::<$comp>();
         )+
@@ -33,8 +33,6 @@ fn register_components(world: &mut World) {
         ToSpawn,
         ToDespawn,
         Actor,
-        Ping,
-        Pong
     );
 }
 

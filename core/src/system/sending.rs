@@ -11,11 +11,10 @@ use self::serde::ser::Serialize;
 
 use model::comp::{Pos, Vel, ToSpawn, ToDespawn, Player as PlayerComp, Actor};
 use model::client::{Message as ClientMessage, OpCode};
-use util::StopWatch;
+use util::SeqId;
 
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::RwLock;
 
 pub struct Sending;
 impl<'a> System<'a> for Sending {
@@ -26,31 +25,30 @@ impl<'a> System<'a> for Sending {
      ReadStorage<'a, Actor>,
      WriteStorage<'a, ToSpawn>,
      ReadStorage<'a, ToDespawn>,
-     Fetch<'a, RwLock<StopWatch>>,
+     Fetch<'a, SeqId>,
      Entities<'a>);
 
     fn run(&mut self, data: Self::SystemData) {
-        let (pos, vel, player, actor, mut connect, disconnect, server_clock, entities) = data;
-        let server_clock = server_clock.read().unwrap();
+        let (pos, vel, player, actor, mut connect, disconnect, curr_tick, entities) = data;
 
-        handle_new_connections(&player, &server_clock, &*entities, &actor, &mut connect);
-        handle_disconnects(&player, &server_clock, &actor, &disconnect);
+        handle_new_connections(&player, *curr_tick, &*entities, &actor, &mut connect);
+        handle_disconnects(&player, *curr_tick, &actor, &disconnect);
 
-        send_world_updates(&player, &server_clock, &actor, &pos, &vel);
+        send_world_updates(&player, *curr_tick, &actor, &pos, &vel);
     }
 }
 
 
-fn send<T>(player: &PlayerComp, server_clock: &StopWatch, msg: &ClientMessage<T>)
+fn send<T>(player: &PlayerComp, curr_tick: SeqId, msg: &ClientMessage<T>)
 where
     T: Serialize + Debug,
 {
     let mut msg =
         serde_json::to_string(&msg).expect(&format!("Failed to serialize object {:?}", msg));
     let send_channel = player.send_channel.clone();
-    let timestamp = format!(",\"server_time\":{}", server_clock.get_ms());
+    let tick = format!(",\"tick\":{}", curr_tick);
     let json_end_pos = msg.len() - 1;
-    msg.insert_str(json_end_pos, &timestamp);
+    msg.insert_str(json_end_pos, &tick);
     send_channel.send(Message::Text(msg)).wait().expect(
         "Failed to send message",
     );
@@ -59,7 +57,7 @@ where
 
 fn handle_new_connections(
     player: &ReadStorage<PlayerComp>,
-    server_clock: &StopWatch,
+    curr_tick: SeqId,
     entities: &EntitiesRes,
     actor: &ReadStorage<Actor>,
     spawn: &mut WriteStorage<ToSpawn>,
@@ -80,9 +78,9 @@ fn handle_new_connections(
         let other_spawn_msg = ClientMessage::new_spawn(&new_actor);
         for (player, entity) in (player, entities).join() {
             if entity == new_entity {
-                send(player, server_clock, &greeting_msg);
+                send(player, curr_tick, &greeting_msg);
             } else {
-                send(player, server_clock, &other_spawn_msg);
+                send(player, curr_tick, &other_spawn_msg);
             }
         }
     }
@@ -90,14 +88,14 @@ fn handle_new_connections(
 
 fn handle_disconnects(
     player: &ReadStorage<PlayerComp>,
-    server_clock: &StopWatch,
+    curr_tick: SeqId,
     actor: &ReadStorage<Actor>,
     disconnect: &ReadStorage<ToDespawn>,
 ) {
     for (actor, _) in (actor, disconnect).join() {
         let msg = ClientMessage::new_despawn(&actor.id);
         for player in (player).join() {
-            send(player, server_clock, &msg);
+            send(player, curr_tick, &msg);
         }
     }
 
@@ -105,7 +103,7 @@ fn handle_disconnects(
 
 fn send_world_updates(
     player: &ReadStorage<PlayerComp>,
-    server_clock: &StopWatch,
+    curr_tick: SeqId,
     actor: &ReadStorage<Actor>,
     pos: &ReadStorage<Pos>,
     vel: &ReadStorage<Vel>,
@@ -121,10 +119,6 @@ fn send_world_updates(
         actor.insert("vel", json!(vel));
     }
 
-    for (player, actor) in (player, actor).join() {
-        let mut actor = serialized_actors.get_mut(&actor.id).unwrap();
-        actor.insert("delay", json!(player.delay));
-    }
     let json_actors = json!(serialized_actors);
     for player in (player).join() {
         let last_input = json!(player.last_input);
@@ -137,6 +131,6 @@ fn send_world_updates(
             opcode: OpCode::WorldUpdate,
             payload: &payload,
         };
-        send(player, server_clock, &world_state);
+        send(player, curr_tick, &world_state);
     }
 }

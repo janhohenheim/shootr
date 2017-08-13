@@ -2,12 +2,12 @@
 
 let io: WebSocket | null
 let connectionInfo: PIXI.Text
-let pingInfo: PIXI.Text
 let states: IState[] = []
 
 interface IState {
     actors: IActor[], // TODO: Somehow use a Map for this
     timestamp: number,
+    tick: number,
 }
 
 type Id = string
@@ -31,29 +31,14 @@ enum OpCode {
     Spawn = "Spawn",
     Despawn = "Despawn",
     WorldUpdate = "WorldUpdate",
-    Ping = "Ping",
-}
-
-function setPingInfo (ping: number): void {
-    pingInfo.text = "Ping: " + ping
-    let fill: number
-    if (ping < 100) {
-        fill = 0x57fc20
-    } else if (ping < 200) {
-        fill = 0xfc9520
-    } else {
-        fill = 0xef1c2a
-    }
-    pingInfo.style.fill = fill
 }
 
 let ownId: Id
-let localClockOffset: number
 
 interface IServerMessage {
     opcode: OpCode,
     payload: any,
-    server_time: number
+    tick: number
 }
 
 const unconfirmedInputs: IInput[] = []
@@ -74,8 +59,6 @@ function connect (address: string): void {
         case OpCode.Greeting:
             ownId = msg.payload[0]
             const presentActors = msg.payload[1]
-            localClockOffset = performance.now() - msg.server_time
-
             for (const actor of presentActors) {
                 spawnActor(actor)
             }
@@ -89,19 +72,14 @@ function connect (address: string): void {
         case OpCode.WorldUpdate:
             const state: IState = {
                 actors: msg.payload.actors,
-                timestamp: msg.server_time + localClockOffset,
+                timestamp: performance.now(),
+                tick: msg.tick
             }
             states.push(state)
             const index = unconfirmedInputs.findIndex((input) => input.id === msg.payload.last_input) + 1
             if (index > 0) {
                 unconfirmedInputs.splice(0, index)
             }
-            break
-        case OpCode.Ping:
-            const pong = {
-                id: msg.payload,
-            }
-            send(pong)
             break
         default:
             throw new Error(`Received invalid opcode: ${msg.opcode}`)
@@ -228,34 +206,12 @@ function setup (): void {
     connectionInfo.x = GAME_WIDTH - 300
     app.stage.addChild(connectionInfo)
 
-    pingInfo = new PIXI.Text("Ping: Calculating...")
-    pingInfo.style.fill = 0xe3e3ed
-    pingInfo.style.dropShadow = true
-    pingInfo.style.dropShadowAlpha = 0.7
-    pingInfo.y = 30
-    pingInfo.x = 40
-    app.stage.addChild(pingInfo)
-
     resize()
     window.addEventListener("resize", resize)
 
-    setInterval(() => setPingInfo(getDelay()), 1000)
     const addr = window.location.hostname === "localhost" ? "ws://localhost:8081" : "wss://beta.jnferner.com/socket"
     connect(addr)
     app.ticker.add(gameLoop)
-}
-
-function getDelay (): number {
-    const defaultDelay = 0
-    if (states.length === 0 || !ownId) {
-        return defaultDelay
-    }
-
-    const players = states[states.length - 1].actors
-    if (!players[ownId]) {
-        return defaultDelay
-    }
-    return players[ownId].delay
 }
 
 function resize (): void {
