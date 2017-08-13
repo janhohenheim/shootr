@@ -43,10 +43,15 @@ fn handle_movement(
             vel.x = -vel.x;
         } else {
             let angle = angle(&own, &other);
+            const SPEED_UP: i32 = 5;
+            let sped_up_x = vel.x.abs() + SPEED_UP;
+            let sped_up_y = vel.y + vel.y / vel.y.abs() * SPEED_UP;
             if angle > 270.0 || angle < 90.0 {
-                vel.x = -vel.x.abs();
+                vel.x = -sped_up_x;
+                vel.y = sped_up_y;
             } else {
-                vel.x = vel.x.abs();
+                vel.x = sped_up_x;
+                vel.y = sped_up_y;
             }
         }
     });
@@ -55,6 +60,8 @@ fn handle_movement(
     if next_x > bounds.max.x || next_x < bounds.min.x {
         pos.x = 500;
         pos.y = 500;
+        vel.x = 10;
+        vel.y = 15;
     }
     if next_y > bounds.max.y || next_y < bounds.min.y {
         vel.y = -vel.y;
