@@ -1,7 +1,7 @@
 extern crate specs;
 use self::specs::{Join, WriteStorage, ReadStorage, System, Entities, Entity, Fetch};
 
-use model::comp::{Actor, ActorKind, Pos, Vel, Acc, Friction, ToSpawn, Bounciness};
+use model::comp::{Actor, ActorKind, Pos, Vel, Acc, ToSpawn, Bounciness};
 use model::game::{Vector, Id};
 use collision::{World, Bounds};
 use std::sync::RwLock;
@@ -17,7 +17,6 @@ impl<'a> System<'a> for Spawn {
      WriteStorage<'a, Vel>,
      WriteStorage<'a, Acc>,
      WriteStorage<'a, Bounciness>,
-     WriteStorage<'a, Friction>,
 
      Fetch<'a, RwLock<World<Id>>>);
 
@@ -29,7 +28,6 @@ impl<'a> System<'a> for Spawn {
              mut vel,
              mut acc,
              mut bounciness,
-             mut friction,
              world) = data;
         let mut world = world.write().unwrap();
         for (entity, actor, _) in (&*entities, &actor, &to_spawn).join() {
@@ -41,7 +39,6 @@ impl<'a> System<'a> for Spawn {
                         &mut acc,
                         &mut vel,
                         &mut pos,
-                        &mut friction,
                         &mut world,
                     )
                 }
@@ -66,7 +63,6 @@ fn spawn_player(
     acc: &mut WriteStorage<Acc>,
     vel: &mut WriteStorage<Vel>,
     pos: &mut WriteStorage<Pos>,
-    friction: &mut WriteStorage<Friction>,
     world: &mut World<Id>,
 ) {
     let x = if entity.id() % 2 == 0 { 20 } else { 980 };
@@ -74,7 +70,6 @@ fn spawn_player(
     acc.insert(entity, Acc::from(Vector { x: 0, y: 0 }));
     vel.insert(entity, Vel::from(Vector { x: 0, y: 0 }));
     pos.insert(entity, Pos::from(Vector { x, y }));
-    friction.insert(entity, Friction(2));
     let bounds = Bounds {
         x,
         y,
