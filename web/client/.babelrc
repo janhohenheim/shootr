@@ -20,5 +20,8 @@
   ],
   "plugins": [
     "external-helpers"
+  ],
+  "ignore": [
+    "node_modules/tippex/src/**/*.js"
   ]
 }

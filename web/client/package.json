@@ -5,7 +5,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build-debug": "tslint --fix -p tsconfig.json 'src/**/*.ts' && rollup -c rollup.config.debug.js",
-    "build": "tslint -p tsconfig.json 'src/**/*.ts' && rollup -c rollup.config.js"
+    "prebuild": "tslint -p tsconfig.json 'src/**/*.ts'",
+    "build": "rollup -c rollup.config.js"
   },
   "repository": {
     "type": "git",
