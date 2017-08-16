@@ -1,10 +1,11 @@
+import * as Pixi from "pixi.js"
 import * as Connection from "./connection"
 import * as Globals from "./globals"
 import * as Types from "./types"
 
 export const GAME_WIDTH = 1000
 export const GAME_HEIGHT = 1000
-export const app = new PIXI.Application(
+export const app = new Pixi.Application(
     screen.availWidth, screen.availHeight, {
         antialias: true,
         backgroundColor: 0xFFFFFF,
@@ -15,7 +16,7 @@ let onGameUpdate: (delta: number) => void
 export function setup (gameLoop: (delta: number) => void): void {
     onGameUpdate = gameLoop
     document.body.appendChild(app.view)
-    PIXI.loader
+    Pixi.loader
         .add([{
             name: "pong",
             url: "assets/pong.json",
@@ -24,7 +25,7 @@ export function setup (gameLoop: (delta: number) => void): void {
         .load(pixiSetup)
 }
 
-const resources = PIXI.loader.resources
+const resources = Pixi.loader.resources
 export function spawnActor (actor: Types.IActor): void {
     let texture: string
     let height: number
@@ -45,10 +46,10 @@ export function spawnActor (actor: Types.IActor): void {
     }
 
     if (!(resources.pong && resources.pong.textures)) {
-        throw new Error("Failed to spawn actor: PIXI was not initialized properly")
+        throw new Error("Failed to spawn actor: Pixi was not initialized properly")
     }
 
-    const sprite = new PIXI.Sprite(resources.pong.textures[texture])
+    const sprite = new Pixi.Sprite(resources.pong.textures[texture])
     sprite.anchor.set(0.5)
     sprite.width = width
     sprite.height = height
@@ -65,11 +66,11 @@ export function removeActor (id: Types.Id): void {
     Globals.actors.delete(id)
 }
 
-export function setBlur (obj: PIXI.Sprite, vel: Types.IVector): void {
+export function setBlur (obj: Pixi.Sprite, vel: Types.IVector): void {
     const maxVel = Math.max(Math.abs(vel.x), Math.abs(vel.y))
     const strength = Math.pow(Math.atan(Math.pow((maxVel / 10), 1.5)), 2) - 0.2
     if (strength > 0.5) {
-        const blurFilter = new PIXI.filters.BlurFilter(strength, 1, 1)
+        const blurFilter = new Pixi.filters.BlurFilter(strength, 1, 1)
         obj.filters = [blurFilter]
     } else {
         obj.filters = []
@@ -78,14 +79,14 @@ export function setBlur (obj: PIXI.Sprite, vel: Types.IVector): void {
 
 function pixiSetup (): void {
     if (!(resources.pong && resources.pong.textures)) {
-        throw new Error("Failed to setup stage: PIXI was not initialized properly")
+        throw new Error("Failed to setup stage: Pixi was not initialized properly")
     }
-    const background = new PIXI.Sprite(resources.pong.textures["fancy-court.png"])
+    const background = new Pixi.Sprite(resources.pong.textures["fancy-court.png"])
     background.width = GAME_WIDTH
     background.height = GAME_HEIGHT
     app.stage.addChild(background)
 
-    Globals.setConnectionInfo(new PIXI.Text(""))
+    Globals.setConnectionInfo(new Pixi.Text(""))
     Globals.connectionInfo.style.fill = 0xe3e3ed
     Globals.connectionInfo.style.dropShadow = true
     Globals.connectionInfo.style.dropShadowAlpha = 0.7
@@ -110,7 +111,7 @@ function resize (): void {
     app.renderer.resize(width, height)
 }
 
-function loadProgressHandler (loader: PIXI.loaders.Loader, resource: PIXI.loaders.Resource): void {
+function loadProgressHandler (loader: Pixi.loaders.Loader, resource: Pixi.loaders.Resource): void {
     console.log("loading: " + resource.name + " (" + resource.url + ")")
     console.log("progress: " + loader.progress + "%")
     if (resource.error) {

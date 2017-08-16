@@ -23,6 +23,9 @@
     "babel-preset-env": "^1.6.0",
     "rollup": "^0.45.2",
     "rollup-plugin-babel": "^2.7.1",
+    "rollup-plugin-commonjs": "^8.1.0",
+    "rollup-plugin-node-builtins": "^2.1.2",
+    "rollup-plugin-node-resolve": "^3.0.0",
     "rollup-plugin-typescript": "^0.8.1",
     "rollup-plugin-uglify-es": "^0.0.1",
     "tslint": "^5.5.0",
@@ -31,5 +34,7 @@
     "tslint-immutable": "^4.0.2",
     "typescript": "^2.4.2"
   },
-  "dependencies": {}
+  "dependencies": {
+    "pixi.js": "^4.5.4"
+  }
 }
