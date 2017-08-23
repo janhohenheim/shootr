@@ -1,6 +1,6 @@
 import typescript from 'rollup-plugin-typescript'
 import babel from 'rollup-plugin-babel'
-import uglify from 'rollup-plugin-uglify-es'
+// import uglify from 'rollup-plugin-uglify-es'
 import resolve from 'rollup-plugin-node-resolve'
 import commonjs from 'rollup-plugin-commonjs'
 import builtins from 'rollup-plugin-node-builtins'
@@ -15,29 +15,7 @@ export default {
       typescript: require('typescript')
     }),
     babel({
-      babelrc: false,
-      comments: false,
-      presets: [
-        [
-          'env',
-          {
-            modules: false,
-            targets: {
-              browsers: [
-                'last 1 chrome version',
-                'last 1 firefox version',
-                'last 1 safari version',
-                'last 1 ios_saf version',
-                'last 1 opera version',
-                'last 1 edge version'
-              ]
-            }
-          },
-        ]
-      ],
-      plugins: [
-        'external-helpers'
-      ],
+      exclude: 'node_modules/**',
     }),
     resolve({
       // use "module" field for ES6 module if possible
