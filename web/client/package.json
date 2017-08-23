@@ -6,7 +6,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build-debug": "tslint --fix -p tsconfig.json 'src/**/*.ts' && rollup -c rollup.config.debug.js",
     "prebuild": "tslint -p tsconfig.json 'src/**/*.ts'",
-    "build": "rollup -c rollup.config.js"
+    "build": "rollup -c rollup.config.js && cp -f node_modules/pixi.js/dist/pixi.js public/pixi.js"
   },
   "repository": {
     "type": "git",
